@@ -6,3 +6,13 @@
 - [Lexicase](https://github.com/ryanboldi/lexicase): transitions between JAX and plain numpy
 - [Kozax](https://github.com/sdevries0/Kozax): GP trees in JAX
 - [Stoix](https://github.com/EdanToledo/Stoix): RL algorithms in JAX
+
+# TODOs
+
+- try WANN-like experiment do GA: eval each genome with 5 random weighting constants
+- try experiment with ant and ANNs to see how filled the archive gets
+- implement RL based constant optimization (PPO?) 
+- do actor-critic for constants (eg SAC) and keep critics through optimization
+
+- add back to weight init
+- "variance": jnp.zeros((1,), dtype=jnp.float32),
