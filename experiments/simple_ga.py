@@ -168,6 +168,7 @@ if __name__ == '__main__':
         "n_offspring": 90,
         "n_pop": 100,
         "n_gens": 3_000,
+        "seed": 0
     }
     args = sys.argv[1:]
     for arg in args:
