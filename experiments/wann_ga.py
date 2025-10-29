@@ -214,17 +214,18 @@ def run_wann(config: Dict):
 if __name__ == '__main__':
     conf = {
         "solver": {
-            "n_nodes": 2,
+            "n_nodes": 50,
         },
         "problem": {
             "env_name": "hopper_uni",
             "episode_length": 1000,
         },
         "n_genome_evals": 5,
-        "n_offspring": 4,
-        "n_pop": 8,
-        "n_gens": 3,
-        "seed": 0
+        "n_offspring": 90,
+        "n_pop": 100,
+        "n_gens": 3_000,
+        "seed": 0,
+        "tournament_size": 3
     }
     args = sys.argv[1:]
     for arg in args:
