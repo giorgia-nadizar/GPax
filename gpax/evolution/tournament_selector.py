@@ -4,7 +4,7 @@ from flax import struct
 import jax
 import jax.numpy as jnp
 from jax import vmap
-from qdax.core.emitters.repertoire_selectors.selector import Selector, GARepertoireT
+from qdax.core.emitters.repertoire_selectors.selector import Selector, GARepertoireT, unfold_repertoire
 from qdax.custom_types import RNGKey, Genotype, Fitness
 
 
@@ -20,22 +20,25 @@ class TournamentSelector(Selector):
             key: RNGKey,
             num_samples: int,
     ) -> GARepertoireT:
-        def _tournament(sample_key: RNGKey, genomes: Genotype, fitness_values: Fitness, ) -> Genotype:
+        def _tournament(sample_key: RNGKey, genomes: Genotype, fitness_values: Fitness, ) -> jnp.ndarray:
             indexes = jax.random.choice(sample_key,
                                         jnp.arange(start=0, stop=len(genomes)), shape=[self.tournament_size],
                                         replace=True)
             mask = -jnp.inf * jnp.ones_like(fitness_values)
             mask = mask.at[indexes].set(1)
             fitness_values_for_selection = fitness_values * mask
-            selected_index = jnp.argmax(fitness_values_for_selection)
-            best_genome = jax.tree.map(
-                lambda x: x[selected_index],
-                genomes,
-            )
-            return best_genome
+            return jnp.argmax(fitness_values_for_selection)
 
         sample_keys = jax.random.split(key, num_samples)
         partial_single_tournament = partial(_tournament, genomes=repertoire.genotypes,
                                             fitness_values=repertoire.fitnesses,)
         vmap_tournament = vmap(partial_single_tournament)
-        return vmap_tournament(sample_key=sample_keys)
+        selected_indexes = vmap_tournament(sample_key=sample_keys)
+
+        repertoire_unfolded = unfold_repertoire(repertoire)
+        selected: GARepertoireT = jax.tree.map(
+            lambda x: x[selected_indexes],
+            repertoire_unfolded,
+        )
+
+        return selected
