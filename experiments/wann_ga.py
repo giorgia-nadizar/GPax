@@ -169,7 +169,7 @@ def run_wann(config: Dict):
     metrics = jax.tree.map(lambda metric, init_metric: jnp.concatenate([metric, init_metric], axis=0), metrics,
                            init_metrics)
     csv_logger = CSVLogger(
-        f'../results/{config["run_name"]}.csv',
+        f'results/{config["run_name"]}.csv',
         header=list(metrics.keys())
     )
 
