@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import optax
 import pytest
 
-from gpax.linear_genetic_programming import LGP
+from gpax.graphs.linear_genetic_programming import LGP
 
 
 def test_genome_bounds() -> None:

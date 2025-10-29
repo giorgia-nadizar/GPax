@@ -12,7 +12,7 @@ import jax.numpy as jnp
 from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs as scoring_function
 from qdax.utils.metrics import default_qd_metrics
 
-from gpax.linear_genetic_programming import LGP
+from gpax.graphs.linear_genetic_programming import LGP
 
 
 def test_lgp_with_me() -> None:

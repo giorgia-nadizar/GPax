@@ -7,7 +7,7 @@ from jax.lax import fori_loop
 
 from qdax.custom_types import RNGKey, Genotype, Mask
 
-from gpax.functions import FunctionSet
+from gpax.graphs.functions import FunctionSet
 
 
 @struct.dataclass
