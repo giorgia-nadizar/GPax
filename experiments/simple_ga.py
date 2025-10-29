@@ -1,9 +1,8 @@
-import copy
 import functools
 import sys
 import time
 from copy import deepcopy
-from typing import Dict, Union, List, Any
+from typing import Dict
 
 import jax
 import jax.numpy as jnp
@@ -18,7 +17,6 @@ from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs as scorin
 from qdax.utils.metrics import CSVLogger, default_ga_metrics
 
 from gpax.cartesian_genetic_programming import CGP
-from multiprocessing import Pool
 
 
 def run_ga(config: Dict):
@@ -133,7 +131,7 @@ def run_ga(config: Dict):
     metrics = jax.tree.map(lambda metric, init_metric: jnp.concatenate([metric, init_metric], axis=0), metrics,
                            init_metrics)
     csv_logger = CSVLogger(
-        f'results/{config["run_name"]}',
+        f'results/{config["run_name"]}.csv',
         header=list(metrics.keys())
     )
 
