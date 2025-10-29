@@ -1,8 +1,9 @@
 import copy
 import functools
+import sys
 import time
 from copy import deepcopy
-from typing import Dict
+from typing import Dict, Union, List, Any
 
 import jax
 import jax.numpy as jnp
@@ -157,37 +158,25 @@ def run_ga(config: Dict):
 
 
 if __name__ == '__main__':
-    n_cores = 36
-    common_config = {
+    conf = {
         "solver": {
             "n_nodes": 50,
+        },
+        "problem": {
+            "env_name": "hopper_uni",
+            "episode_length": 1000,
         },
         "n_genome_evals": 5,
         "n_offspring": 90,
         "n_pop": 100,
         "n_gens": 3_000,
     }
-    ga_hopper_config = {
-                           "problem": {
-                               "env_name": "hopper_uni",
-                               "episode_length": 1000,
-                           },
-                       } | common_config
-    ga_walker_config = {
-                            "problem": {
-                                "env_name": "walker2d_uni",
-                                "episode_length": 1000,
-                            },
-                        } | common_config
-    configs = [ga_hopper_config, ga_walker_config]
-    ready_configs = []
-    for seed in range(5):
-        for config in configs:
-            tmp_config = deepcopy(config)
-            tmp_config["seed"] = seed
-            tmp_config["run_name"] = f'ga_cgp_{tmp_config["problem"]["env_name"]}_{seed}'
-            ready_configs.append(tmp_config)
-
-    with Pool() as pool:
-        results = pool.map(run_ga, ready_configs)
-
+    args = sys.argv[1:]
+    for arg in args:
+        key, value = arg.split('=')
+        if key == "env_name":
+            conf["problem"]["env_name"] = value
+        elif key == "seed":
+            conf["seed"] = int(value)
+    conf["run_name"] = conf["problem"]["env_name"] + "_" + str(conf["seed"])
+    run_ga(conf)
