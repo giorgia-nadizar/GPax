@@ -1,4 +1,6 @@
 import functools
+import os
+import pickle
 import sys
 import time
 from copy import deepcopy
@@ -16,7 +18,8 @@ from qdax.custom_types import Genotype, RNGKey
 from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs as scoring_function
 from qdax.utils.metrics import CSVLogger, default_ga_metrics
 
-from gpax.cartesian_genetic_programming import CGP
+from gpax.evolution.tournament_selector import TournamentSelector
+from gpax.graphs.cartesian_genetic_programming import CGP
 
 
 def run_ga(config: Dict):
@@ -88,9 +91,6 @@ def run_ga(config: Dict):
         averaged_fitness = jnp.mean(reshaped_fitness, axis=0).reshape(-1, 1)
         return jnp.nan_to_num(averaged_fitness, nan=-jnp.inf), {}
 
-    # Get minimum reward value to make sure qd_score are positive
-    reward_offset = environments.reward_offset[config["problem"]["env_name"]]
-
     # Define a metrics function
     metrics_function = functools.partial(
         default_ga_metrics,
@@ -100,11 +100,13 @@ def run_ga(config: Dict):
     cgp_mutation_fn = functools.partial(
         policy_graph.mutate
     )
+    tournament_selector = TournamentSelector(tournament_size=config["tournament_size"])
     mixing_emitter = MixingEmitter(
         mutation_fn=cgp_mutation_fn,
         variation_fn=None,
         variation_percentage=0.0,  # note: CGP works with mutation only
-        batch_size=config["n_offspring"]
+        batch_size=config["n_offspring"],
+        selector=tournament_selector
     )
 
     # Instantiate GA
@@ -154,6 +156,10 @@ def run_ga(config: Dict):
         # Log
         csv_logger.log(unwrapped_metrics)
 
+    path = f"results/{conf['run_name']}.pickle"
+    with open(path, 'wb') as file:
+        pickle.dump(repertoire, file)
+
 
 if __name__ == '__main__':
     conf = {
@@ -168,7 +174,8 @@ if __name__ == '__main__':
         "n_offspring": 90,
         "n_pop": 100,
         "n_gens": 3_000,
-        "seed": 0
+        "seed": 0,
+        "tournament_size": 3
     }
     args = sys.argv[1:]
     for arg in args:
@@ -177,5 +184,5 @@ if __name__ == '__main__':
             conf["problem"]["env_name"] = value
         elif key == "seed":
             conf["seed"] = int(value)
-    conf["run_name"] = conf["problem"]["env_name"] + "_" + str(conf["seed"])
+    conf["run_name"] = "ga_" + conf["problem"]["env_name"] + "_" + str(conf["seed"])
     run_ga(conf)

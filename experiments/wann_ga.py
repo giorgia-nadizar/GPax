@@ -1,4 +1,5 @@
 import functools
+import pickle
 import sys
 import time
 from copy import deepcopy
@@ -16,12 +17,30 @@ from qdax.custom_types import Genotype, RNGKey
 from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs as scoring_function
 from qdax.utils.metrics import CSVLogger, default_ga_metrics
 
-from gpax.cartesian_genetic_programming import CGP
+from gpax.evolution.tournament_selector import TournamentSelector
+from gpax.graphs.cartesian_genetic_programming import CGP
 
 
-def run_ga(config: Dict):
+def alter_connection_weights(genome: Genotype, weight: float) -> Genotype:
+    return {
+        "genes": {
+            "inputs1": genome["genes"]["inputs1"].astype(int),
+            "inputs2": genome["genes"]["inputs2"].astype(int),
+            "functions": genome["genes"]["functions"].astype(int),
+            "outputs": genome["genes"]["outputs"].astype(int),
+        },
+        "weights": {
+            "inputs1": jnp.ones_like(genome["weights"]["inputs1"]) * weight,
+            "inputs2": jnp.ones_like(genome["weights"]["inputs2"]) * weight,
+            "functions": genome["weights"]["functions"]
+        }
+    }
+
+
+def run_wann(config: Dict):
     env = environments.create(env_name=config["problem"]["env_name"],
                               episode_length=config["problem"]["episode_length"])
+
     reset_fn = jax.jit(env.reset)
 
     key = jax.random.key(config["seed"])
@@ -76,20 +95,37 @@ def run_ga(config: Dict):
         descriptor_extractor=descriptor_extraction_fn,
     )
 
+    def wann_scoring_fn(genotypes: Genotype, key: RNGKey):
+        n_genome_evals = config["n_genome_evals"]
+        key, subkey1, subkey2 = jax.random.split(key, 3)
+        weights = jax.random.uniform(subkey1, (n_genome_evals,), minval=-2., maxval=2.)
+        vmapped = jax.vmap(jax.vmap(alter_connection_weights,
+                                    in_axes=(0, None)
+                                    ),
+                           in_axes=(None, 0)
+                           )
+        changed = vmapped(genotypes, weights)
+        flattened = jax.tree_util.tree_map(
+            lambda x: x.reshape(-1, *x.shape[2:]),
+            changed
+        )
+        fitness, _, _ = scoring_fn_cgp(flattened, subkey2)
+        reshaped_fitness = fitness.reshape(n_genome_evals, -1)
+        averaged_fitness = jnp.mean(reshaped_fitness, axis=0).reshape(-1, 1)
+        return jnp.nan_to_num(averaged_fitness, nan=-jnp.inf), {}
+
     def parallel_evals_scoring_fn(genotypes: Genotype, key: RNGKey):
         n_genome_evals = config["n_genome_evals"]
         key, subkey = jax.random.split(key)
         merged_params = genotypes
         for i in range(n_genome_evals - 1):
             copied_genotypes = deepcopy(genotypes)
-            merged_params = tree_util.tree_map(lambda x, y: jnp.concatenate([x, y]), merged_params, copied_genotypes)
+            merged_params = tree_util.tree_map(lambda x, y: jnp.concatenate([x.astype(int), y.astype(int)]),
+                                               merged_params, copied_genotypes)
         fitness, _, _ = scoring_fn_cgp(merged_params, subkey)
         reshaped_fitness = fitness.reshape(n_genome_evals, -1)
         averaged_fitness = jnp.mean(reshaped_fitness, axis=0).reshape(-1, 1)
         return jnp.nan_to_num(averaged_fitness, nan=-jnp.inf), {}
-
-    # Get minimum reward value to make sure qd_score are positive
-    reward_offset = environments.reward_offset[config["problem"]["env_name"]]
 
     # Define a metrics function
     metrics_function = functools.partial(
@@ -100,16 +136,18 @@ def run_ga(config: Dict):
     cgp_mutation_fn = functools.partial(
         policy_graph.mutate
     )
+    tournament_selector = TournamentSelector(tournament_size=config["tournament_size"])
     mixing_emitter = MixingEmitter(
         mutation_fn=cgp_mutation_fn,
         variation_fn=None,
         variation_percentage=0.0,  # note: CGP works with mutation only
-        batch_size=config["n_offspring"]
+        batch_size=config["n_offspring"],
+        selector=tournament_selector
     )
 
     # Instantiate GA
     ga = GeneticAlgorithm(
-        scoring_function=parallel_evals_scoring_fn,
+        scoring_function=wann_scoring_fn,
         emitter=mixing_emitter,
         metrics_function=metrics_function,
     )
@@ -131,7 +169,7 @@ def run_ga(config: Dict):
     metrics = jax.tree.map(lambda metric, init_metric: jnp.concatenate([metric, init_metric], axis=0), metrics,
                            init_metrics)
     csv_logger = CSVLogger(
-        f'results/{config["run_name"]}.csv',
+        f'../results/{config["run_name"]}.csv',
         header=list(metrics.keys())
     )
 
@@ -154,20 +192,38 @@ def run_ga(config: Dict):
         # Log
         csv_logger.log(unwrapped_metrics)
 
+    start_time = time.time()
+    key, subkey = jax.random.split(key)
+    final_fitness_values, _ = parallel_evals_scoring_fn(repertoire.genotypes, subkey)
+    timelapse = time.time() - start_time
+    max_final_fitness = jnp.max(final_fitness_values)
+    final_metrics = {
+        "max_fitness": max_final_fitness,
+        "iteration": config["n_gens"],
+        "time": timelapse,
+    }
+    # Log
+    csv_logger.log(final_metrics)
+
+    # Save repertoire
+    path = f"results/{conf['run_name']}.pickle"
+    with open(path, 'wb') as file:
+        pickle.dump(repertoire, file)
+
 
 if __name__ == '__main__':
     conf = {
         "solver": {
-            "n_nodes": 50,
+            "n_nodes": 2,
         },
         "problem": {
             "env_name": "hopper_uni",
             "episode_length": 1000,
         },
         "n_genome_evals": 5,
-        "n_offspring": 90,
-        "n_pop": 100,
-        "n_gens": 3_000,
+        "n_offspring": 4,
+        "n_pop": 8,
+        "n_gens": 3,
         "seed": 0
     }
     args = sys.argv[1:]
@@ -177,5 +233,5 @@ if __name__ == '__main__':
             conf["problem"]["env_name"] = value
         elif key == "seed":
             conf["seed"] = int(value)
-    conf["run_name"] = conf["problem"]["env_name"] + "_" + str(conf["seed"])
-    run_ga(conf)
+    conf["run_name"] = "wann_" + conf["problem"]["env_name"] + "_" + str(conf["seed"])
+    run_wann(conf)
