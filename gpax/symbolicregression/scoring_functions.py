@@ -92,12 +92,13 @@ def regression_accuracy_evaluation(
             genotype : Genotype
                 The batch of genotypes that were evaluated, returned for convenience.
         """
-    prediction_fn = partial(predict_regression_output, graph_structure=graph_structure)
-    mapped_predict_regression_output = jax.vmap(jax.jit(prediction_fn), in_axes=(None, 0))
-    predictions = mapped_predict_regression_output(X, genotype)
-    mapped_accuracy_fn = jax.vmap(jax.jit(accuracy_fn), in_axes=(None, 0))
-    accuracies = mapped_accuracy_fn(y, predictions)
-    return accuracies, genotype
+    prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=graph_structure))
+
+    def _accuracy_fn(single_genotype: Genotype):
+        prediction = prediction_fn(X, single_genotype)
+        return accuracy_fn(y, prediction)
+
+    return jax.vmap(_accuracy_fn)(genotype), genotype
 
 
 def regression_scoring_fn(
