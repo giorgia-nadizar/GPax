@@ -14,7 +14,7 @@ from qdax.custom_types import (
 )
 
 from gpax.graphs.graph_genetic_programming import GGP
-from gpax.symbolicregression.metrics import r2_score, rmse
+from gpax.symbolicregression.metrics import r2_score
 
 
 def predict_regression_output(
@@ -98,3 +98,62 @@ def regression_accuracy_evaluation(
     mapped_accuracy_fn = jax.vmap(jax.jit(accuracy_fn), in_axes=(None, 0))
     accuracies = mapped_accuracy_fn(y, predictions)
     return accuracies, genotype
+
+
+def regression_scoring_fn(
+        functions_params: Genotype,
+        key: RNGKey,
+        train_set_evaluation_fn: Callable[[Params, RNGKey], Tuple[jnp.ndarray, jnp.ndarray]],
+        test_set_evaluation_fn: Callable[[Params, RNGKey], Tuple[jnp.ndarray, jnp.ndarray]],
+        descriptor_extractor: Optional[Callable[[Params], Descriptor]] = None,
+) -> Tuple[Fitness, Descriptor, ExtraScores]:
+    """
+    Evaluate a set of genotypes on training and test sets and optionally extract descriptors.
+
+    This function computes a fitness score for a batch of genotypes by first evaluating them on a training set
+    using `train_set_evaluation_fn`, which may also perform updates to the parameters (e.g., gradient steps).
+    It then evaluates the updated parameters on a test set using `test_set_evaluation_fn`. Optionally, a
+    `descriptor_extractor` can be provided to compute descriptors from the original genotype parameters.
+
+    Parameters
+    ----------
+    functions_params : Genotype
+        The genotype batch to evaluate.
+    key : RNGKey
+        JAX random key used to seed any stochastic operations in evaluation.
+    train_set_evaluation_fn : Callable[[Params, RNGKey], Tuple[jnp.ndarray, jnp.ndarray]]
+        Function that evaluates the genotype on the training set. Returns a tuple of
+        `(train_accuracy, updated_params)`, where `updated_params` may correspond to new genotypes
+        updated during the evaluation on the train set, e.g., via gradient descent.
+    test_set_evaluation_fn : Callable[[Params, RNGKey], Tuple[jnp.ndarray, jnp.ndarray]]
+        Function that evaluates the (possibly updated) genotypes on the test set.
+        Returns `(test_accuracy, updated_params)`.
+    descriptor_extractor : Optional[Callable[[Params], Descriptor]], optional
+        A function to compute descriptors from the original parameters. If `None`, no descriptor is computed.
+
+    Returns
+    -------
+    Tuple[Fitness, Descriptor, ExtraScores]
+        train_accuracy : Fitness
+            Fitness score(s) computed on the training set.
+        descriptor : Descriptor
+            Descriptor extracted from the original genotype parameters, or `None` if not provided.
+        extra_scores : ExtraScores
+            Dictionary containing additional metrics, including:
+            - `"test_accuracy"` : test set accuracy computed from updated parameters.
+            - `"updated_params"` : parameters after training evaluation.
+
+    Notes
+    -----
+    - `train_set_evaluation_fn` can optionally perform updates on the parameters.
+    """
+    train_key, test_key = jax.random.split(key)
+    # it can be a simple accuracy computation, but it can also include gradient steps
+    train_accuracy, updated_params = train_set_evaluation_fn(functions_params, train_key)
+    test_accuracy, _ = test_set_evaluation_fn(updated_params, test_key)
+    if descriptor_extractor is not None:
+        descriptor = descriptor_extractor(functions_params)
+    else:
+        descriptor = None
+
+    return train_accuracy, descriptor, {"test_accuracy": test_accuracy, "updated_params": updated_params}
