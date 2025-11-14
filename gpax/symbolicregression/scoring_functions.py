@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Tuple, Callable, Optional, Dict
 
 import jax
@@ -13,13 +14,13 @@ from qdax.custom_types import (
 )
 
 from gpax.graphs.graph_genetic_programming import GGP
-from gpax.symbolicregression.metrics import r2_score
+from gpax.symbolicregression.metrics import r2_score, rmse
 
 
 def predict_regression_output(
+        X: jnp.ndarray,
         genotype: Genotype,
         graph_structure: GGP,
-        X: jnp.ndarray,
         graph_weights: Dict[str, jnp.ndarray] = None,
 ) -> jnp.ndarray:
     """
@@ -28,13 +29,13 @@ def predict_regression_output(
 
         Parameters
         ----------
+        X : jnp.ndarray
+            Input data of shape (batch_size, input_dim), where each row is a
+            separate sample (i.e., data points) to evaluate.
         genotype : Genotype
             The genotype parameters to be evaluated.
         graph_structure : GGP
             The structure defining how a genotype is encoded into a program.
-        X : jnp.ndarray
-            Input data of shape (batch_size, input_dim), where each row is a
-            separate sample (i.e., data points) to evaluate.
         graph_weights : jnp.ndarray
             Optional weighting factors for the graph.
 
