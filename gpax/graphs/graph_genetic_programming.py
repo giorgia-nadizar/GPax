@@ -216,6 +216,63 @@ class GGP:
             "inputs2": random_input_weights2 if self.weighted_inputs else jnp.ones_like(random_input_weights2),
         }
 
+    def get_weights(self, genotype: Genotype) -> Dict[str, jnp.ndarray]:
+        """ Retrieve the trainable weights from a genotype based on the graph configuration.
+
+            The returned weights depend on the flags `weighted_inputs` and `weighted_functions`:
+              - If `weighted_inputs` is True, returns the weights associated with input connections:
+                - "inputs1"
+                - "inputs2"
+              - If `weighted_functions` is True, returns the weights associated with function nodes:
+                - "functions"
+              - If neither flag is set, returns an empty dictionary.
+
+            Args:
+                genotype (Genotype): A genotype object containing the "weights" dictionary.
+
+            Returns:
+                Dict[str, jnp.ndarray]: A dictionary mapping weight types to their corresponding JAX arrays.
+            """
+        if self.weighted_inputs:
+            return {
+                "inputs1": genotype["weights"]["inputs1"],
+                "inputs2": genotype["weights"]["inputs2"],
+            }
+        elif self.weighted_functions:
+            return {
+                "functions": genotype["weights"]["functions"],
+            }
+        else:
+            return {}
+
+    # noinspection PyMethodMayBeStatic
+    def update_weights(self, genotype: Genotype, weights: Dict[str, jnp.ndarray]) -> Genotype:
+        """ Update the weights of a genotype with the passed values.
+
+            This method returns a new genotype dictionary where each weight type
+            ("inputs1", "inputs2", "functions") is replaced by the corresponding array
+            in the provided `weights` dictionary if present. If a weight type is not
+            provided, the original value from the input genotype is retained.
+
+            Args:
+                genotype (Genotype): The original genotype containing "genes" and "weights".
+                weights (Dict[str, jnp.ndarray]): A dictionary of weights to update. Keys can include:
+                    - "inputs1"
+                    - "inputs2"
+                    - "functions"
+
+            Returns:
+                Genotype: A new genotype dictionary with updated weights.
+            """
+        return {
+            "genes": genotype["genes"],
+            "weights": {
+                "inputs1": weights.get("inputs1", genotype["weights"]["inputs1"]),
+                "inputs2": weights.get("inputs2", genotype["weights"]["inputs2"]),
+                "functions": weights.get("functions", genotype["weights"]["functions"]),
+            }
+        }
+
     def _update_memory(self,
                        genotype: Genotype,
                        weights: Dict[str, jnp.ndarray],
