@@ -1,8 +1,10 @@
 from functools import partial
-from typing import Tuple, Callable, Optional, Dict
+from typing import Tuple, Callable, Optional, Dict, Any
 
 import jax
 import jax.numpy as jnp
+import optax
+from optax._src.base import GradientTransformation
 
 from qdax.custom_types import (
     Params,
@@ -14,7 +16,7 @@ from qdax.custom_types import (
 )
 
 from gpax.graphs.graph_genetic_programming import GGP
-from gpax.symbolicregression.metrics import r2_score
+from gpax.symbolicregression.metrics import r2_score, rmse
 
 
 def predict_regression_output(
@@ -99,6 +101,66 @@ def regression_accuracy_evaluation(
         return accuracy_fn(y, prediction)
 
     return jax.vmap(_accuracy_fn)(genotype), genotype
+
+
+def regression_accuracy_evaluation_with_sgd(
+        genotype: Genotype,
+        key: RNGKey,
+        graph_structure: GGP,
+        X: jnp.ndarray,
+        y: jnp.ndarray,
+        accuracy_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = r2_score,
+        optimizer: GradientTransformation = optax.adam(1e-3),
+        loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
+        n_gradient_steps: int = 100,
+        batch_size: int = None
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """ Perform mini-batch stochastic gradient descent on a batch of genotypes.
+
+        Args:
+            genotype: A batch of genotypes to optimize.
+            key: PRNG key for mini-batch sampling.
+            graph_structure: The graph model.
+            X, y: Training data.
+            accuracy_fn: Function to compute regression accuracy.
+            optimizer: Optax optimizer.
+            loss_fn: Loss function.
+            n_gradient_steps: Number of gradient steps.
+            batch_size: Mini-batch size for SGD.
+        """
+    batch_size = batch_size if batch_size is not None else X.shape[0]
+    num_samples = X.shape[0]
+    graph_weights = graph_structure.get_weights(genotype)
+    opt_states = jax.vmap(optimizer.init)(graph_weights)
+
+    prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=graph_structure))
+
+    @jax.jit
+    def _single_genome_loss(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, X_batch: jnp.ndarray,
+                            y_batch: jnp.ndarray) -> jnp.ndarray:
+        return loss_fn(y_batch, prediction_fn(X_batch, single_genotype, graph_weights=single_weights))
+
+    @jax.jit
+    def _single_genome_gradient_step(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, opt_st: Any,
+                                     X_batch: jnp.ndarray, y_batch: jnp.ndarray):
+        loss, grads = jax.value_and_grad(_single_genome_loss)(single_weights, single_genotype, X_batch, y_batch)
+        weights_updates, new_opt_st = optimizer.update(grads, opt_st)
+        updated_weights = optax.apply_updates(single_weights, weights_updates)
+        return updated_weights, new_opt_st, loss
+
+    step_fn = jax.vmap(jax.jit(_single_genome_gradient_step), in_axes=(0, 0, 0, None, None))
+
+    for i in range(n_gradient_steps):
+        key, subkey = jax.random.split(key)
+        # sample a mini-batch
+        batch_idx = jax.random.choice(subkey, num_samples, shape=(batch_size,), replace=False)
+        X_batch, y_batch = X[batch_idx], y[batch_idx]
+        graph_weights, opt_states, train_losses = step_fn(graph_weights, genotype, opt_states, X_batch, y_batch)
+
+    # update the weights in the genomes
+    updated_genotype = jax.vmap(jax.jit(graph_structure.update_weights), in_axes=(0, 0))(genotype, graph_weights)
+
+    return regression_accuracy_evaluation(updated_genotype, key, graph_structure, X, y, accuracy_fn)
 
 
 def regression_scoring_fn(
