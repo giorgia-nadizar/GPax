@@ -100,7 +100,9 @@ def regression_accuracy_evaluation(
         prediction = prediction_fn(X, single_genotype)
         return accuracy_fn(y, prediction)
 
-    return jax.vmap(_accuracy_fn)(genotype), genotype
+    accuracies = jax.vmap(_accuracy_fn)(genotype)
+
+    return jnp.expand_dims(accuracies, 1), genotype
 
 
 def regression_accuracy_evaluation_with_sgd(
