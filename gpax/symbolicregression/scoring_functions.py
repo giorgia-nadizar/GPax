@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Tuple, Callable, Optional, Dict, Any
+from typing import Tuple, Callable, Optional, Dict, Any, Union
 
 import jax
 import jax.numpy as jnp
@@ -188,7 +188,7 @@ def regression_scoring_fn(
         train_set_evaluation_fn: Callable[[Params, RNGKey], Tuple[jnp.ndarray, jnp.ndarray]],
         test_set_evaluation_fn: Callable[[Params, RNGKey], Tuple[jnp.ndarray, jnp.ndarray]],
         descriptor_extractor: Optional[Callable[[Params], Descriptor]] = None,
-) -> Tuple[Fitness, Descriptor, ExtraScores]:
+) -> Union[Tuple[Fitness, ExtraScores], Tuple[Fitness, Descriptor, ExtraScores]]:
     """
     Evaluate a set of genotypes on training and test sets and optionally extract descriptors.
 
@@ -235,7 +235,6 @@ def regression_scoring_fn(
     test_accuracy, _ = test_set_evaluation_fn(updated_params, test_key)
     if descriptor_extractor is not None:
         descriptor = descriptor_extractor(functions_params)
+        return train_accuracy, descriptor, {"test_accuracy": test_accuracy, "updated_params": updated_params}
     else:
-        descriptor = None
-
-    return train_accuracy, descriptor, {"test_accuracy": test_accuracy, "updated_params": updated_params}
+        return train_accuracy, {"test_accuracy": test_accuracy, "updated_params": updated_params}
