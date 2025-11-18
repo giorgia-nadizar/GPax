@@ -187,13 +187,16 @@ def test_regression_scoring_fn_with_sgd():
     y = jax.random.uniform(y_key, (n_samples,))
 
     # define train and test fn
-    train_fn = partial(regression_accuracy_evaluation_with_sgd, graph_structure=cgp, X=X, y=y, batch_size=4)
-    test_fn = partial(regression_accuracy_evaluation, graph_structure=cgp, X=X, y=y)
+    for reset_weights in [True, False]:
+        for batch_size in [4, None]:
+            train_fn = partial(regression_accuracy_evaluation_with_sgd, graph_structure=cgp, X=X, y=y,
+                               batch_size=batch_size, reset_weights=reset_weights)
+            test_fn = partial(regression_accuracy_evaluation, graph_structure=cgp, X=X, y=y)
 
-    # compute scoring fn
-    fitness, descriptors, extra_scores = regression_scoring_fn(genotypes, key, train_fn, test_fn)
-    assert len(fitness) == n_genotypes
-    assert jnp.array_equal(fitness, extra_scores["test_accuracy"])
-    assert descriptors is None
-    assert not all(
-        jax.tree_leaves(jax.tree_map(lambda x, y: jnp.allclose(x, y), genotypes, extra_scores["updated_params"])))
+            # compute scoring fn
+            fitness, descriptors, extra_scores = regression_scoring_fn(genotypes, key, train_fn, test_fn)
+            assert len(fitness) == n_genotypes
+            assert jnp.array_equal(fitness, extra_scores["test_accuracy"])
+            assert descriptors is None
+            assert not all(jax.tree_leaves(
+                jax.tree_map(lambda x, y: jnp.allclose(x, y), genotypes, extra_scores["updated_params"])))

@@ -113,7 +113,8 @@ def regression_accuracy_evaluation_with_sgd(
         optimizer: GradientTransformation = optax.adam(1e-3),
         loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
         n_gradient_steps: int = 100,
-        batch_size: int = None
+        batch_size: int = None,
+        reset_weights: bool = False
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """ Perform mini-batch stochastic gradient descent on a batch of genotypes.
 
@@ -127,11 +128,29 @@ def regression_accuracy_evaluation_with_sgd(
             loss_fn: Loss function.
             n_gradient_steps: Number of gradient steps.
             batch_size: Mini-batch size for SGD.
+            reset_weights: whether the weights should be re-initialized.
+
+        Returns
+        -------
+        Tuple[jnp.ndarray, jnp.ndarray]
+            accuracies : jnp.ndarray
+                Accuracy values for each genotype, shape (n_genotypes, ...) after SGD
+                optimization of weights, depending on `accuracy_fn`.
+            genotype : Genotype
+                The batch of genotypes that were evaluated with the updated weights.
         """
+    graph_weights = graph_structure.get_weights(genotype)
+    if reset_weights:
+        n_genomes = jax.tree_util.tree_leaves(genotype)[0].shape[0]
+        key, subkey = jax.random.split(key)
+        weights_keys = jax.random.split(subkey, n_genomes)
+        new_weights = jax.vmap(jax.jit(graph_structure.init_weights))(weights_keys)
+        graph_weights = {k: new_weights[k] for k in graph_weights.keys() if k in new_weights}
+
+    opt_states = jax.vmap(optimizer.init)(graph_weights)
+
     batch_size = batch_size if batch_size is not None else X.shape[0]
     num_samples = X.shape[0]
-    graph_weights = graph_structure.get_weights(genotype)
-    opt_states = jax.vmap(optimizer.init)(graph_weights)
 
     prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=graph_structure))
 
