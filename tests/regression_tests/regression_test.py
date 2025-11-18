@@ -65,7 +65,7 @@ def test_regression_accuracy_evaluation_shape():
     # generate random data points
     x_key, y_key, key = jax.random.split(key, 3)
     X = jax.random.uniform(x_key, (n_samples, n_inputs))
-    y = jax.random.uniform(y_key, (n_samples,))
+    y = jax.random.uniform(y_key, (n_samples, 1))
 
     accuracies, returned_genotypes = regression_accuracy_evaluation(
         genotype=genotypes,
@@ -102,7 +102,7 @@ def test_regression_accuracy_evaluation_with_sgd_shape():
     # generate random data points
     x_key, y_key, key = jax.random.split(key, 3)
     X = jax.random.uniform(x_key, (n_samples, n_inputs))
-    y = jax.random.uniform(y_key, (n_samples,))
+    y = jax.random.uniform(y_key, (n_samples, 1))
 
     accuracies, returned_genotypes = regression_accuracy_evaluation_with_sgd(
         genotype=genotypes,
@@ -148,7 +148,7 @@ def test_regression_scoring_fn():
     # generate random data points
     x_key, y_key, key = jax.random.split(key, 3)
     X = jax.random.uniform(x_key, (n_samples, n_inputs))
-    y = jax.random.uniform(y_key, (n_samples,))
+    y = jax.random.uniform(y_key, (n_samples, 1))
 
     # define train and test fn
     train_fn = partial(regression_accuracy_evaluation, graph_structure=cgp, X=X, y=y)
@@ -183,7 +183,7 @@ def test_regression_scoring_fn_with_sgd():
     # generate random data points
     x_key, y_key, key = jax.random.split(key, 3)
     X = jax.random.uniform(x_key, (n_samples, n_inputs))
-    y = jax.random.uniform(y_key, (n_samples,))
+    y = jax.random.uniform(y_key, (n_samples, 1))
 
     # define train and test fn
     for reset_weights in [True, False]:
