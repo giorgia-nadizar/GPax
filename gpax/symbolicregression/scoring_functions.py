@@ -215,19 +215,26 @@ def regression_scoring_fn(
 
     Returns
     -------
-    Tuple[Fitness, Descriptor, ExtraScores]
-        train_accuracy : Fitness
-            Fitness score(s) computed on the training set.
-        descriptor : Descriptor
-            Descriptor extracted from the original genotype parameters, or `None` if not provided.
-        extra_scores : ExtraScores
-            Dictionary containing additional metrics, including:
-            - `"test_accuracy"` : test set accuracy computed from updated parameters.
-            - `"updated_params"` : parameters after training evaluation.
+    Union[Tuple[Fitness, ExtraScores], Tuple[Fitness, Descriptor, ExtraScores]]
+        If `descriptor_extractor` is provided:
+            - train_accuracy : Fitness
+                Fitness score(s) computed on the training set.
+            - descriptor : Descriptor
+                Descriptor extracted from the original genotype parameters.
+            - extra_scores : ExtraScores
+                Dictionary containing additional metrics, including:
+                - `"test_accuracy"`: test set accuracy computed from updated parameters.
+                - `"updated_params"`: parameters after training evaluation.
+        If `descriptor_extractor` is None:
+            - train_accuracy : Fitness
+                Fitness score(s) computed on the training set.
+            - extra_scores : ExtraScores
+                Dictionary containing additional metrics as above, but no descriptor is returned.
 
     Notes
     -----
     - `train_set_evaluation_fn` can optionally perform updates on the parameters.
+    - Descriptors are only returned when `descriptor_extractor` is not None.
     """
     train_key, test_key = jax.random.split(key)
     # it can be a simple accuracy computation, but it can also include gradient steps
