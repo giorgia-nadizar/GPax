@@ -63,20 +63,20 @@ class JaxFunction:
         return cls(aux_data["operator"], aux_data["arity"], aux_data["symbol"])
 
 
-# Predefined dictionary of numeric JaxFunction instances covering common mathematical operations
+eps = 1e-6
 function_set_numeric = {
-    "plus": JaxFunction(lambda x, y: jnp.add(x, y), 2, "+"),
-    "minus": JaxFunction(lambda x, y: jnp.add(x, -y), 2, "-"),
-    "times": JaxFunction(lambda x, y: jnp.multiply(x, y), 2, "*"),
-    "prot_div": JaxFunction(lambda x, y: cond(y == 0, jit(lambda a, b: 1.0), jnp.divide, x, y), 2, "/"),
-    "abs": JaxFunction(lambda x, y: jnp.abs(x), 1, "abs"),
-    "exp": JaxFunction(lambda x, y: jnp.exp(x), 1, "exp"),
+    "plus": JaxFunction(lambda x, y: x + y, 2, "+"),
+    "minus": JaxFunction(lambda x, y: x - y, 2, "-"),
+    "times": JaxFunction(lambda x, y: x * y, 2, "*"),
+    "prot_div": JaxFunction(lambda x, y: jnp.where(jnp.abs(y) < eps, eps, y), 2, "/"),
+    "abs": JaxFunction(lambda x, y: jnp.sqrt(x * x + eps), 1, "abs"),
+    "safe_exp": JaxFunction(lambda x, y: jnp.exp(jnp.clip(x, -50, 50)), 1, "exp"),
     "sin": JaxFunction(lambda x, y: jnp.sin(x), 1, "sin"),
     "cos": JaxFunction(lambda x, y: jnp.cos(x), 1, "cos"),
-    "prot_log": JaxFunction(lambda x, y: jnp.log(jnp.abs(x)), 1, "log"),
-    "lower": JaxFunction(lambda x, y: jnp.add(0.0, x < y), 2, "<"),
-    "greater": JaxFunction(lambda x, y: jnp.add(0.0, x > y), 2, ">"),
-    "sqrt": JaxFunction(lambda x, y: jnp.sqrt(jnp.abs(x)), 1, "sqrt"),
+    "prot_log": JaxFunction(lambda x, y: jnp.log(jnp.abs(x) + eps), 1, "log"),
+    "sqrt": JaxFunction(lambda x, y: jnp.sqrt(jnp.sqrt(x * x + eps) + eps), 1, "sqrt"),
+    # "lower": JaxFunction(lambda x, y: jnp.add(0.0, x < y), 2, "<"),
+    # "greater": JaxFunction(lambda x, y: jnp.add(0.0, x > y), 2, ">"),
 }
 
 # Predefined dictionary of boolean JaxFunction instances implementing logical operations
