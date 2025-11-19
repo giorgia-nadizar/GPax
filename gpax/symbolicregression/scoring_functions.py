@@ -24,6 +24,7 @@ def predict_regression_output(
         genotype: Genotype,
         graph_structure: GGP,
         graph_weights: Dict[str, jnp.ndarray] = None,
+        max_norm: float = 1e6,
 ) -> jnp.ndarray:
     """
         Compute regression predictions for a batch of inputs.
@@ -40,6 +41,8 @@ def predict_regression_output(
             The structure defining how a genotype is encoded into a program.
         graph_weights : jnp.ndarray
             Optional weighting factors for the graph.
+        max_norm: float
+            Value to clip the output norm to avoid nans and large gradients.
 
         Returns
         -------
@@ -49,7 +52,8 @@ def predict_regression_output(
         """
     parallel_apply = jax.vmap(jax.jit(graph_structure.apply), in_axes=(None, 0, None))
     prediction = parallel_apply(genotype, X, graph_weights)
-    return prediction
+    pred = jnp.nan_to_num(prediction, nan=0.0, posinf=1e6, neginf=-1e6)
+    return jnp.clip(pred, -1e6, 1e6)
 
 
 def regression_accuracy_evaluation(
@@ -148,6 +152,12 @@ def regression_accuracy_evaluation_with_sgd(
         weights_keys = jax.random.split(subkey, n_genomes)
         new_weights = jax.vmap(jax.jit(graph_structure.init_weights))(weights_keys)
         graph_weights = {k: new_weights[k] for k in graph_weights.keys() if k in new_weights}
+
+    # add gradient clipping to the pipeline to prevent nan values
+    optimizer = optax.chain(
+        optax.clip_by_global_norm(1.),
+        optimizer,
+    )
 
     opt_states = jax.vmap(optimizer.init)(graph_weights)
 
