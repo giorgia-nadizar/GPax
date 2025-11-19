@@ -1,7 +1,7 @@
 import jax.numpy as jnp
-from sklearn.metrics import root_mean_squared_error, r2_score as sklearn_r2_score
+from sklearn.metrics import root_mean_squared_error, r2_score as sklearn_r2_score, mean_squared_error
 
-from gpax.symbolicregression.metrics import r2_score, rmse
+from gpax.symbolicregression.metrics import r2_score, rmse, mse
 
 
 def test_r2_score_perfect():
@@ -32,6 +32,23 @@ def test_r2_score_known_value():
     y_pred = jnp.array([2.5, 0.0, 2.0, 8.0])
     result = r2_score(y, y_pred)
     expected = sklearn_r2_score(y, y_pred)
+    assert jnp.isclose(result, expected)
+
+
+def test_mse_perfect():
+    # Perfect prediction → MSE should be 0
+    y = jnp.array([1.0, 2.0, 3.0])
+    y_pred = jnp.array([1.0, 2.0, 3.0])
+    assert mse(y, y_pred) == 0.0
+
+
+def test_mse_known_value():
+    # MSE for a known simple example:
+    # Errors: [1, 0, 1] → MSE = 2/3
+    y = jnp.array([1.0, 2.0, 3.0])
+    y_pred = jnp.array([2.0, 2.0, 2.0])
+    result = mse(y, y_pred)
+    expected = mean_squared_error(y, y_pred)
     assert jnp.isclose(result, expected)
 
 
