@@ -176,4 +176,5 @@ if __name__ == '__main__':
             extra += f"_win" if weighted_inputs else ""
             extra += f"_wfn" if weighted_functions else ""
             conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
+            print(conf["run_name"])
             run_sym_reg_ga(conf)
