@@ -163,17 +163,17 @@ if __name__ == '__main__':
             conf["problem"] = value
         elif key == "seed":
             conf["seed"] = int(value)
+        elif key == "sgd":
+            conf["sgd"] = "t" in value
 
     for weighted_inputs in [True, False]:
         for weighted_functions in [True, False]:
-            for sgd in [True, False]:
-                if not weighted_functions and not weighted_inputs and sgd:
-                    continue
-                conf["solver"]["weighted_inputs"] = weighted_inputs
-                conf["solver"]["weighted_functions"] = weighted_functions
-                conf["sgd"] = sgd
-                extra = "sgd" if "sgd" in conf else "std"
-                extra += f"_win" if weighted_inputs else ""
-                extra += f"_wfn" if weighted_functions else ""
-                conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
-                run_sym_reg_ga(conf)
+            if not weighted_functions and not weighted_inputs and conf["sgd"]:
+                continue
+            conf["solver"]["weighted_inputs"] = weighted_inputs
+            conf["solver"]["weighted_functions"] = weighted_functions
+            extra = "sgd" if conf["sgd"] else "std"
+            extra += f"_win" if weighted_inputs else ""
+            extra += f"_wfn" if weighted_functions else ""
+            conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
+            run_sym_reg_ga(conf)
