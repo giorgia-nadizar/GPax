@@ -27,6 +27,7 @@ class GGP:
             (e.g., `tanh` to bound outputs).
         weighted_functions: whether the genotype will contain weighting factors for each node/program line.
         weighted_inputs: whether the genotype will contain weighting factors for each connection.
+        weights_mutation: whether weights will undergo mutation or not.
     """
 
     n_inputs: int
@@ -36,6 +37,7 @@ class GGP:
     outputs_wrapper: Callable = jnp.tanh
     weighted_functions: bool = False
     weighted_inputs: bool = False
+    weights_mutation: bool = True
 
     @property
     def n_functions(self) -> int:
@@ -133,9 +135,10 @@ class GGP:
                                                p_mut_functions),
             },
             "weights": {
-                "inputs1": genotype["weights"]["inputs1"] + self.weighted_inputs * i1_w_noise,
-                "inputs2": genotype["weights"]["inputs2"] + self.weighted_inputs * i2_w_noise,
-                "functions": genotype["weights"]["functions"] + self.weighted_functions * fn_w_noise,
+                "inputs1": genotype["weights"]["inputs1"] + self.weighted_inputs * self.weights_mutation * i1_w_noise,
+                "inputs2": genotype["weights"]["inputs2"] + self.weighted_inputs * self.weights_mutation * i2_w_noise,
+                "functions": genotype["weights"]["functions"]
+                             + self.weighted_functions * self.weights_mutation * fn_w_noise,
             }
         }, donor_genotype
 

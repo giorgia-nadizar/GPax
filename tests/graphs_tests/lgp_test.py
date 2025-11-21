@@ -59,6 +59,36 @@ def test_genome_bounds() -> None:
     _test_bounds(crossed_genome)
 
 
+def test_weights_changes_after_mutation() -> None:
+    """Test that the weights of a LGP genome change (or not) correctly given the set flag.
+    """
+    for mut in [True, False]:
+        # define genome structure
+        lgp = LGP(
+            n_inputs=2,
+            n_outputs=1,
+            weighted_inputs=True,
+            weighted_functions=True,
+            weights_mutation=mut
+        )
+        key = jax.random.key(42)
+
+        # init genome
+        key, init_key = jax.random.split(key)
+        initial_lgp_genome = lgp.init(init_key)
+
+        # mutate genome
+        key, mut_key = jax.random.split(key)
+        mutated_lgp_genome = lgp.mutate(
+            genotype=initial_lgp_genome,
+            rnd_key=mut_key,
+        )
+
+        assert not mut * all(jax.tree_leaves(jax.tree_map(
+            lambda x, y: jnp.allclose(x, y), initial_lgp_genome["weights"], mutated_lgp_genome["weights"])))
+
+
+
 def test_known_genome_execution() -> None:
     """Test that a lGP genome behaves as expected.
     The chosen genome takes as outputs:

@@ -54,6 +54,36 @@ def test_genome_bounds() -> None:
     _test_bounds(mutated_cgp_genome)
 
 
+def test_weights_changes_after_mutation() -> None:
+    """Test that the weights of a CGP genome change (or not) correctly given the set flag.
+    """
+    for mut in [True, False]:
+        # define genome structure
+        cgp = CGP(
+            n_inputs=2,
+            n_outputs=1,
+            n_nodes=5,
+            weighted_inputs=True,
+            weighted_functions=True,
+            weights_mutation=mut
+        )
+        key = jax.random.key(42)
+
+        # init genome
+        key, init_key = jax.random.split(key)
+        initial_cgp_genome = cgp.init(init_key)
+
+        # mutate genome
+        key, mut_key = jax.random.split(key)
+        mutated_cgp_genome = cgp.mutate(
+            genotype=initial_cgp_genome,
+            rnd_key=mut_key,
+        )
+
+        assert not mut * all(jax.tree_leaves(jax.tree_map(
+            lambda x, y: jnp.allclose(x, y), initial_cgp_genome["weights"], mutated_cgp_genome["weights"])))
+
+
 def test_known_genome_execution() -> None:
     """Test that a CGP genome behaves as expected.
     The chosen genome takes as outputs:
