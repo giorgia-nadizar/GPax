@@ -65,6 +65,7 @@ def test_weights_changes_after_mutation() -> None:
             n_nodes=5,
             weighted_inputs=True,
             weighted_functions=True,
+            weighted_program_inputs=True,
             weights_mutation=mut
         )
         key = jax.random.key(42)
