@@ -173,16 +173,18 @@ if __name__ == '__main__':
         elif key == "sgd":
             conf["sgd"] = "t" in value
 
-    for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
-        if not (w_f * w_in * w_pgs) and conf["sgd"] == True:
-            continue
-        conf["solver"]["weighted_inputs"] = w_in
-        conf["solver"]["weighted_functions"] = w_f
-        conf["solver"]["weighted_program_inputs"] = w_pgs
-        extra = "sgd" if conf["sgd"] else "std"
-        extra += f"_win" if w_in else ""
-        extra += f"_wfn" if w_f else ""
-        extra += f"_wfn" if w_pgs else ""
-        conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
-        print(conf["run_name"])
-        run_sym_reg_ga(conf)
+    for problem in ["I.13.12","I.6.2","II.24.17"]:
+        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
+            if not (w_f * w_in * w_pgs) and conf["sgd"] == True:
+                continue
+            conf["problem"] = problem
+            conf["solver"]["weighted_inputs"] = w_in
+            conf["solver"]["weighted_functions"] = w_f
+            conf["solver"]["weighted_program_inputs"] = w_pgs
+            extra = "sgd" if conf["sgd"] else "std"
+            extra += f"_win" if w_in else ""
+            extra += f"_wfn" if w_f else ""
+            extra += f"_wfn" if w_pgs else ""
+            conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
+            print(conf["run_name"])
+            run_sym_reg_ga(conf)
