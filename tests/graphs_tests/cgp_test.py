@@ -251,50 +251,32 @@ def test_weights_update() -> None:
 def test_get_weights() -> None:
     """Test that the get weights function returns only the weights that count.
                 """
-    cgp = CGP(
-        n_inputs=3,
-        n_input_constants=0,
-        n_outputs=2,
-        n_nodes=4,
-        weighted_functions=False,
-        weighted_inputs=False
-    )
-    cgp_fn = CGP(
-        n_inputs=3,
-        n_input_constants=0,
-        n_outputs=2,
-        n_nodes=4,
-        weighted_functions=True,
-        weighted_inputs=False
-    )
-    cgp_ins = CGP(
-        n_inputs=3,
-        n_input_constants=0,
-        n_outputs=2,
-        n_nodes=4,
-        weighted_functions=False,
-        weighted_inputs=True
-    )
+    for w_fn in [True, False]:
+        for w_in in [True, False]:
+            for w_pr_in in [True, False]:
+                cgp = CGP(
+                    n_inputs=3,
+                    n_input_constants=0,
+                    n_outputs=2,
+                    n_nodes=4,
+                    weighted_functions=w_fn,
+                    weighted_inputs=w_in,
+                    weighted_program_inputs=w_pr_in
+                )
 
-    # Init the population of CGP genomes
-    key = jax.random.key(0)
-    key, subkey = jax.random.split(key)
-    keys = jax.random.split(subkey, num=10)
-    init_cgp_genomes = jax.vmap(cgp.init)(keys)
+                # Init the population of CGP genomes
+                key = jax.random.key(0)
+                key, subkey = jax.random.split(key)
+                keys = jax.random.split(subkey, num=10)
+                init_cgp_genomes = jax.vmap(cgp.init)(keys)
 
-    # Get the trainable weights
-    weights_none = jax.vmap(jax.jit(cgp.get_weights))(init_cgp_genomes)
-    weights_fn = jax.vmap(jax.jit(cgp_fn.get_weights))(init_cgp_genomes)
-    weights_ins = jax.vmap(jax.jit(cgp_ins.get_weights))(init_cgp_genomes)
-    assert "functions" not in weights_none
-    assert "inputs1" not in weights_none
-    assert "inputs2" not in weights_none
-    assert "functions" in weights_fn
-    assert "inputs1" not in weights_fn
-    assert "inputs2" not in weights_fn
-    assert "functions" not in weights_ins
-    assert "inputs1" in weights_ins
-    assert "inputs2" in weights_ins
+                # Get the trainable weights
+                weights = jax.vmap(jax.jit(cgp.get_weights))(init_cgp_genomes)
+
+                assert w_fn == ("functions" in weights)
+                assert w_in == ("inputs1" in weights)
+                assert w_in == ("inputs2" in weights)
+                assert w_pr_in == ("program_inputs" in weights)
 
 
 def test_gradient_optimization_of_function_weights() -> None:

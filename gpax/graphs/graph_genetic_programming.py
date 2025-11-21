@@ -250,21 +250,21 @@ class GGP:
             Returns:
                 Dict[str, jnp.ndarray]: A dictionary mapping weight types to their corresponding JAX arrays.
             """
+        return_dictionary = {}
         if self.weighted_inputs:
-            return {
+            return_dictionary = return_dictionary | {
                 "inputs1": genotype["weights"]["inputs1"],
                 "inputs2": genotype["weights"]["inputs2"],
             }
-        elif self.weighted_functions:
-            return {
+        if self.weighted_functions:
+            return_dictionary = return_dictionary | {
                 "functions": genotype["weights"]["functions"],
             }
-        elif self.weighted_program_inputs:
-            return {
+        if self.weighted_program_inputs:
+            return_dictionary = return_dictionary | {
                 "program_inputs": genotype["weights"]["program_inputs"],
             }
-        else:
-            return {}
+        return return_dictionary
 
     # noinspection PyMethodMayBeStatic
     def update_weights(self, genotype: Genotype, weights: Dict[str, jnp.ndarray]) -> Genotype:

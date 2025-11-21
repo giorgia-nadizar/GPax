@@ -332,49 +332,32 @@ def test_weights_update() -> None:
 def test_get_weights() -> None:
     """Test that the get weights function returns only the weights that count.
                 """
-    lgp = LGP(
-        n_inputs=3,
-        n_input_constants=0,
-        n_outputs=2,
-        n_program_lines=4,
-        weighted_functions=False,
-        weighted_inputs=False
-    )
-    lgp_fn = LGP(
-        n_inputs=3,
-        n_input_constants=0,
-        n_outputs=2,
-        n_program_lines=4,
-        weighted_functions=True,
-        weighted_inputs=False
-    )
-    lgp_ins = LGP(
-        n_inputs=3,
-        n_input_constants=0,
-        n_outputs=2,
-        n_program_lines=4,
-        weighted_functions=False,
-        weighted_inputs=True
-    )
-    # Init the population of lgp genomes
-    key = jax.random.key(0)
-    key, subkey = jax.random.split(key)
-    keys = jax.random.split(subkey, num=10)
-    init_lgp_genomes = jax.vmap(lgp_fn.init)(keys)
+    for w_fn in [True, False]:
+        for w_in in [True, False]:
+            for w_pr_in in [True, False]:
+                lgp = LGP(
+                    n_inputs=3,
+                    n_input_constants=0,
+                    n_outputs=2,
+                    n_program_lines=4,
+                    weighted_functions=w_fn,
+                    weighted_inputs=w_in,
+                    weighted_program_inputs=w_pr_in
+                )
 
-    # Get the trainable weights
-    weights_none = jax.vmap(jax.jit(lgp.get_weights))(init_lgp_genomes)
-    weights_fn = jax.vmap(jax.jit(lgp_fn.get_weights))(init_lgp_genomes)
-    weights_ins = jax.vmap(jax.jit(lgp_ins.get_weights))(init_lgp_genomes)
-    assert "functions" not in weights_none
-    assert "inputs1" not in weights_none
-    assert "inputs2" not in weights_none
-    assert "functions" in weights_fn
-    assert "inputs1" not in weights_fn
-    assert "inputs2" not in weights_fn
-    assert "functions" not in weights_ins
-    assert "inputs1" in weights_ins
-    assert "inputs2" in weights_ins
+                # Init the population of CGP genomes
+                key = jax.random.key(0)
+                key, subkey = jax.random.split(key)
+                keys = jax.random.split(subkey, num=10)
+                init_lgp_genomes = jax.vmap(lgp.init)(keys)
+
+                # Get the trainable weights
+                weights = jax.vmap(jax.jit(lgp.get_weights))(init_lgp_genomes)
+
+                assert w_fn == ("functions" in weights)
+                assert w_in == ("inputs1" in weights)
+                assert w_in == ("inputs2" in weights)
+                assert w_pr_in == ("program_inputs" in weights)
 
 
 def test_gradient_optimization_of_function_weights() -> None:
