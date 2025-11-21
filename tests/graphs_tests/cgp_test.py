@@ -39,6 +39,7 @@ def test_genome_bounds() -> None:
         pytest.assume(jnp.all(genome["weights"]["functions"] == 1))
         pytest.assume(jnp.all(genome["weights"]["inputs1"] == 1))
         pytest.assume(jnp.all(genome["weights"]["inputs2"] == 1))
+        pytest.assume(jnp.allclose(genome["weights"]["program_inputs"], jnp.asarray([.1, 1])))
 
     _test_bounds(initial_cgp_genome)
 
