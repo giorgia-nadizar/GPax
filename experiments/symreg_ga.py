@@ -3,14 +3,13 @@ import pickle
 import sys
 import time
 from typing import Dict
-
+import pandas as pd
 import jax
 import jax.numpy as jnp
 from qdax.core.containers.ga_repertoire import GARepertoire
 
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.utils.metrics import CSVLogger
-from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -23,7 +22,11 @@ from gpax.symbolicregression.scoring_functions import regression_accuracy_evalua
 
 
 def run_sym_reg_ga(config: Dict):
-    X, y = load_diabetes(return_X_y=True)
+    dataset_name = config["problem"]
+    df = pd.read_csv(f"../datasets/{dataset_name}", sep=" ", header=None)
+    X = df.iloc[:, :-1].to_numpy()
+    y = df.iloc[:, -1].to_numpy()
+
     y = y.reshape(-1, 1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=config["seed"])
 
@@ -47,6 +50,7 @@ def run_sym_reg_ga(config: Dict):
         outputs_wrapper=lambda x: x,
         weighted_functions=config["solver"].get("weighted_functions", False),
         weighted_inputs=config["solver"].get("weighted_inputs", False),
+        weighted_program_inputs=config["solver"].get("weighted_program_inputs", False)
     )
 
     # Init the population of CGP genomes
@@ -94,7 +98,9 @@ def run_sym_reg_ga(config: Dict):
 
     # Evaluate the initial population
     key, subkey = jax.random.split(key)
-    repertoire, emitter_state, init_metrics = ga.init(genotypes=init_cgp_genomes, population_size=config["n_pop"],
+    init_fn = functools.partial(ga.init, lamarckian=True)
+    update_fn = functools.partial(ga.update, lamarckian=True)
+    repertoire, emitter_state, init_metrics = init_fn(genotypes=init_cgp_genomes, population_size=config["n_pop"],
                                                       key=subkey)
 
     # Initialize metrics
@@ -120,7 +126,7 @@ def run_sym_reg_ga(config: Dict):
     for iteration in range(1, config["n_gens"]):
         start_time = time.time()
         key, subkey = jax.random.split(key)
-        repertoire, emitter_state, current_metrics = ga.update(repertoire=repertoire, emitter_state=emitter_state,
+        repertoire, emitter_state, current_metrics = update_fn(repertoire=repertoire, emitter_state=emitter_state,
                                                                key=subkey)
         timelapse = time.time() - start_time
 
@@ -149,12 +155,13 @@ if __name__ == '__main__':
         "solver": {
             "n_nodes": 50,
         },
-        "problem": "diabetes",
         "n_offspring": 90,
         "n_pop": 100,
         "n_gens": 5_000,
         "seed": 0,
-        "tournament_size": 3
+        "tournament_size": 3,
+        "sgd": True,
+        "problem": "I.6.2"
     }
     args = sys.argv[1:]
     for arg in args:
@@ -166,15 +173,16 @@ if __name__ == '__main__':
         elif key == "sgd":
             conf["sgd"] = "t" in value
 
-    for weighted_inputs in [True, False]:
-        for weighted_functions in [True, False]:
-            if not weighted_functions and not weighted_inputs and conf["sgd"]:
-                continue
-            conf["solver"]["weighted_inputs"] = weighted_inputs
-            conf["solver"]["weighted_functions"] = weighted_functions
-            extra = "sgd" if conf["sgd"] else "std"
-            extra += f"_win" if weighted_inputs else ""
-            extra += f"_wfn" if weighted_functions else ""
-            conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
-            print(conf["run_name"])
-            run_sym_reg_ga(conf)
+    for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
+        if not (w_f * w_in * w_pgs) and conf["sgd"] == True:
+            continue
+        conf["solver"]["weighted_inputs"] = w_in
+        conf["solver"]["weighted_functions"] = w_f
+        conf["solver"]["weighted_program_inputs"] = w_pgs
+        extra = "sgd" if conf["sgd"] else "std"
+        extra += f"_win" if w_in else ""
+        extra += f"_wfn" if w_f else ""
+        extra += f"_wfn" if w_pgs else ""
+        conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
+        print(conf["run_name"])
+        run_sym_reg_ga(conf)
