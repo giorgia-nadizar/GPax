@@ -17,7 +17,7 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
     """
 
     def init(
-            self, genotypes: Genotype, population_size: int, key: RNGKey
+            self, genotypes: Genotype, population_size: int, key: RNGKey, lamarckian: bool = False
     ) -> Tuple[GARepertoire, Optional[EmitterState], Metrics]:
         """Initialize a GARepertoire with an initial population of genotypes.
 
@@ -25,6 +25,8 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
             genotypes: the initial population of genotypes
             population_size: the maximal size of the repertoire
             key: a random key to handle stochastic operations
+            lamarckian: a flag to state whether the genomes are replaced by their
+             updated version before entering the repertoire
 
         Returns:
             The initial repertoire, an initial emitter state and a new random key.
@@ -36,6 +38,12 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         # score initial genotypes
         key, subkey = jax.random.split(key)
         fitnesses, extra_scores = self._scoring_function(genotypes, subkey)
+        genotypes = jax.lax.cond(
+            lamarckian,
+            lambda _: extra_scores["updated_params"],
+            lambda _: genotypes,
+            operand=None,
+        )
 
         # init the repertoire
         repertoire = GARepertoire.init(
@@ -67,6 +75,7 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
             repertoire: GARepertoire,
             emitter_state: Optional[EmitterState],
             key: RNGKey,
+            lamarckian: bool = False,
     ) -> Tuple[GARepertoire, Optional[EmitterState], Metrics]:
         """
         Performs one iteration of a Genetic algorithm.
@@ -79,6 +88,8 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
             repertoire: a repertoire
             emitter_state: state of the emitter
             key: a jax PRNG random key
+            lamarckian: a flag to state whether the genomes are replaced by their
+             updated version before entering the repertoire
 
         Returns:
             the updated MAP-Elites repertoire
@@ -97,6 +108,13 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         # score the offsprings
         key, subkey = jax.random.split(key)
         fitnesses, extra_scores = self._scoring_function(genotypes, subkey)
+
+        genotypes = jax.lax.cond(
+            lamarckian,
+            lambda _: extra_scores["updated_params"],
+            lambda _: genotypes,
+            operand=None,
+        )
 
         # update the repertoire
         repertoire = repertoire.add(genotypes, fitnesses, extra_scores)
