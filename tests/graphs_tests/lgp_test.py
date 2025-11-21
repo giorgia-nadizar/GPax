@@ -18,7 +18,7 @@ def test_genome_bounds() -> None:
     key = jax.random.key(42)
 
     # define expected bounds
-    lhs_lower_bound = lgp.n_inputs + len(lgp.input_constants)
+    lhs_lower_bound = lgp.n_inputs + lgp.n_input_constants
     assignments_upper_bounds = lgp.n_registers
     functions_bound = len(lgp.function_set)
 
@@ -88,7 +88,6 @@ def test_weights_changes_after_mutation() -> None:
             lambda x, y: jnp.allclose(x, y), initial_lgp_genome["weights"], mutated_lgp_genome["weights"])))
 
 
-
 def test_known_genome_execution() -> None:
     """Test that a lGP genome behaves as expected.
     The chosen genome takes as outputs:
@@ -112,11 +111,7 @@ def test_known_genome_execution() -> None:
             "inputs2": jnp.asarray([3, 3, 1, 1]),
             "functions": jnp.asarray([2, 2, 0, 2]),
         },
-        "weights": {
-            "functions": jnp.ones((lgp.n_program_lines,)),
-            "inputs1": jnp.ones((lgp.n_program_lines,)),
-            "inputs2": jnp.ones((lgp.n_program_lines,)),
-        }
+        "weights": lgp.init_weights(key=jax.random.key(42))
     }
 
     input_test_range = jnp.arange(start=-1, stop=1, step=.2)
@@ -127,7 +122,8 @@ def test_known_genome_execution() -> None:
                 lgp_genome,
                 inputs,
             )
-            expected_outputs = jnp.tanh(jnp.asarray([x, lgp.input_constants[0], x + y, (x + y) * y]))
+            expected_outputs = jnp.tanh(
+                jnp.asarray([x, lgp_genome["weights"]["program_inputs"][0], x + y, (x + y) * y]))
             pytest.assume(jnp.allclose(outputs, expected_outputs, rtol=1e-5, atol=1e-8))
 
 
@@ -246,11 +242,7 @@ def test_readable_program() -> None:
             "inputs2": jnp.asarray([3, 3, 1, 1, 10]),
             "functions": jnp.asarray([2, 2, 0, 2, 1]),
         },
-        "weights": {
-            "inputs1": jnp.ones((lgp.n_program_lines,)),
-            "inputs2": jnp.ones((lgp.n_program_lines,)),
-            "functions": jnp.ones((lgp.n_program_lines,)),
-        }
+        "weights": lgp.init_weights(key=jax.random.key(42))
     }
     print(lgp.get_readable_program(lgp_genome))
 
@@ -266,7 +258,8 @@ def test_readable_program() -> None:
             "inputs1": jnp.asarray([0, 0]),
             "inputs2": jnp.asarray([1, 5]),
             "functions": jnp.asarray([2, 5]),
-        }
+        },
+        "weights": lgp.init_weights(key=jax.random.key(42))
     }
     print(lgp2.get_readable_program(lgp_genome2))
 
@@ -287,11 +280,7 @@ def test_readable_expression() -> None:
             "inputs2": jnp.asarray([6, 3, 1, 1, 10]),
             "functions": jnp.asarray([2, 2, 0, 2, 1]),
         },
-        "weights": {
-            "inputs1": jnp.ones((lgp.n_program_lines,)),
-            "inputs2": jnp.ones((lgp.n_program_lines,)),
-            "functions": jnp.ones((lgp.n_program_lines,)),
-        }
+        "weights": lgp.init_weights(key=jax.random.key(42))
     }
     print(lgp.get_readable_program(lgp_genome), "\n")
 
@@ -315,7 +304,7 @@ def test_weights_update() -> None:
             """
     lgp = LGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_program_lines=4,
         weighted_functions=True,
@@ -344,7 +333,7 @@ def test_get_weights() -> None:
                 """
     lgp = LGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_program_lines=4,
         weighted_functions=False,
@@ -352,7 +341,7 @@ def test_get_weights() -> None:
     )
     lgp_fn = LGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_program_lines=4,
         weighted_functions=True,
@@ -360,7 +349,7 @@ def test_get_weights() -> None:
     )
     lgp_ins = LGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_program_lines=4,
         weighted_functions=False,
@@ -391,7 +380,7 @@ def test_gradient_optimization_of_function_weights() -> None:
     # Generate genome
     lgp = LGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_computation_registers=2,
         n_program_lines=4,
@@ -406,11 +395,7 @@ def test_gradient_optimization_of_function_weights() -> None:
             "inputs2": jax.lax.stop_gradient(jnp.asarray([2, 3, 4, 5])),
             "functions": jax.lax.stop_gradient(jnp.asarray([2, 6, 3, 0])),
         },
-        "weights": {
-            "functions": target_weights,
-            "inputs1": jnp.ones(lgp.n_program_lines),
-            "inputs2": jnp.ones(lgp.n_program_lines),
-        }
+        "weights": lgp.init_weights(key=jax.random.key(42))
     }
     active = lgp.compute_active_mask(lgp_genome)
     print(lgp.get_readable_expression(lgp_genome), "\n")
@@ -459,7 +444,7 @@ def test_gradient_optimization_of_input_weights() -> None:
     # Generate genome
     lgp = LGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_computation_registers=2,
         n_program_lines=4,
@@ -475,11 +460,7 @@ def test_gradient_optimization_of_input_weights() -> None:
             "inputs2": jax.lax.stop_gradient(jnp.asarray([2, 3, 4, 5])),
             "functions": jax.lax.stop_gradient(jnp.asarray([2, 6, 3, 0])),
         },
-        "weights": {
-            "functions": jnp.ones(lgp.n_program_lines),
-            "inputs1": target_weights1,
-            "inputs2": target_weights2
-        }
+        "weights": lgp.init_weights(key=jax.random.key(42))
     }
     active = lgp.compute_active_mask(lgp_genome)
 

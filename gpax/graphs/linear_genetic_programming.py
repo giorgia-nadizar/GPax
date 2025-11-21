@@ -31,7 +31,7 @@ class LGP(GGP):
     @property
     def n_registers(self) -> int:
         """Total number of registers used by LGP."""
-        return self.n_inputs + len(self.input_constants) + self.n_assignable_registers
+        return self.n_inputs + self.n_input_constants + self.n_assignable_registers
 
     @property
     def n_assignable_registers(self) -> int:
@@ -65,11 +65,12 @@ class LGP(GGP):
                     - `"inputs1"`
                     - `"inputs2"`
                     - `"functions"`
+                    - `"program_inputs"`
                 The encoding is inspired by that of MLPs.
             """
         # determine bounds for genes for each section of the genome
         lhs_mask = self.n_assignable_registers * jnp.ones(self.n_program_lines)
-        lhs_offset = (self.n_inputs + len(self.input_constants)) * jnp.ones(self.n_program_lines)
+        lhs_offset = (self.n_inputs + self.n_input_constants) * jnp.ones(self.n_program_lines)
         f_mask = len(self.function_set) * jnp.ones(self.n_program_lines)
         rhs_mask = self.n_registers * jnp.ones(self.n_program_lines)
 
@@ -115,6 +116,8 @@ class LGP(GGP):
         weights = weights or {}
         weights = {**genotype["weights"], **weights}
 
+        input_constants = genotype["weights"]["program_inputs"]
+
         # define function to update the registers following the instructions of a 
         # given program line: get inputs from the x and y connections, then apply the function
         # and store the result in the target register
@@ -128,7 +131,7 @@ class LGP(GGP):
 
         # initialize the registers with inputs and constants and zeros for remaining registers
         registers = jnp.concatenate(
-            [obs, self.input_constants, jnp.zeros(self.n_assignable_registers)])
+            [obs, input_constants, jnp.zeros(self.n_assignable_registers)])
         # apply the registers update function for all program lines
         _, registers = fori_loop(
             lower=0,
@@ -296,6 +299,7 @@ class LGP(GGP):
                                        genotype2["genes"]["functions"]),
             },
             "weights": {
+                "program_inputs": genotype1["weights"]["program_inputs"],
                 "inputs1": jnp.where(mask,
                                      genotype1["weights"]["inputs1"],
                                      genotype2["weights"]["inputs1"]),
@@ -344,9 +348,10 @@ class LGP(GGP):
                     return outputs
             """
         # header and inputs copy into registers
+        input_constants = genotype["weights"]["program_inputs"]
         program_lines = [f"def program(inputs):",
                          f"r[{list(range(self.n_inputs))}] = inputs",
-                         f"r[{list(range(self.n_inputs, self.n_inputs + len(self.input_constants)))}] = {self.input_constants}"]
+                         f"r[{list(range(self.n_inputs, self.n_inputs + self.n_input_constants))}] = {input_constants}"]
 
         functions = list(self.function_set.function_set.values())
         active_lines = self.compute_active_mask(genotype)
@@ -379,12 +384,13 @@ class LGP(GGP):
             inputs_mapping_fn: Callable[[int], str],
             outputs_mapping_fn: Callable[[int], str], ) -> List[str]:
         """Worker class for computing the readable symbolic representation of a CGP genotype."""
-        n_in = self.n_inputs + len(self.input_constants)
+        n_in = self.n_inputs + self.n_input_constants
         targets = []
 
         def _replace_lgp_expression(lgp_genes: Genotype,
                                     reg_idx: int, max_row_idx: int, ) -> str:
             functions = list(self.function_set.function_set.values())
+            input_constants = genotype["weights"]["program_inputs"]
             for row_idx in range(max_row_idx - 1, -1, -1):
                 if int(lgp_genes['genes']['targets'][row_idx]) == reg_idx:
                     function = functions[lgp_genes["genes"]["functions"][row_idx]]
@@ -400,7 +406,7 @@ class LGP(GGP):
             if reg_idx < self.n_inputs:
                 return inputs_mapping_fn(int(reg_idx))
             elif reg_idx < n_in:
-                return str(self.input_constants[reg_idx - self.n_inputs])
+                return str(input_constants[reg_idx - self.n_inputs])
             else:
                 return "0"
 

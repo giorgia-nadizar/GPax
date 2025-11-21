@@ -20,11 +20,11 @@ def test_genome_bounds() -> None:
 
     # define expected bounds
     connections_bounds = jnp.arange(
-        start=cgp.n_inputs + len(cgp.input_constants),
-        stop=cgp.n_inputs + len(cgp.input_constants) + cgp.n_nodes
+        start=cgp.n_inputs + cgp.n_input_constants,
+        stop=cgp.n_inputs + cgp.n_input_constants + cgp.n_nodes
     )
     functions_bound = len(cgp.function_set)
-    outputs_bound = cgp.n_inputs + len(cgp.input_constants) + cgp.n_nodes
+    outputs_bound = cgp.n_inputs + cgp.n_input_constants + cgp.n_nodes
 
     # init genome
     key, init_key = jax.random.split(key)
@@ -106,11 +106,7 @@ def test_known_genome_execution() -> None:
             "functions": jnp.asarray([0, 0, 2, 0, 0]),
             "outputs": jnp.asarray([0, 2, 4, 6]),
         },
-        "weights": {
-            "inputs1": jnp.ones(cgp.n_nodes),
-            "inputs2": jnp.ones(cgp.n_nodes),
-            "functions": jnp.ones(cgp.n_nodes),
-        }
+        "weights": cgp.init_weights(key=jax.random.key(42))
     }
 
     input_test_range = jnp.arange(start=-1, stop=1, step=.2)
@@ -121,7 +117,8 @@ def test_known_genome_execution() -> None:
                 cgp_genome,
                 inputs,
             )
-            expected_outputs = jnp.tanh(jnp.asarray([x, cgp.input_constants[0], x + y, (x + y) * y]))
+            expected_outputs = jnp.tanh(
+                jnp.asarray([x, cgp_genome["weights"]["program_inputs"][0], x + y, (x + y) * y]))
             pytest.assume(jnp.allclose(outputs, expected_outputs, rtol=1e-5, atol=1e-8))
 
 
@@ -140,11 +137,7 @@ def test_descriptors() -> None:
             "functions": jnp.asarray([0, 0, 2, 0, 0]),
             "outputs": jnp.asarray([0, 2, 4, 6]),
         },
-        "weights": {
-            "inputs1": jnp.ones(cgp.n_nodes),
-            "inputs2": jnp.ones(cgp.n_nodes),
-            "functions": jnp.ones(cgp.n_nodes),
-        }
+        "weights": cgp.init_weights(key=jax.random.key(42))
     }
 
     complexity = cgp.compute_complexity(cgp_genome)
@@ -169,10 +162,7 @@ def test_active_graph() -> None:
             "inputs2": jnp.asarray([1, 1, 5, 1, 1]),
             "functions": jnp.asarray([0, 0, 4, 0, 0]),
             "outputs": jnp.asarray([0, 2, 4, 6]), },
-        "weights": {
-            "functions": jnp.ones(cgp.n_nodes),
-            "inputs1": jnp.ones(cgp.n_nodes),
-            "inputs2": jnp.ones(cgp.n_nodes), }
+        "weights": cgp.init_weights(key=jax.random.key(42))
     }
     expected_active_nodes = jnp.asarray([1, 0, 1, 0, 0])
     active_nodes = cgp.compute_active_mask(cgp_genome)
@@ -211,11 +201,7 @@ def test_readable_expression() -> None:
             "inputs2": jnp.asarray([1, 1, 5, 1, 1]),
             "functions": jnp.asarray([0, 0, 4, 0, 0]),
             "outputs": jnp.asarray([0, 2, 4, 6]), },
-        "weights": {
-            "inputs1": jnp.ones(cgp.n_nodes),
-            "inputs2": jnp.ones(cgp.n_nodes),
-            "functions": jnp.ones(cgp.n_nodes),
-        }
+        "weights": cgp.init_weights(key=jax.random.key(42))
     }
     print(cgp.get_readable_expression(cgp_genome), "\n")
 
@@ -237,7 +223,7 @@ def test_weights_update() -> None:
             """
     cgp = CGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_nodes=4,
         weighted_functions=True,
@@ -266,7 +252,7 @@ def test_get_weights() -> None:
                 """
     cgp = CGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_nodes=4,
         weighted_functions=False,
@@ -274,7 +260,7 @@ def test_get_weights() -> None:
     )
     cgp_fn = CGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_nodes=4,
         weighted_functions=True,
@@ -282,7 +268,7 @@ def test_get_weights() -> None:
     )
     cgp_ins = CGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_nodes=4,
         weighted_functions=False,
@@ -314,7 +300,7 @@ def test_gradient_optimization_of_function_weights() -> None:
     # Generate genome
     cgp = CGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_nodes=4,
         weighted_functions=True,
@@ -332,6 +318,7 @@ def test_gradient_optimization_of_function_weights() -> None:
             "functions": target_weights,
             "inputs1": jnp.ones(cgp.n_nodes),
             "inputs2": jnp.ones(cgp.n_nodes),
+            "program_inputs": jnp.ones(0),
         }
     }
     active = cgp.compute_active_mask(cgp_genome)
@@ -382,7 +369,7 @@ def test_gradient_optimization_of_input_weights() -> None:
     # Generate genome
     cgp = CGP(
         n_inputs=3,
-        input_constants=jnp.asarray([]),
+        n_input_constants=0,
         n_outputs=2,
         n_nodes=4,
         weighted_functions=False,
@@ -400,6 +387,7 @@ def test_gradient_optimization_of_input_weights() -> None:
             "inputs1": target_weights1,
             "inputs2": target_weights2,
             "functions": jnp.ones(cgp.n_nodes),
+            "program_inputs": jnp.ones(0),
         }
     }
     active = cgp.compute_active_mask(cgp_genome)

@@ -30,7 +30,7 @@ class CGP(GGP):
     @property
     def buffer_size(self) -> int:
         """Size of the computation buffer used by CGP."""
-        return self.n_inputs + len(self.input_constants) + self.n_nodes
+        return self.n_inputs + self.n_input_constants + self.n_nodes
 
     @property
     def n_functions(self) -> int:
@@ -59,13 +59,14 @@ class CGP(GGP):
                     - `"inputs1"`
                     - `"inputs2"`
                     - `"functions"`
+                    - `"program_inputs"`
                 The encoding is inspired by that of MLPs.
             """
         # determine bounds for genes for each section of the genome
-        in_mask = jnp.arange(self.n_inputs + len(self.input_constants),
-                             self.n_inputs + len(self.input_constants) + self.n_nodes)
+        in_mask = jnp.arange(self.n_inputs + self.n_input_constants,
+                             self.n_inputs + self.n_input_constants + self.n_nodes)
         f_mask = len(self.function_set) * jnp.ones(self.n_nodes)
-        out_mask = (self.n_inputs + len(self.input_constants) + self.n_nodes) * jnp.ones(self.n_outputs)
+        out_mask = (self.n_inputs + self.n_input_constants + self.n_nodes) * jnp.ones(self.n_outputs)
 
         # generate the random float values for each section of the genome
         n_key, out_key, weights_key = random.split(rnd_key, 3)
@@ -121,10 +122,11 @@ class CGP(GGP):
             return self._update_memory(cgp_genes, weights, buff, idx, buffer_idx)
 
         # initialize the buffer with inputs and constants and use zeros as placeholders for computation
-        buffer = jnp.concatenate([obs, self.input_constants, jnp.zeros(self.n_nodes)])
+        input_constants = genotype["weights"]["program_inputs"]
+        buffer = jnp.concatenate([obs, input_constants, jnp.zeros(self.n_nodes)])
         # apply the buffer update function for all positions of the buffer to update it
         _, buffer = fori_loop(
-            lower=self.n_inputs + len(self.input_constants),
+            lower=self.n_inputs + len(input_constants),
             upper=len(buffer),
             body_fun=_update_buffer,
             init_val=(genotype, buffer))
@@ -243,16 +245,16 @@ class CGP(GGP):
             inputs_mapping_fn: Callable[[int], str],
             outputs_mapping_fn: Callable[[int], str], ) -> List[str]:
         """Worker class for computing the readable symbolic representation of a CGP genotype."""
-        n_in = self.n_inputs + len(self.input_constants)
+        n_in = self.n_inputs + self.n_input_constants
         targets = []
-
+        input_constants = genotype["weights"]["program_inputs"]
         def _replace_cgp_expression(
                 cgp_genes: Genotype,
                 idx: int) -> str:
             if idx < self.n_inputs:
                 return inputs_mapping_fn(int(idx))
             elif idx < n_in:
-                return str(self.input_constants[idx - self.n_inputs])
+                return str(input_constants[idx - self.n_inputs])
             functions = list(self.function_set.function_set.values())
             gene_idx = idx - n_in
             function = functions[cgp_genes["genes"]["functions"][gene_idx]]

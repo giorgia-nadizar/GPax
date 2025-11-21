@@ -22,9 +22,10 @@ class GGP:
         n_outputs: number of outputs produced by the GP individual.
             Typically set to the environment’s action size, e.g., `env.action_size`.
         function_set: set of allowed functions that nodes/instructions can use.
-        input_constants: array of constant values that can be used as additional inputs.
+        n_input_constants: number of constant values that can be used as additional inputs.
         outputs_wrapper: function applied to the outputs before returning them
             (e.g., `tanh` to bound outputs).
+        weighted_program_inputs: whether the genotype will contain optimizable inputs for the program.
         weighted_functions: whether the genotype will contain weighting factors for each node/program line.
         weighted_inputs: whether the genotype will contain weighting factors for each connection.
         weights_mutation: whether weights will undergo mutation or not.
@@ -33,8 +34,9 @@ class GGP:
     n_inputs: int
     n_outputs: int
     function_set: FunctionSet = FunctionSet()
-    input_constants: jnp.ndarray = jnp.asarray([0.1, 1.0])
+    n_input_constants: int = 2
     outputs_wrapper: Callable = jnp.tanh
+    weighted_program_inputs: bool = False
     weighted_functions: bool = False
     weighted_inputs: bool = False
     weights_mutation: bool = True
@@ -113,11 +115,12 @@ class GGP:
         p_mut_functions = mutation_probabilities.get("functions", p_mut_functions)
         weights_mut_sigma = mutation_probabilities.get("weights_sigma", weights_mut_sigma)
 
-        new_key, x_key, y_key, f_key, weights_key = random.split(rnd_key, 5)
+        new_key, x_key, y_key, f_key, weights_key1, weights_key2 = random.split(rnd_key, 6)
         # generate the donor genotype -> only few genes from this will be used
         donor_genotype = self.init(new_key)
-        weights_noise = weights_mut_sigma * random.normal(weights_key, shape=(self.n_functions * 3,))
+        weights_noise = weights_mut_sigma * random.normal(weights_key1, shape=(self.n_functions * 3,))
         fn_w_noise, i1_w_noise, i2_w_noise = jnp.split(weights_noise, 3)
+        progr_in_noise = weights_mut_sigma * random.normal(weights_key2, shape=(self.n_input_constants,))
 
         return {
             "genes": {
@@ -135,6 +138,8 @@ class GGP:
                                                p_mut_functions),
             },
             "weights": {
+                "program_inputs": genotype["weights"]["program_inputs"]
+                                  + self.weighted_program_inputs * self.weights_mutation * progr_in_noise,
                 "inputs1": genotype["weights"]["inputs1"] + self.weighted_inputs * self.weights_mutation * i1_w_noise,
                 "inputs2": genotype["weights"]["inputs2"] + self.weighted_inputs * self.weights_mutation * i2_w_noise,
                 "functions": genotype["weights"]["functions"]
@@ -211,9 +216,15 @@ class GGP:
 
     def init_weights(self, key: RNGKey) -> Dict[str, jnp.ndarray]:
         """Initialize the weights' dictionary."""
-        random_weights = random.uniform(key=key, shape=(self.n_functions * 3,)) * 2 - 1
-        random_node_weights, random_input_weights1, random_input_weights2 = jnp.split(random_weights, 3)
+        key1, key2 = random.split(key)
+        random_weights = random.uniform(key=key1, shape=(self.n_functions * 3,)) * 2 - 1
+        random_node_weights, random_input_weights1, random_input_weights2 = jnp.split(
+            random_weights, 3)
+        program_inputs = random.uniform(key=key2, shape=(self.n_input_constants,)) * 2 - 1
+        if not self.weighted_program_inputs:
+            program_inputs = program_inputs.at[:2].set(jnp.asarray([0.1, 1.0]))
         return {
+            "program_inputs": program_inputs,
             "functions": random_node_weights if self.weighted_functions else jnp.ones_like(random_node_weights),
             "inputs1": random_input_weights1 if self.weighted_inputs else jnp.ones_like(random_input_weights1),
             "inputs2": random_input_weights2 if self.weighted_inputs else jnp.ones_like(random_input_weights2),
@@ -222,12 +233,15 @@ class GGP:
     def get_weights(self, genotype: Genotype) -> Dict[str, jnp.ndarray]:
         """ Retrieve the trainable weights from a genotype based on the graph configuration.
 
-            The returned weights depend on the flags `weighted_inputs` and `weighted_functions`:
+            The returned weights depend on the flags `weighted_inputs`, `weighted_functions` and `
+            weighted_program_inputs`:
               - If `weighted_inputs` is True, returns the weights associated with input connections:
                 - "inputs1"
                 - "inputs2"
               - If `weighted_functions` is True, returns the weights associated with function nodes:
                 - "functions"
+              - If `weighted_program_inputs` is True, returns the weights associated with the program inputs:
+                - "program_inputs"
               - If neither flag is set, returns an empty dictionary.
 
             Args:
@@ -244,6 +258,10 @@ class GGP:
         elif self.weighted_functions:
             return {
                 "functions": genotype["weights"]["functions"],
+            }
+        elif self.weighted_program_inputs:
+            return {
+                "program_inputs": genotype["weights"]["program_inputs"],
             }
         else:
             return {}
@@ -263,6 +281,7 @@ class GGP:
                     - "inputs1"
                     - "inputs2"
                     - "functions"
+                    - "program_inputs"
 
             Returns:
                 Genotype: A new genotype dictionary with updated weights.
@@ -273,6 +292,7 @@ class GGP:
                 "inputs1": weights.get("inputs1", genotype["weights"]["inputs1"]),
                 "inputs2": weights.get("inputs2", genotype["weights"]["inputs2"]),
                 "functions": weights.get("functions", genotype["weights"]["functions"]),
+                "program_inputs": weights.get("program_inputs", genotype["weights"]["program_inputs"]),
             }
         }
 
