@@ -175,7 +175,7 @@ if __name__ == '__main__':
 
     for problem in ["I.13.12","I.6.2","II.24.17"]:
         for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
-            if not (w_f * w_in * w_pgs) and conf["sgd"] == True:
+            if not (w_f or w_in or w_pgs) and conf["sgd"] == True:
                 continue
             conf["problem"] = problem
             conf["solver"]["weighted_inputs"] = w_in
