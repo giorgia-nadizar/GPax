@@ -10,10 +10,12 @@ from gpax.evolution.evolution_metrics import custom_ga_metrics
 
 def test_extra_scores_storage():
     pop_size = 10
-    fake_scoring_fn = partial(lambda x, k: (jnp.ones((pop_size, 1)),
+    target_values = jnp.arange(pop_size, dtype=float).reshape(-1, 1)
+    target_new_params = jnp.arange(pop_size, dtype=float).reshape(-1, 1) * 2
+    fake_scoring_fn = partial(lambda x, k: (target_values,
                                             {
-                                                "extra": jnp.ones((pop_size, 1)),
-                                                "updated_params": jnp.ones((pop_size, 1)) * 2
+                                                "extra": target_values,
+                                                "updated_params": target_new_params
                                             }))
     fake_mutate_fn = lambda x, k: x
     mixing_emitter = MixingEmitter(
@@ -39,11 +41,13 @@ def test_extra_scores_storage():
         repertoire, emitter_state, init_metrics = ga.init(genotypes=fake_genomes, population_size=pop_size, key=key)
         assert "extra" in repertoire.extra_scores
         assert "extra" in init_metrics
+        assert jnp.allclose(repertoire.fitnesses, repertoire.extra_scores["extra"])
 
         repertoire, emitter_state, current_metrics = ga.update(repertoire=repertoire, emitter_state=emitter_state,
                                                                key=key)
         assert "extra" in repertoire.extra_scores
         assert "extra" in current_metrics
+        assert jnp.allclose(repertoire.fitnesses, repertoire.extra_scores["extra"])
 
 
 def test_lamarckian_evolution():

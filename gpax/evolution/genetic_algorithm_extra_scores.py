@@ -2,10 +2,11 @@ from typing import Optional, Tuple
 
 import jax
 
-from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.emitters.emitter import EmitterState
 from qdax.custom_types import Genotype, Metrics, RNGKey
 from qdax.baselines.genetic_algorithm import GeneticAlgorithm
+
+from gpax.evolution.ga_repertoire_extra_scores import GARepertoireExtraScores
 
 
 class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
@@ -18,7 +19,7 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
 
     def init(
             self, genotypes: Genotype, population_size: int, key: RNGKey, lamarckian: bool = False
-    ) -> Tuple[GARepertoire, Optional[EmitterState], Metrics]:
+    ) -> Tuple[GARepertoireExtraScores, Optional[EmitterState], Metrics]:
         """Initialize a GARepertoire with an initial population of genotypes.
 
         Args:
@@ -46,7 +47,7 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         )
 
         # init the repertoire
-        repertoire = GARepertoire.init(
+        repertoire = GARepertoireExtraScores.init(
             genotypes=genotypes,
             fitnesses=fitnesses,
             population_size=population_size,
@@ -72,11 +73,11 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
 
     def update(
             self,
-            repertoire: GARepertoire,
+            repertoire: GARepertoireExtraScores,
             emitter_state: Optional[EmitterState],
             key: RNGKey,
             lamarckian: bool = False,
-    ) -> Tuple[GARepertoire, Optional[EmitterState], Metrics]:
+    ) -> Tuple[GARepertoireExtraScores, Optional[EmitterState], Metrics]:
         """
         Performs one iteration of a Genetic algorithm.
         1. A batch of genotypes is sampled in the repertoire and the genotypes
@@ -132,4 +133,4 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         # update the metrics
         metrics = self._metrics_function(repertoire)
 
-        return repertoire, emitter_state, metrics
+        return repertoire, emitter_state, metrics  # type: ignore
