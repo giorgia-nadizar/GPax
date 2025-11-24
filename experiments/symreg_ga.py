@@ -32,13 +32,13 @@ def run_sym_reg_ga(config: Dict):
 
     # Create scalers
     X_scaler = StandardScaler()
-    y_scaler = StandardScaler()
+    # y_scaler = StandardScaler()
 
     # Fit only on training data, transform test data
     X_train = X_scaler.fit_transform(X_train)
     X_test = X_scaler.transform(X_test)
-    y_train = y_scaler.fit_transform(y_train)
-    y_test = y_scaler.transform(y_test)
+    # y_train = y_scaler.fit_transform(y_train)
+    # y_test = y_scaler.transform(y_test)
 
     key = jax.random.key(config["seed"])
 
