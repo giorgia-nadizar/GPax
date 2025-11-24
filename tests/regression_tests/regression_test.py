@@ -3,7 +3,6 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.symbolicregression.scoring_functions import predict_regression_output, regression_accuracy_evaluation, \
