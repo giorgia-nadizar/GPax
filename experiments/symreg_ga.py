@@ -10,6 +10,7 @@ from qdax.core.containers.ga_repertoire import GARepertoire
 
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.utils.metrics import CSVLogger
+from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -22,23 +23,24 @@ from gpax.symbolicregression.scoring_functions import regression_accuracy_evalua
 
 
 def run_sym_reg_ga(config: Dict):
-    dataset_name = config["problem"]
-    df = pd.read_csv(f"../datasets/{dataset_name}", sep=" ", header=None)
-    X = df.iloc[:, :-1].to_numpy()
-    y = df.iloc[:, -1].to_numpy()
+    # dataset_name = config["problem"]
+    # df = pd.read_csv(f"../datasets/{dataset_name}", sep=" ", header=None)
+    # X = df.iloc[:, :-1].to_numpy()
+    # y = df.iloc[:, -1].to_numpy()
+    X, y = load_diabetes(return_X_y=True)
 
     y = y.reshape(-1, 1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=config["seed"])
 
     # Create scalers
-    X_scaler = StandardScaler()
-    # y_scaler = StandardScaler()
-
-    # Fit only on training data, transform test data
-    X_train = X_scaler.fit_transform(X_train)
-    X_test = X_scaler.transform(X_test)
-    # y_train = y_scaler.fit_transform(y_train)
-    # y_test = y_scaler.transform(y_test)
+    if config.get("scale_x", False):
+        X_scaler = StandardScaler()
+        X_train = X_scaler.fit_transform(X_train)
+        X_test = X_scaler.transform(X_test)
+    if config.get("scale_y", False):
+        y_scaler = StandardScaler()
+        y_train = y_scaler.fit_transform(y_train)
+        y_test = y_scaler.transform(y_test)
 
     key = jax.random.key(config["seed"])
 
@@ -50,7 +52,8 @@ def run_sym_reg_ga(config: Dict):
         outputs_wrapper=lambda x: x,
         weighted_functions=config["solver"].get("weighted_functions", False),
         weighted_inputs=config["solver"].get("weighted_inputs", False),
-        weighted_program_inputs=config["solver"].get("weighted_program_inputs", False)
+        weighted_program_inputs=config["solver"].get("weighted_program_inputs", False),
+        weights_mutation=not config.get("sgd", False)
     )
 
     # Init the population of CGP genomes
@@ -61,7 +64,7 @@ def run_sym_reg_ga(config: Dict):
     # Prepare the scoring function
     if config.get("sgd", False):
         train_fn = functools.partial(regression_accuracy_evaluation_with_sgd, graph_structure=graph_structure,
-                                     X=X_train, y=y_train, reset_weights=True, batch_size=32, n_gradient_steps=100)
+                                     X=X_train, y=y_train, reset_weights=False, batch_size=32, n_gradient_steps=100)
     else:
         train_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_train,
                                      y=y_train)
@@ -173,18 +176,18 @@ if __name__ == '__main__':
         elif key == "sgd":
             conf["sgd"] = "t" in value
 
-    for problem in ["I.13.12","I.6.2","II.24.17"]:
-        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
-            if not (w_f or w_in or w_pgs) and conf["sgd"] == True:
-                continue
-            conf["problem"] = problem
-            conf["solver"]["weighted_inputs"] = w_in
-            conf["solver"]["weighted_functions"] = w_f
-            conf["solver"]["weighted_program_inputs"] = w_pgs
-            extra = "sgd" if conf["sgd"] else "std"
-            extra += f"_win" if w_in else ""
-            extra += f"_wfn" if w_f else ""
-            extra += f"_wfn" if w_pgs else ""
-            conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
-            print(conf["run_name"])
-            run_sym_reg_ga(conf)
+    # for problem in ["I.13.12","I.6.2","II.24.17"]:
+    for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
+        if not (w_f or w_in or w_pgs) and conf["sgd"] == True:
+            continue
+        conf["problem"] = "diabetes"
+        conf["solver"]["weighted_inputs"] = w_in
+        conf["solver"]["weighted_functions"] = w_f
+        conf["solver"]["weighted_program_inputs"] = w_pgs
+        extra = "sgd" if conf["sgd"] else "std"
+        extra += f"_win" if w_in else ""
+        extra += f"_wfn" if w_f else ""
+        extra += f"_wfn" if w_pgs else ""
+        conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
+        print(conf["run_name"])
+        run_sym_reg_ga(conf)
