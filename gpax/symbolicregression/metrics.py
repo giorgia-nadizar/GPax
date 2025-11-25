@@ -17,8 +17,8 @@ def r2_score(y_true: jnp.ndarray, y_pred: jnp.ndarray) -> jnp.ndarray:
     r2 = jnp.where(ss_tot == 0,
                    jnp.where(ss_res == 0, 1.0, 0.0),
                    1 - ss_res / ss_tot)
-    r2 = jnp.nan_to_num(r2, nan=-10.0, posinf=-10.0, neginf=-10.0)
-    r2 = jnp.clip(r2, -10.0, 1.0)
+    r2 = jnp.nan_to_num(r2, nan=-1e30, posinf=-1e30, neginf=-1e30)
+    r2 = jnp.clip(r2, -1e30, 1.0)
 
     return r2
 
