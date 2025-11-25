@@ -187,7 +187,7 @@ if __name__ == '__main__':
         extra = "sgd" if conf["sgd"] else "std"
         extra += f"_win" if w_in else ""
         extra += f"_wfn" if w_f else ""
-        extra += f"_wfn" if w_pgs else ""
+        extra += f"_w_pgs" if w_pgs else ""
         conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
         print(conf["run_name"])
         run_sym_reg_ga(conf)
