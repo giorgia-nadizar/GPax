@@ -2,10 +2,105 @@ from typing import Dict, Callable, Any
 import jax
 import jax.numpy as jnp
 import optax
+from jax.flatten_util import ravel_pytree
 from optax import GradientTransformation
 from qdax.custom_types import Genotype, RNGKey
 
 from gpax.symbolicregression.metrics import rmse
+
+
+def optimize_constants_with_lbfgs(
+        graph_weights: Dict,
+        genotype: Genotype,
+        key: RNGKey,
+        X: jnp.ndarray,
+        y: jnp.ndarray,
+        prediction_fn: Callable,
+        loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
+        max_iter: int = 100,
+        tol: float = 1e-3
+) -> Dict:
+    """
+        Optimize the constant parameters (weights) of a batch of computational graphs
+        using the L-BFGS quasi-Newton optimizer from Optax.
+
+        Parameters
+        ----------
+        graph_weights : Dict
+            A PyTree dictionary containing constant/weight parameters for each genome
+            in the batch. The leading dimension corresponds to the batch size.
+        genotype : Genotype
+            The batch of genotypes whose constants are being optimized.
+        key : RNGKey
+            Unused RNG key included for API consistency with other optimizers.
+        X : jnp.ndarray
+            Input feature matrix of shape (n_samples, n_features).
+        y : jnp.ndarray
+            Target regression outputs of shape (n_samples,) or (n_samples, n_outputs).
+        prediction_fn : Callable
+            A function with signature `(X, genotype, graph_weights) -> predictions`
+            that computes model outputs given a genome and weight PyTree.
+        loss_fn : Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray], optional
+            Differentiable loss function to minimize. Defaults to `rmse`.
+        max_iter : int, optional
+            Maximum number of L-BFGS optimization iterations. Defaults to 100.
+        tol : float, optional
+            Gradient-norm tolerance for convergence. Optimization stops early when
+            ‖grad‖ < tol. Defaults to `1e-3`.
+
+        Returns
+        -------
+        Dict
+            A dictionary of optimized weight PyTrees, one for each genome, matching
+            the structure of the input `graph_weights`.
+
+        Notes
+        -----
+        - L-BFGS runs on flattened parameter vectors; trees are automatically
+          flattened and reconstructed via `ravel_pytree`.
+        - Convergence is determined by both iteration count and gradient norm.
+        - Optimization is fully vectorized across genomes via `jax.vmap`.
+        - The `key` argument is unused but maintained for functional symmetry with
+          SGD/Adam-based optimization functions.
+        """
+
+    def _single_genome_lbfgs(single_weights: Dict, single_genotype: Genotype):
+        init_flat_weights, weights_tree_def = ravel_pytree(single_weights)
+
+        def _loss_fn(array_weights: jnp.ndarray):
+            pytree_weights = weights_tree_def(array_weights)
+            y_pred = prediction_fn(X, single_genotype, graph_weights=pytree_weights)
+            return loss_fn(y, y_pred)
+
+        value_and_grad_fun = optax.value_and_grad_from_state(_loss_fn)
+
+        def _step(carry):
+            params, state = carry
+            value, grad = value_and_grad_fun(params, state=state)
+            updates, state = opt.update(
+                grad, state, params, value=value, grad=grad, value_fn=_loss_fn
+            )
+            params = optax.apply_updates(params, updates)
+            return params, state
+
+        def _continuing_criterion(carry):
+            _, state = carry
+            iter_num = optax.tree.get(state, 'count')
+            grad = optax.tree.get(state, 'grad')
+            err = optax.tree.norm(grad)
+            return (iter_num == 0) | ((iter_num < max_iter) & (err >= tol))
+
+        opt = optax.lbfgs()
+        init_carry = (init_flat_weights, opt.init(init_flat_weights))
+        final_params, final_state = jax.lax.while_loop(
+            _continuing_criterion, _step, init_carry
+        )
+        return weights_tree_def(final_params)
+
+    vmapped_lbfgs = jax.vmap(jax.jit(_single_genome_lbfgs), in_axes=(0, 0))
+    updated_weights = vmapped_lbfgs(graph_weights, genotype)
+
+    return updated_weights
 
 
 def optimize_constants_with_adam_sgd(

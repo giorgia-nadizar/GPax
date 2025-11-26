@@ -5,7 +5,8 @@ import jax.numpy as jnp
 from sklearn.model_selection import train_test_split
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_adam_sgd
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_adam_sgd, \
+    optimize_constants_with_lbfgs
 from gpax.symbolicregression.scoring_functions import predict_regression_output, regression_accuracy_evaluation, \
     regression_scoring_fn, regression_accuracy_evaluation_with_constants_optimization
 
@@ -128,6 +129,58 @@ def test_regression_accuracy_evaluation_with_sgd_shape():
     assert all(jax.tree_leaves(jax.tree_map(lambda x, y: jnp.allclose(x, y),
                                             returned_genotypes["genes"], genotypes["genes"])))
     assert all(accuracies > non_sgd_accuracies)
+
+
+def test_regression_accuracy_evaluation_with_constants_optimization():
+    """Test that function returns accuracies with shape matching number of genotypes."""
+    n_genotypes = 3
+    n_samples = 10
+    n_inputs = 2
+
+    cgp = CGP(
+        n_inputs=n_inputs,
+        n_outputs=1,
+        n_nodes=5,
+        weighted_functions=True,
+        weighted_inputs=False
+    )
+    key = jax.random.key(42)
+
+    # init genomes
+    init_key, key = jax.random.split(key)
+    init_keys = jax.random.split(init_key, n_genotypes)
+    genotypes = jax.vmap(jax.jit(cgp.init))(init_keys)
+
+    # generate random data points
+    x_key, y_key, key = jax.random.split(key, 3)
+    X = jax.random.uniform(x_key, (n_samples, n_inputs))
+    y = jax.random.uniform(y_key, (n_samples, 1))
+
+    constants_opt_fn_1 = partial(optimize_constants_with_adam_sgd, batch_size=4)
+    constants_opt_fn_2 = optimize_constants_with_lbfgs
+
+    for constants_opt_fn in [constants_opt_fn_1, constants_opt_fn_2]:
+        accuracies, returned_genotypes = regression_accuracy_evaluation_with_constants_optimization(
+            genotype=genotypes,
+            key=key,
+            graph_structure=cgp,
+            X=X,
+            y=y,
+            constants_optimization_fn=constants_opt_fn
+        )
+
+        non_sgd_accuracies, non_sgd_returned_genotypes = regression_accuracy_evaluation(
+            genotype=genotypes,
+            key=key,
+            graph_structure=cgp,
+            X=X,
+            y=y,
+        )
+
+        assert accuracies.shape[0] == n_genotypes
+        assert all(jax.tree_leaves(jax.tree_map(lambda x, y: jnp.allclose(x, y),
+                                                returned_genotypes["genes"], genotypes["genes"])))
+        assert all(accuracies > non_sgd_accuracies)
 
 
 def test_regression_scoring_fn():
