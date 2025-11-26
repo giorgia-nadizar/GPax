@@ -18,8 +18,9 @@ from gpax.evolution.tournament_selector import TournamentSelector
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
 from gpax.evolution.evolution_metrics import custom_ga_metrics
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_adam_sgd
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, regression_scoring_fn, \
-    regression_accuracy_evaluation_with_sgd
+    regression_accuracy_evaluation_with_constants_optimization
 
 
 def run_sym_reg_ga(config: Dict):
@@ -63,8 +64,10 @@ def run_sym_reg_ga(config: Dict):
 
     # Prepare the scoring function
     if config.get("sgd", False):
-        train_fn = functools.partial(regression_accuracy_evaluation_with_sgd, graph_structure=graph_structure,
-                                     X=X_train, y=y_train, reset_weights=False, batch_size=32, n_gradient_steps=100)
+        constants_optimizer = functools.partial(optimize_constants_with_adam_sgd, batch_size=32,
+                                                n_gradient_steps=100)
+        train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization, graph_structure=graph_structure,
+                                     X=X_train, y=y_train, reset_weights=False, constants_optimization_fn=constants_optimizer)
     else:
         train_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_train,
                                      y=y_train)

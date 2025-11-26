@@ -11,14 +11,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation_with_sgd, \
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_adam_sgd
+from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation_with_constants_optimization, \
     regression_accuracy_evaluation, regression_scoring_fn
 
 
 def sgd_post_evolution(conf):
     file = open(f"../results/{conf['run_name']}.pickle", 'rb')
     repertoire = pickle.load(file)
-    int_genotypes = jax.tree.map(lambda x : x.astype(int), repertoire.genotypes)
+    int_genotypes = jax.tree.map(lambda x: x.astype(int), repertoire.genotypes)
 
     X, y = load_diabetes(return_X_y=True)
 
@@ -49,11 +50,15 @@ def sgd_post_evolution(conf):
         weights_mutation=False
     )
     if conf.get("weights") is not None:
-        train_fn = functools.partial(regression_accuracy_evaluation_with_sgd, graph_structure=graph_structure,
+        train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
+                                     graph_structure=graph_structure,
                                      X=X_train, y=y_train, reset_weights=True, optimizer=optax.lbfgs())
     else:
-        train_fn = functools.partial(regression_accuracy_evaluation_with_sgd, graph_structure=graph_structure,
-                                 X=X_train, y=y_train, reset_weights=True, batch_size=32, n_gradient_steps=10_000)
+        constants_optimizer = functools.partial(optimize_constants_with_adam_sgd, batch_size=32,
+                                                n_gradient_steps=10_000)
+        train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
+                                     graph_structure=graph_structure, constants_optimization_fn=constants_optimizer,
+                                     X=X_train, y=y_train, reset_weights=True)
     test_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_test, y=y_test)
     scoring_fn_cgp = functools.partial(
         regression_scoring_fn,

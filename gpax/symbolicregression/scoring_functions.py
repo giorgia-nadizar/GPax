@@ -16,6 +16,7 @@ from qdax.custom_types import (
 )
 
 from gpax.graphs.graph_genetic_programming import GGP
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_adam_sgd
 from gpax.symbolicregression.metrics import r2_score, rmse
 
 
@@ -109,42 +110,56 @@ def regression_accuracy_evaluation(
     return jnp.expand_dims(accuracies, 1), genotype
 
 
-def regression_accuracy_evaluation_with_sgd(
+def regression_accuracy_evaluation_with_constants_optimization(
         genotype: Genotype,
         key: RNGKey,
         graph_structure: GGP,
         X: jnp.ndarray,
         y: jnp.ndarray,
         accuracy_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = r2_score,
-        optimizer: GradientTransformation = optax.adam(1e-3),
-        loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
-        n_gradient_steps: int = 100,
-        batch_size: int = None,
+        constants_optimization_fn: Callable = optimize_constants_with_adam_sgd,
         reset_weights: bool = False
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """ Perform mini-batch stochastic gradient descent on a batch of genotypes.
+    """
+    Evaluate regression accuracy after optimizing the constants of a genotype's
+    computational graph.
 
-        Args:
-            genotype: A batch of genotypes to optimize.
-            key: PRNG key for mini-batch sampling.
-            graph_structure: The graph model.
-            X, y: Training data.
-            accuracy_fn: Function to compute regression accuracy.
-            optimizer: Optax optimizer.
-            loss_fn: Loss function.
-            n_gradient_steps: Number of gradient steps.
-            batch_size: Mini-batch size for SGD.
-            reset_weights: whether the weights should be re-initialized.
+    This function optionally reinitializes the weights of the given genotype(s),
+    performs constant optimization (e.g., via Adam/SGD), updates the genotype(s)
+    with the optimized weights, and finally computes regression accuracy.
 
-        Returns
-        -------
-        Tuple[jnp.ndarray, jnp.ndarray]
-            accuracies : jnp.ndarray
-                Accuracy values for each genotype, shape (n_genotypes, ...) after SGD
-                optimization of weights, depending on `accuracy_fn`.
-            genotype : Genotype
-                The batch of genotypes that were evaluated with the updated weights.
-        """
+    Parameters
+    ----------
+    genotype : Genotype
+        A batch of genotypes whose constant parameters will be optimized.
+    key : RNGKey
+        JAX PRNG key used for weight initialization and any stochastic operations
+        in the optimization routine.
+    graph_structure : GGP
+        The graph representation/model used to interpret the genotype and its weights.
+    X : jnp.ndarray
+        Input feature data. Usually shaped (n_samples, n_features).
+    y : jnp.ndarray
+        Target regression values. Usually shaped (n_samples,) or (n_samples, n_outputs).
+    accuracy_fn : Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray], optional
+        Function that computes regression accuracy between predictions and targets.
+        Defaults to `r2_score`.
+    constants_optimization_fn : Callable, optional
+        Optimization function responsible for updating the constant parameters
+        (weights) inside the computational graph. Defaults to
+        `optimize_constants_with_adam_sgd`.
+    reset_weights : bool, optional
+        If True, reinitialize all genotype weights before optimization. Defaults to False.
+
+    Returns
+    -------
+    Tuple[jnp.ndarray, jnp.ndarray]
+        accuracies : jnp.ndarray
+            Accuracy values computed using `accuracy_fn` for each genotype after
+            constant optimization.
+        updated_genotype : Genotype
+            The genotype(s) with updated/optimized weight parameters.
+    """
     graph_weights = graph_structure.get_weights(genotype)
     if reset_weights:
         n_genomes = jax.tree_util.tree_leaves(genotype)[0].shape[0]
@@ -153,40 +168,8 @@ def regression_accuracy_evaluation_with_sgd(
         new_weights = jax.vmap(jax.jit(graph_structure.init_weights))(weights_keys)
         graph_weights = {k: new_weights[k] for k in graph_weights.keys() if k in new_weights}
 
-    # add gradient clipping to the pipeline to prevent nan values
-    optimizer = optax.chain(
-        optax.clip_by_global_norm(1.),
-        optimizer,
-    )
-
-    opt_states = jax.vmap(optimizer.init)(graph_weights)
-
-    batch_size = batch_size if batch_size is not None else X.shape[0]
-    num_samples = X.shape[0]
-
     prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=graph_structure))
-
-    @jax.jit
-    def _single_genome_loss(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, X_batch: jnp.ndarray,
-                            y_batch: jnp.ndarray) -> jnp.ndarray:
-        return loss_fn(y_batch, prediction_fn(X_batch, single_genotype, graph_weights=single_weights))
-
-    @jax.jit
-    def _single_genome_gradient_step(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, opt_st: Any,
-                                     X_batch: jnp.ndarray, y_batch: jnp.ndarray):
-        loss, grads = jax.value_and_grad(_single_genome_loss)(single_weights, single_genotype, X_batch, y_batch)
-        weights_updates, new_opt_st = optimizer.update(grads, opt_st)
-        updated_weights = optax.apply_updates(single_weights, weights_updates)
-        return updated_weights, new_opt_st, loss
-
-    step_fn = jax.vmap(jax.jit(_single_genome_gradient_step), in_axes=(0, 0, 0, None, None))
-
-    for i in range(n_gradient_steps):
-        key, subkey = jax.random.split(key)
-        # sample a mini-batch
-        batch_idx = jax.random.choice(subkey, num_samples, shape=(batch_size,), replace=False)
-        X_batch, y_batch = X[batch_idx], y[batch_idx]
-        graph_weights, opt_states, train_losses = step_fn(graph_weights, genotype, opt_states, X_batch, y_batch)
+    graph_weights = constants_optimization_fn(graph_weights, genotype, key, X, y, prediction_fn)
 
     # update the weights in the genomes
     updated_genotype = jax.vmap(jax.jit(graph_structure.update_weights), in_axes=(0, 0))(genotype, graph_weights)

@@ -5,8 +5,9 @@ import jax.numpy as jnp
 from sklearn.model_selection import train_test_split
 
 from gpax.graphs.cartesian_genetic_programming import CGP
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_adam_sgd
 from gpax.symbolicregression.scoring_functions import predict_regression_output, regression_accuracy_evaluation, \
-    regression_scoring_fn, regression_accuracy_evaluation_with_sgd
+    regression_scoring_fn, regression_accuracy_evaluation_with_constants_optimization
 
 
 def test_prediction_shape():
@@ -105,13 +106,14 @@ def test_regression_accuracy_evaluation_with_sgd_shape():
     X = jax.random.uniform(x_key, (n_samples, n_inputs))
     y = jax.random.uniform(y_key, (n_samples, 1))
 
-    accuracies, returned_genotypes = regression_accuracy_evaluation_with_sgd(
+    constants_opt_fn = partial(optimize_constants_with_adam_sgd, batch_size=4)
+    accuracies, returned_genotypes = regression_accuracy_evaluation_with_constants_optimization(
         genotype=genotypes,
         key=key,
         graph_structure=cgp,
         X=X,
         y=y,
-        batch_size=4
+        constants_optimization_fn=constants_opt_fn
     )
 
     non_sgd_accuracies, non_sgd_returned_genotypes = regression_accuracy_evaluation(
@@ -189,8 +191,9 @@ def test_regression_scoring_fn_with_sgd():
     # define train and test fn
     for reset_weights in [True, False]:
         for batch_size in [4, None]:
-            train_fn = partial(regression_accuracy_evaluation_with_sgd, graph_structure=cgp, X=X, y=y,
-                               batch_size=batch_size, reset_weights=reset_weights)
+            constants_opt_fn = partial(optimize_constants_with_adam_sgd, batch_size=batch_size)
+            train_fn = partial(regression_accuracy_evaluation_with_constants_optimization, graph_structure=cgp, X=X,
+                               y=y, constants_optimization_fn=constants_opt_fn, reset_weights=reset_weights)
             test_fn = partial(regression_accuracy_evaluation, graph_structure=cgp, X=X, y=y)
 
             # compute scoring fn
