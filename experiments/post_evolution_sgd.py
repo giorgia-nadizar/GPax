@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_adam_sgd
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation_with_constants_optimization, \
     regression_accuracy_evaluation, regression_scoring_fn
 
@@ -54,7 +54,7 @@ def sgd_post_evolution(conf):
                                      graph_structure=graph_structure,
                                      X=X_train, y=y_train, reset_weights=True, optimizer=optax.lbfgs())
     else:
-        constants_optimizer = functools.partial(optimize_constants_with_adam_sgd, batch_size=32,
+        constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
                                                 n_gradient_steps=10_000)
         train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
                                      graph_structure=graph_structure, constants_optimization_fn=constants_optimizer,

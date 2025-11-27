@@ -16,7 +16,7 @@ from qdax.custom_types import (
 )
 
 from gpax.graphs.graph_genetic_programming import GGP
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_adam_sgd
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd
 from gpax.symbolicregression.metrics import r2_score, rmse
 
 
@@ -117,7 +117,7 @@ def regression_accuracy_evaluation_with_constants_optimization(
         X: jnp.ndarray,
         y: jnp.ndarray,
         accuracy_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = r2_score,
-        constants_optimization_fn: Callable = optimize_constants_with_adam_sgd,
+        constants_optimization_fn: Callable = optimize_constants_with_sgd,
         reset_weights: bool = False
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """

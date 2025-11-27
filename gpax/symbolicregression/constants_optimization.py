@@ -103,7 +103,7 @@ def optimize_constants_with_lbfgs(
     return updated_weights
 
 
-def optimize_constants_with_adam_sgd(
+def optimize_constants_with_sgd(
         graph_weights: Dict,
         genotype: Genotype,
         key: RNGKey,
