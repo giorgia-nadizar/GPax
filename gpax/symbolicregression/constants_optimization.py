@@ -4,9 +4,110 @@ import jax.numpy as jnp
 import optax
 from jax.flatten_util import ravel_pytree
 from optax import GradientTransformation
+from qdax.baselines.cmaes import CMAES
 from qdax.custom_types import Genotype, RNGKey
-
 from gpax.symbolicregression.metrics import rmse
+
+
+def optimize_constants_with_cmaes(
+        graph_weights: Dict,
+        genotype: Genotype,
+        key: RNGKey,
+        X: jnp.ndarray,
+        y: jnp.ndarray,
+        prediction_fn: Callable,
+        loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
+        max_iter: int = 10,
+) -> Dict:
+    """
+    Optimize the constants (weights) of a set of genotypes using CMA-ES.
+
+    This function performs per-genotype optimization of weights in a
+    computational graph using the Covariance Matrix Adaptation Evolution
+    Strategy (CMA-ES). For each genome in the population, it flattens the
+    weight pytree, runs CMA-ES for a specified number of iterations, and
+    returns the optimized weights in the original pytree structure.
+
+    Parameters
+    ----------
+    graph_weights : Dict
+        A pytree (nested dictionary) of initial weights for the computational
+        graph. Each leaf should be an array of shape `(n_genotypes, ...)`.
+    genotype : Genotype
+        A pytree representing the genotypes corresponding to the weights.
+        Each leaf should have the same leading dimension as `graph_weights`.
+    key : RNGKey
+        A JAX random key used for sampling in CMA-ES.
+    X : jnp.ndarray
+        Input features for the prediction function.
+    y : jnp.ndarray
+        Target outputs corresponding to `X`.
+    prediction_fn : Callable
+        Function with signature `(X, genotype, graph_weights) -> y_pred` that
+        computes predictions given inputs, a genotype, and a set of weights.
+    loss_fn : Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray], optional
+        Loss function comparing predictions to targets. Should return a scalar
+        per sample. Default is `rmse`.
+    max_iter : int, optional
+        Number of CMA-ES iterations to run per genotype. Default is 10.
+
+    Returns
+    -------
+    Dict
+        A pytree of the same structure as `graph_weights`, containing the
+        optimized weights. Each leaf will have shape `(n_genotypes, ...)`,
+        preserving the original batching of genotypes.
+
+    Notes
+    -----
+    - Uses `jax.vmap` to evaluate candidate weights across genotypes in parallel.
+    - Each genome is optimized independently with its own CMA-ES instance.
+    - The CMA-ES mean is used as the final optimized weight vector for each genome.
+    """
+    n_genotypes = jax.tree.leaves(graph_weights)[0].shape[0]
+    weights_array_sample, _ = ravel_pytree(jax.tree_map(lambda x: x[0], graph_weights))
+    search_dim = weights_array_sample.shape[0]
+    pop_size = int(4 + jnp.floor(3 * jnp.log(search_dim)))
+
+    def _single_genome_cmaes(single_weights: Dict, single_genotype: Genotype, single_key: RNGKey) -> Dict:
+        init_flat_weights, weights_tree_def = ravel_pytree(single_weights)
+
+        def _single_weights_fitness_function(s_weights: jnp.ndarray):
+            single_pytree_weights = weights_tree_def(s_weights)
+            y_pred = prediction_fn(X, single_genotype, graph_weights=single_pytree_weights)
+            return -loss_fn(y, y_pred)
+
+        def _weights_fitness_function(candidate_array_weights: jnp.ndarray):
+            return jax.vmap(_single_weights_fitness_function)(candidate_array_weights)
+
+        cmaes = CMAES(
+            population_size=pop_size,
+            search_dim=search_dim,
+            fitness_function=_weights_fitness_function,
+            mean_init=init_flat_weights
+        )
+        cmaes_state = cmaes.init()
+
+        def _cmaes_body(i, carry):
+            thekey, state = carry
+            key1, thekey = jax.random.split(thekey)
+            samples = cmaes.sample(state, key1)
+            state = cmaes.update(state, samples)
+            return thekey, state
+
+        final_key, cmaes_state = jax.lax.fori_loop(
+            0, max_iter, _cmaes_body, (single_key, cmaes_state)
+        )
+        final_weights = cmaes_state.mean
+        return weights_tree_def(final_weights)
+
+    pytrees = []
+    keys = jax.random.split(key, n_genotypes)
+    for i in range(n_genotypes):
+        current_weights = jax.tree_map(lambda x: x[i], graph_weights)
+        current_genotype = jax.tree_map(lambda x: x[i], genotype)
+        pytrees.append(_single_genome_cmaes(current_weights, current_genotype, keys[i]))
+    return jax.tree_map(lambda *xs: jnp.stack(xs), *pytrees)
 
 
 def optimize_constants_with_lbfgs(

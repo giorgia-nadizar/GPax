@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, \
-    optimize_constants_with_lbfgs
+    optimize_constants_with_lbfgs, optimize_constants_with_cmaes
 from gpax.symbolicregression.scoring_functions import predict_regression_output, regression_accuracy_evaluation, \
     regression_scoring_fn, regression_accuracy_evaluation_with_constants_optimization
 
@@ -160,8 +160,9 @@ def test_regression_accuracy_evaluation_with_constants_optimization():
     constants_opt_fn_1 = partial(optimize_constants_with_sgd, batch_size=4, optimizer=optax.adam(1e-3))
     constants_opt_fn_2 = partial(optimize_constants_with_sgd, batch_size=4, optimizer=optax.rmsprop(1e-3, momentum=0.9))
     constants_opt_fn_3 = optimize_constants_with_lbfgs
+    constants_opt_fn_4 = optimize_constants_with_cmaes
 
-    for constants_opt_fn in [constants_opt_fn_1, constants_opt_fn_2, constants_opt_fn_3]:
+    for constants_opt_fn in [constants_opt_fn_1, constants_opt_fn_2, constants_opt_fn_3, constants_opt_fn_4]:
         accuracies, returned_genotypes = regression_accuracy_evaluation_with_constants_optimization(
             genotype=genotypes,
             key=key,
