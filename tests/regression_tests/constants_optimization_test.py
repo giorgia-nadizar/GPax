@@ -2,9 +2,10 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
+import optax
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_adam_sgd, \
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, \
     optimize_constants_with_lbfgs
 from gpax.symbolicregression.scoring_functions import predict_regression_output
 
@@ -39,8 +40,8 @@ def test_lbfgs_output_shape_and_type():
         assert isinstance(optimized_weights[k], jnp.ndarray)
 
 
-def test_adam_sgd_output_shape_and_type():
-    """ Ensure the constants optimization with adam and sgd have the correct shape. """
+def test_sgd_output_shape_and_type():
+    """ Ensure the constants optimization with sgd have the correct shape. """
     n_genomes, n_features, n_samples = 3, 5, 20
     X = jnp.ones((n_samples, n_features))
     y = jnp.ones((n_samples,))
@@ -60,11 +61,13 @@ def test_adam_sgd_output_shape_and_type():
 
     graph_weights = cgp.get_weights(genotypes)
     prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=cgp))
-    optimized_weights = optimize_constants_with_adam_sgd(graph_weights, genotypes, key, X, y, prediction_fn)
+    for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3)]:
+        optimized_weights = optimize_constants_with_sgd(graph_weights, genotypes, key, X, y, prediction_fn,
+                                                        optimizer=optimizer)
 
-    # same keys
-    assert set(optimized_weights.keys()) == set(graph_weights.keys())
-    # check array shapes
-    for k in optimized_weights:
-        assert optimized_weights[k].shape == graph_weights[k].shape
-        assert isinstance(optimized_weights[k], jnp.ndarray)
+        # same keys
+        assert set(optimized_weights.keys()) == set(graph_weights.keys())
+        # check array shapes
+        for k in optimized_weights:
+            assert optimized_weights[k].shape == graph_weights[k].shape
+            assert isinstance(optimized_weights[k], jnp.ndarray)

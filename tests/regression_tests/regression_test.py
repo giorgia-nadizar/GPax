@@ -2,10 +2,11 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
+import optax
 from sklearn.model_selection import train_test_split
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_adam_sgd, \
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, \
     optimize_constants_with_lbfgs
 from gpax.symbolicregression.scoring_functions import predict_regression_output, regression_accuracy_evaluation, \
     regression_scoring_fn, regression_accuracy_evaluation_with_constants_optimization
@@ -107,16 +108,6 @@ def test_regression_accuracy_evaluation_with_sgd_shape():
     X = jax.random.uniform(x_key, (n_samples, n_inputs))
     y = jax.random.uniform(y_key, (n_samples, 1))
 
-    constants_opt_fn = partial(optimize_constants_with_adam_sgd, batch_size=4)
-    accuracies, returned_genotypes = regression_accuracy_evaluation_with_constants_optimization(
-        genotype=genotypes,
-        key=key,
-        graph_structure=cgp,
-        X=X,
-        y=y,
-        constants_optimization_fn=constants_opt_fn
-    )
-
     non_sgd_accuracies, non_sgd_returned_genotypes = regression_accuracy_evaluation(
         genotype=genotypes,
         key=key,
@@ -124,11 +115,21 @@ def test_regression_accuracy_evaluation_with_sgd_shape():
         X=X,
         y=y,
     )
+    for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3)]:
+        constants_opt_fn = partial(optimize_constants_with_sgd, batch_size=4, optimizer=optimizer)
+        accuracies, returned_genotypes = regression_accuracy_evaluation_with_constants_optimization(
+            genotype=genotypes,
+            key=key,
+            graph_structure=cgp,
+            X=X,
+            y=y,
+            constants_optimization_fn=constants_opt_fn
+        )
 
-    assert accuracies.shape[0] == n_genotypes
-    assert all(jax.tree_leaves(jax.tree_map(lambda x, y: jnp.allclose(x, y),
-                                            returned_genotypes["genes"], genotypes["genes"])))
-    assert all(accuracies > non_sgd_accuracies)
+        assert accuracies.shape[0] == n_genotypes
+        assert all(jax.tree_leaves(jax.tree_map(lambda x, y: jnp.allclose(x, y),
+                                                returned_genotypes["genes"], genotypes["genes"])))
+        assert all(accuracies > non_sgd_accuracies)
 
 
 def test_regression_accuracy_evaluation_with_constants_optimization():
@@ -156,10 +157,11 @@ def test_regression_accuracy_evaluation_with_constants_optimization():
     X = jax.random.uniform(x_key, (n_samples, n_inputs))
     y = jax.random.uniform(y_key, (n_samples, 1))
 
-    constants_opt_fn_1 = partial(optimize_constants_with_adam_sgd, batch_size=4)
-    constants_opt_fn_2 = optimize_constants_with_lbfgs
+    constants_opt_fn_1 = partial(optimize_constants_with_sgd, batch_size=4, optimizer=optax.adam(1e-3))
+    constants_opt_fn_2 = partial(optimize_constants_with_sgd, batch_size=4, optimizer=optax.rmsprop(1e-3))
+    constants_opt_fn_3 = optimize_constants_with_lbfgs
 
-    for constants_opt_fn in [constants_opt_fn_1, constants_opt_fn_2]:
+    for constants_opt_fn in [constants_opt_fn_1, constants_opt_fn_2, constants_opt_fn_3]:
         accuracies, returned_genotypes = regression_accuracy_evaluation_with_constants_optimization(
             genotype=genotypes,
             key=key,
@@ -244,7 +246,7 @@ def test_regression_scoring_fn_with_sgd():
     # define train and test fn
     for reset_weights in [True, False]:
         for batch_size in [4, None]:
-            constants_opt_fn = partial(optimize_constants_with_adam_sgd, batch_size=batch_size)
+            constants_opt_fn = partial(optimize_constants_with_sgd, batch_size=batch_size)
             train_fn = partial(regression_accuracy_evaluation_with_constants_optimization, graph_structure=cgp, X=X,
                                y=y, constants_optimization_fn=constants_opt_fn, reset_weights=reset_weights)
             test_fn = partial(regression_accuracy_evaluation, graph_structure=cgp, X=X, y=y)
