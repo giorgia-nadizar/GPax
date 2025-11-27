@@ -115,7 +115,7 @@ def test_regression_accuracy_evaluation_with_sgd_shape():
         X=X,
         y=y,
     )
-    for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3)]:
+    for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3, momentum=0.9)]:
         constants_opt_fn = partial(optimize_constants_with_sgd, batch_size=4, optimizer=optimizer)
         accuracies, returned_genotypes = regression_accuracy_evaluation_with_constants_optimization(
             genotype=genotypes,
@@ -158,7 +158,7 @@ def test_regression_accuracy_evaluation_with_constants_optimization():
     y = jax.random.uniform(y_key, (n_samples, 1))
 
     constants_opt_fn_1 = partial(optimize_constants_with_sgd, batch_size=4, optimizer=optax.adam(1e-3))
-    constants_opt_fn_2 = partial(optimize_constants_with_sgd, batch_size=4, optimizer=optax.rmsprop(1e-3))
+    constants_opt_fn_2 = partial(optimize_constants_with_sgd, batch_size=4, optimizer=optax.rmsprop(1e-3, momentum=0.9))
     constants_opt_fn_3 = optimize_constants_with_lbfgs
 
     for constants_opt_fn in [constants_opt_fn_1, constants_opt_fn_2, constants_opt_fn_3]:

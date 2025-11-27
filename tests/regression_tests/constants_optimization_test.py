@@ -61,7 +61,7 @@ def test_sgd_output_shape_and_type():
 
     graph_weights = cgp.get_weights(genotypes)
     prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=cgp))
-    for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3)]:
+    for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3, momentum=0.9)]:
         optimized_weights = optimize_constants_with_sgd(graph_weights, genotypes, key, X, y, prediction_fn,
                                                         optimizer=optimizer)
 
