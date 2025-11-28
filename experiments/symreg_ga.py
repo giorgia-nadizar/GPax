@@ -59,9 +59,10 @@ def run_sym_reg_ga(config: Dict):
         weighted_functions=config["solver"].get("weighted_functions", False),
         weighted_inputs=config["solver"].get("weighted_inputs", False),
         weighted_program_inputs=config["solver"].get("weighted_program_inputs", False),
-        weights_mutation=not const_optimizer,
+        weights_mutation=const_optimizer in [False, "automl0"],
         weights_mutation_type="automl0" if const_optimizer == "automl0" else "gaussian"
     )
+    print(graph_structure)
 
     # Init the population of CGP genomes
     key, subkey = jax.random.split(key)
@@ -71,6 +72,10 @@ def run_sym_reg_ga(config: Dict):
     # Prepare the scoring function
 
     if const_optimizer == "automl0" or not const_optimizer:
+        train_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_train,
+                                     y=y_train)
+    else:
+        print(const_optimizer)
         if const_optimizer == "adam":
             constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
                                                     n_gradient_steps=100)
@@ -85,9 +90,7 @@ def run_sym_reg_ga(config: Dict):
                                      graph_structure=graph_structure,
                                      X=X_train, y=y_train, reset_weights=False,
                                      constants_optimization_fn=constants_optimizer)
-    else:
-        train_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_train,
-                                     y=y_train)
+
     test_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_test, y=y_test)
     scoring_fn_cgp = functools.partial(
         regression_scoring_fn,
