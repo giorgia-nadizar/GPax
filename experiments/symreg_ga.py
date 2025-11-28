@@ -78,9 +78,9 @@ def run_sym_reg_ga(config: Dict):
             constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
                                                     n_gradient_steps=120, optimizer=optax.rmsprop(1e-3, momentum=.9))
         elif const_optimizer == "cmaes":
-            constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=10)
+            constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=8)
         else:
-            constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=10)
+            constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=5)
         train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
                                      graph_structure=graph_structure,
                                      X=X_train, y=y_train, reset_weights=False,
