@@ -9,8 +9,6 @@ from qdax.custom_types import RNGKey, Genotype, Mask
 
 from gpax.graphs.functions import FunctionSet
 
-WeightsMutationType = Literal["gaussian", "automl0"],
-
 
 @struct.dataclass
 class GGP:
@@ -43,7 +41,7 @@ class GGP:
     weighted_functions: bool = False
     weighted_inputs: bool = False
     weights_mutation: bool = True
-    weights_mutation_type: WeightsMutationType = "gaussian"
+    weights_mutation_type: Literal["gaussian", "automl0"] = "gaussian"
 
     @property
     def n_functions(self) -> int:
