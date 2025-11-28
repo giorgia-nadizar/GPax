@@ -3,6 +3,8 @@ import pickle
 import sys
 import time
 from typing import Dict
+
+import optax
 import pandas as pd
 import jax
 import jax.numpy as jnp
@@ -18,7 +20,8 @@ from gpax.evolution.tournament_selector import TournamentSelector
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
 from gpax.evolution.evolution_metrics import custom_ga_metrics
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
+    optimize_constants_with_lbfgs
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, regression_scoring_fn, \
     regression_accuracy_evaluation_with_constants_optimization
 
@@ -28,6 +31,8 @@ def run_sym_reg_ga(config: Dict):
     # df = pd.read_csv(f"../datasets/{dataset_name}", sep=" ", header=None)
     # X = df.iloc[:, :-1].to_numpy()
     # y = df.iloc[:, -1].to_numpy()
+    const_optimizer = config.get("constants_optimization", False)
+
     X, y = load_diabetes(return_X_y=True)
 
     y = y.reshape(-1, 1)
@@ -54,7 +59,8 @@ def run_sym_reg_ga(config: Dict):
         weighted_functions=config["solver"].get("weighted_functions", False),
         weighted_inputs=config["solver"].get("weighted_inputs", False),
         weighted_program_inputs=config["solver"].get("weighted_program_inputs", False),
-        weights_mutation=not config.get("sgd", False)
+        weights_mutation=not const_optimizer,
+        weights_mutation_type="automl0" if const_optimizer == "automl0" else "gaussian"
     )
 
     # Init the population of CGP genomes
@@ -63,11 +69,22 @@ def run_sym_reg_ga(config: Dict):
     init_cgp_genomes = jax.vmap(graph_structure.init)(keys)
 
     # Prepare the scoring function
-    if config.get("sgd", False):
-        constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
-                                                n_gradient_steps=100)
-        train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization, graph_structure=graph_structure,
-                                     X=X_train, y=y_train, reset_weights=False, constants_optimization_fn=constants_optimizer)
+
+    if const_optimizer == "automl0" or not const_optimizer:
+        if const_optimizer == "adam":
+            constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
+                                                    n_gradient_steps=100)
+        elif const_optimizer == "rmsprop":
+            constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
+                                                    n_gradient_steps=120, optimizer=optax.rmsprop(1e-3, momentum=.9))
+        elif const_optimizer == "cmaes":
+            constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=10)
+        else:
+            constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=10)
+        train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
+                                     graph_structure=graph_structure,
+                                     X=X_train, y=y_train, reset_weights=False,
+                                     constants_optimization_fn=constants_optimizer)
     else:
         train_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_train,
                                      y=y_train)
@@ -166,7 +183,7 @@ if __name__ == '__main__':
         "n_gens": 5_000,
         "seed": 0,
         "tournament_size": 3,
-        "sgd": True,
+        "constants_optimization": "automl0",
         "problem": "I.6.2"
     }
     args = sys.argv[1:]
@@ -176,8 +193,8 @@ if __name__ == '__main__':
             conf["problem"] = value
         elif key == "seed":
             conf["seed"] = int(value)
-        elif key == "sgd":
-            conf["sgd"] = "t" in value
+        elif key == "constants_optimization":
+            conf["constants_optimization"] = value
 
     # for problem in ["I.13.12","I.6.2","II.24.17"]:
     for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
@@ -187,7 +204,7 @@ if __name__ == '__main__':
         conf["solver"]["weighted_inputs"] = w_in
         conf["solver"]["weighted_functions"] = w_f
         conf["solver"]["weighted_program_inputs"] = w_pgs
-        extra = "sgd" if conf["sgd"] else "std"
+        extra = conf["constants_optimization"] if conf["constants_optimization"] else "std"
         extra += f"_win" if w_in else ""
         extra += f"_wfn" if w_f else ""
         extra += f"_wpgs" if w_pgs else ""
