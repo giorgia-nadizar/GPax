@@ -9,10 +9,7 @@ from qdax.custom_types import RNGKey, Genotype, Mask
 
 from gpax.graphs.functions import FunctionSet
 
-WeightsMutationType = Union[
-    Literal["gaussian"],
-    Literal["automl0"]
-]
+WeightsMutationType = Literal["gaussian", "automl0"],
 
 
 @struct.dataclass
@@ -145,17 +142,20 @@ class GGP:
         }, donor_genotype
 
     def _mutate_weights(self, weights: Dict, key: RNGKey, weights_mut_sigma: float):
-        weights_key1, weights_key2 = random.split(key)
-        weights_noise = weights_mut_sigma * random.normal(weights_key1, shape=(self.n_functions * 3,))
-        fn_w_noise, i1_w_noise, i2_w_noise = jnp.split(weights_noise, 3)
-        progr_in_noise = weights_mut_sigma * random.normal(weights_key2, shape=(self.n_input_constants,))
-        return {
-            "program_inputs": weights["program_inputs"]
-                              + self.weighted_program_inputs * self.weights_mutation * progr_in_noise,
-            "inputs1": weights["inputs1"] + self.weighted_inputs * self.weights_mutation * i1_w_noise,
-            "inputs2": weights["inputs2"] + self.weighted_inputs * self.weights_mutation * i2_w_noise,
-            "functions": weights["functions"] + self.weighted_functions * self.weights_mutation * fn_w_noise,
-        }
+        if self.weights_mutation_type == "gaussian":
+            weights_key1, weights_key2 = random.split(key)
+            weights_noise = weights_mut_sigma * random.normal(weights_key1, shape=(self.n_functions * 3,))
+            fn_w_noise, i1_w_noise, i2_w_noise = jnp.split(weights_noise, 3)
+            progr_in_noise = weights_mut_sigma * random.normal(weights_key2, shape=(self.n_input_constants,))
+            return {
+                "program_inputs": weights["program_inputs"]
+                                  + self.weighted_program_inputs * self.weights_mutation * progr_in_noise,
+                "inputs1": weights["inputs1"] + self.weighted_inputs * self.weights_mutation * i1_w_noise,
+                "inputs2": weights["inputs2"] + self.weighted_inputs * self.weights_mutation * i2_w_noise,
+                "functions": weights["functions"] + self.weighted_functions * self.weights_mutation * fn_w_noise,
+            }
+        else:
+            raise NotImplementedError(f"Mutation not available for {self.weights_mutation_type}")
 
     def get_readable_expression(
             self,
