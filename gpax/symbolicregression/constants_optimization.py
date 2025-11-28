@@ -223,7 +223,7 @@ def optimize_constants_with_sgd(
         optimizer: GradientTransformation = optax.adam(1e-3),
         loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
         n_gradient_steps: int = 100,
-        batch_size: int = None,
+        batch_size: int = 32,
 ) -> Dict:
     """
         Optimize the constant parameters (weights) of a batch of computational graphs
