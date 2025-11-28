@@ -58,7 +58,7 @@ def consants_optimization_post_evolution(conf):
     elif conf["constants_optimization"] == "cmaes":
         constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=600)
     else:
-        constants_optimizer = functools.partial(optimize_constants_with_sgd, gradient_steps=10_000)
+        constants_optimizer = functools.partial(optimize_constants_with_sgd, n_gradient_steps=10_000)
     train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
                                  graph_structure=graph_structure, constants_optimization_fn=constants_optimizer,
                                  X=X_train, y=y_train, reset_weights=True)
