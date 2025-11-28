@@ -1,3 +1,4 @@
+import jax.random
 from flax import struct
 import jax.numpy as jnp
 from typing import Callable, Dict, Union, List, Tuple, Optional, Literal
@@ -41,7 +42,7 @@ class GGP:
     weighted_functions: bool = False
     weighted_inputs: bool = False
     weights_mutation: bool = True
-    weights_mutation_type: Literal["gaussian", "automl0"] = "gaussian"
+    weights_mutation_type: str = "gaussian"
 
     @property
     def n_functions(self) -> int:
@@ -151,6 +152,27 @@ class GGP:
                 "inputs1": weights["inputs1"] + self.weighted_inputs * self.weights_mutation * i1_w_noise,
                 "inputs2": weights["inputs2"] + self.weighted_inputs * self.weights_mutation * i2_w_noise,
                 "functions": weights["functions"] + self.weighted_functions * self.weights_mutation * fn_w_noise,
+            }
+        elif self.weights_mutation_type == "automl0":
+
+            def _automl0_mutation(weights_array: jnp.ndarray, w_key: RNGKey, mutate: bool):
+                sample_key1, sample_key2, bern_key1, bern_key2 = random.split(w_key, 4)
+                double_values_array = jax.random.uniform(sample_key1, shape=weights_array.shape, minval=1, maxval=2)
+                half_values_array = jax.random.uniform(sample_key2, shape=weights_array.shape, minval=.5, maxval=2)
+                mask = jax.random.bernoulli(bern_key1, 0.5, weights_array.shape)
+                multipliers = jnp.where(mask, double_values_array, half_values_array)
+                signs = jnp.where(jax.random.bernoulli(bern_key2, 0.5, weights_array.shape), 1, -1)
+                final_multiplier = multipliers * signs * mutate + (1 - mutate) * jnp.ones_like(weights_array)
+                return weights_array * final_multiplier
+
+            w_key1, w_key2, w_key3, w_key4 = random.split(key, 4)
+            return {
+                "program_inputs": _automl0_mutation(weights["program_inputs"], w_key1,
+                                                    self.weighted_program_inputs * self.weights_mutation),
+                "inputs1": _automl0_mutation(weights["inputs1"], w_key2, self.weighted_inputs * self.weights_mutation),
+                "inputs2": _automl0_mutation(weights["inputs2"], w_key3, self.weighted_inputs * self.weights_mutation),
+                "functions": _automl0_mutation(weights["functions"], w_key4,
+                                               self.weighted_functions * self.weights_mutation),
             }
         else:
             raise NotImplementedError(f"Mutation not available for {self.weights_mutation_type}")

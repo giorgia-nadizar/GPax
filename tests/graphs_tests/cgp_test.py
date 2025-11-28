@@ -105,7 +105,7 @@ def test_weights_changes_after_mutation() -> None:
         # mutate genome
         key, mut_key = jax.random.split(key)
 
-        if mut_type == "gaussian":
+        if mut_type in ["gaussian", "automl0"]:
             mutated_cgp_genome = cgp.mutate(
                 genotype=initial_cgp_genome,
                 rnd_key=mut_key,
