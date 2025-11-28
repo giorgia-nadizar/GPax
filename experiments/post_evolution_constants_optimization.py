@@ -4,19 +4,20 @@ import time
 
 import jax
 import jax.numpy as jnp
-import optax
+from optax import rmsprop
 from qdax.utils.metrics import CSVLogger
 from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd
+from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_lbfgs, \
+    optimize_constants_with_cmaes
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation_with_constants_optimization, \
     regression_accuracy_evaluation, regression_scoring_fn
 
 
-def sgd_post_evolution(conf):
+def consants_optimization_post_evolution(conf):
     file = open(f"../results/{conf['run_name']}.pickle", 'rb')
     repertoire = pickle.load(file)
     int_genotypes = jax.tree.map(lambda x: x.astype(int), repertoire.genotypes)
@@ -49,16 +50,18 @@ def sgd_post_evolution(conf):
         weighted_program_inputs=conf["solver"].get("weighted_program_inputs", False),
         weights_mutation=False
     )
-    if conf.get("weights") is not None:
-        train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
-                                     graph_structure=graph_structure,
-                                     X=X_train, y=y_train, reset_weights=True, optimizer=optax.lbfgs())
+    if conf["constants_optimization"] == "lbfgs":
+        constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=200)
+    elif conf["constants_optimization"] == "rmsprop":
+        constants_optimizer = functools.partial(optimize_constants_with_sgd, optimizer=rmsprop(1e-3, momentum=.9),
+                                                n_gradient_steps=12_000)
+    elif conf["constants_optimization"] == "cmaes":
+        constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=600)
     else:
-        constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
-                                                n_gradient_steps=10_000)
-        train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
-                                     graph_structure=graph_structure, constants_optimization_fn=constants_optimizer,
-                                     X=X_train, y=y_train, reset_weights=True)
+        constants_optimizer = functools.partial(optimize_constants_with_sgd, gradient_steps=10_000)
+    train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
+                                 graph_structure=graph_structure, constants_optimization_fn=constants_optimizer,
+                                 X=X_train, y=y_train, reset_weights=True)
     test_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_test, y=y_test)
     scoring_fn_cgp = functools.partial(
         regression_scoring_fn,
@@ -98,21 +101,23 @@ if __name__ == '__main__':
         "seed": 0,
         "tournament_size": 3,
         "problem": "diabetes",
-        "sgd": False,
+        "constants_optimization": False,
     }
-    for seed in range(5):
-        conf["seed"] = seed
-        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True)]:
-            # TODO add the re-optimization even if the weights were evolved with mutation
-            conf["solver"]["weighted_inputs"] = w_in
-            conf["solver"]["weighted_functions"] = w_f
-            conf["solver"]["weighted_program_inputs"] = w_pgs
-            conf["weights"] = "win" if w_in else ("wfn" if w_f else "wpgs") + "-bfgs"
-            # extra = "sgd" if conf["sgd"] else "std"
-            # extra += f"_win" if w_in else ""
-            # extra += f"_wfn" if w_f else ""
-            # extra += f"_wpgs" if w_pgs else ""
-            extra = "std"
-            conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
-            print(conf["run_name"], conf["weights"])
-            sgd_post_evolution(conf)
+    for constants_optimization in ["adam", "lbfgs", "rmsprop", "cmaes"]:
+        for seed in range(5):
+            conf["seed"] = seed
+            for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True)]:
+                # TODO add the re-optimization even if the weights were evolved with mutation
+                conf["solver"]["weighted_inputs"] = w_in
+                conf["solver"]["weighted_functions"] = w_f
+                conf["solver"]["weighted_program_inputs"] = w_pgs
+                conf["constants_optimization"] = constants_optimization
+                conf["weights"] = constants_optimization + "-" + ("win" if w_in else ("wfn" if w_f else "wpgs"))
+                # extra = "sgd" if conf["sgd"] else "std"
+                # extra += f"_win" if w_in else ""
+                # extra += f"_wfn" if w_f else ""
+                # extra += f"_wpgs" if w_pgs else ""
+                extra = "std"
+                conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
+                print(conf["run_name"], conf["weights"])
+                consants_optimization_post_evolution(conf)
