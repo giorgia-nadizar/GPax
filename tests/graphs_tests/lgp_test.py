@@ -89,6 +89,41 @@ def test_weights_changes_after_mutation() -> None:
         assert not mut * all(jax.tree_leaves(jax.tree_map(
             lambda x, y: jnp.allclose(x, y), initial_lgp_genome["weights"], mutated_lgp_genome["weights"])))
 
+    for mut_type in ["gaussian", "automl0", "other"]:
+        # define genome structure
+        lgp = LGP(
+            n_inputs=2,
+            n_outputs=1,
+            weighted_inputs=True,
+            weighted_functions=True,
+            weighted_program_inputs=True,
+            weights_mutation=True,
+            weights_mutation_type=mut_type
+        )
+        key = jax.random.key(42)
+
+        # init genome
+        key, init_key = jax.random.split(key)
+        initial_lgp_genome = lgp.init(init_key)
+
+        # mutate genome
+        key, mut_key = jax.random.split(key)
+
+        if mut_type == "gaussian":
+            mutated_lgp_genome = lgp.mutate(
+                genotype=initial_lgp_genome,
+                rnd_key=mut_key,
+            )
+
+            assert not mut * all(jax.tree_leaves(jax.tree_map(
+                lambda x, y: jnp.allclose(x, y), initial_lgp_genome["weights"], mutated_lgp_genome["weights"])))
+        else:
+            with pytest.raises(NotImplementedError):
+                lgp.mutate(
+                    genotype=initial_lgp_genome,
+                    rnd_key=mut_key,
+                )
+
 
 def test_known_genome_execution() -> None:
     """Test that a lGP genome behaves as expected.
