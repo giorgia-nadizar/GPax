@@ -1,6 +1,6 @@
 from flax import struct
 import jax.numpy as jnp
-from typing import Callable, Dict, Union, List, Tuple, Optional
+from typing import Callable, Dict, Union, List, Tuple, Optional, Literal
 
 from jax import random
 from jax.lax import fori_loop
@@ -8,6 +8,11 @@ from jax.lax import fori_loop
 from qdax.custom_types import RNGKey, Genotype, Mask
 
 from gpax.graphs.functions import FunctionSet
+
+WeightsMutationType = Union[
+    Literal["gaussian"],
+    Literal["automl0"]
+]
 
 
 @struct.dataclass
@@ -29,6 +34,7 @@ class GGP:
         weighted_functions: whether the genotype will contain weighting factors for each node/program line.
         weighted_inputs: whether the genotype will contain weighting factors for each connection.
         weights_mutation: whether weights will undergo mutation or not.
+        weights_mutation_type: what type of mutation is used (is weights_mutation is True) to mutate the weights.
     """
 
     n_inputs: int
@@ -40,6 +46,7 @@ class GGP:
     weighted_functions: bool = False
     weighted_inputs: bool = False
     weights_mutation: bool = True
+    weights_mutation_type: WeightsMutationType = "gaussian"
 
     @property
     def n_functions(self) -> int:
@@ -115,12 +122,9 @@ class GGP:
         p_mut_functions = mutation_probabilities.get("functions", p_mut_functions)
         weights_mut_sigma = mutation_probabilities.get("weights_sigma", weights_mut_sigma)
 
-        new_key, x_key, y_key, f_key, weights_key1, weights_key2 = random.split(rnd_key, 6)
+        new_key, x_key, y_key, f_key, weights_key = random.split(rnd_key, 5)
         # generate the donor genotype -> only few genes from this will be used
         donor_genotype = self.init(new_key)
-        weights_noise = weights_mut_sigma * random.normal(weights_key1, shape=(self.n_functions * 3,))
-        fn_w_noise, i1_w_noise, i2_w_noise = jnp.split(weights_noise, 3)
-        progr_in_noise = weights_mut_sigma * random.normal(weights_key2, shape=(self.n_input_constants,))
 
         return {
             "genes": {
@@ -137,15 +141,21 @@ class GGP:
                                                f_key,
                                                p_mut_functions),
             },
-            "weights": {
-                "program_inputs": genotype["weights"]["program_inputs"]
-                                  + self.weighted_program_inputs * self.weights_mutation * progr_in_noise,
-                "inputs1": genotype["weights"]["inputs1"] + self.weighted_inputs * self.weights_mutation * i1_w_noise,
-                "inputs2": genotype["weights"]["inputs2"] + self.weighted_inputs * self.weights_mutation * i2_w_noise,
-                "functions": genotype["weights"]["functions"]
-                             + self.weighted_functions * self.weights_mutation * fn_w_noise,
-            }
+            "weights": self._mutate_weights(genotype["weights"], weights_key, weights_mut_sigma)
         }, donor_genotype
+
+    def _mutate_weights(self, weights: Dict, key: RNGKey, weights_mut_sigma: float):
+        weights_key1, weights_key2 = random.split(key)
+        weights_noise = weights_mut_sigma * random.normal(weights_key1, shape=(self.n_functions * 3,))
+        fn_w_noise, i1_w_noise, i2_w_noise = jnp.split(weights_noise, 3)
+        progr_in_noise = weights_mut_sigma * random.normal(weights_key2, shape=(self.n_input_constants,))
+        return {
+            "program_inputs": weights["program_inputs"]
+                              + self.weighted_program_inputs * self.weights_mutation * progr_in_noise,
+            "inputs1": weights["inputs1"] + self.weighted_inputs * self.weights_mutation * i1_w_noise,
+            "inputs2": weights["inputs2"] + self.weighted_inputs * self.weights_mutation * i2_w_noise,
+            "functions": weights["functions"] + self.weighted_functions * self.weights_mutation * fn_w_noise,
+        }
 
     def get_readable_expression(
             self,
