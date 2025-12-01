@@ -69,9 +69,6 @@ def run_sym_reg_ga(config: Dict):
     keys = jax.random.split(subkey, num=config["n_pop"])
     init_cgp_genomes = jax.vmap(graph_structure.init)(keys)
 
-    # Prepare the scoring function
-    scoring_fn_cgp = prepare_scoring_fn(X_train, y_train, X_test, y_test, graph_structure, const_optimizer)
-
     # Define a metrics function
     metrics_function = functools.partial(
         custom_ga_metrics,
@@ -89,17 +86,19 @@ def run_sym_reg_ga(config: Dict):
         selector=tournament_selector
     )
 
+    # Prepare the scoring function
+    scoring_fn_cgp = prepare_scoring_fn(X_train, y_train, X_test, y_test, graph_structure, const_optimizer)
     # Instantiate GA
     ga = GeneticAlgorithmWithExtraScores(
         scoring_function=scoring_fn_cgp,
         emitter=mixing_emitter,
         metrics_function=metrics_function,
     )
+    init_fn = functools.partial(ga.init, lamarckian=True)
+    update_fn = functools.partial(ga.update, lamarckian=True)
 
     # Evaluate the initial population
     key, subkey = jax.random.split(key)
-    init_fn = functools.partial(ga.init, lamarckian=True)
-    update_fn = functools.partial(ga.update, lamarckian=True)
     repertoire, emitter_state, init_metrics = init_fn(genotypes=init_cgp_genomes, population_size=config["n_pop"],
                                                       key=subkey)
 
