@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, \
-    regression_accuracy_evaluation_with_constants_optimization
+    regression_accuracy_evaluation_with_constants_optimization, regression_scoring_fn
 
 
 def prepare_train_test_evaluation_fns(
@@ -92,3 +92,60 @@ def prepare_train_test_evaluation_fns(
 
     test_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_test, y=y_test)
     return train_fn, test_fn
+
+
+def prepare_scoring_fn(
+        X_train: jnp.ndarray,
+        y_train: jnp.ndarray,
+        X_test: jnp.ndarray,
+        y_test: jnp.ndarray,
+        graph_structure: GGP,
+        const_optimizer: str = None,
+) -> Callable:
+    """
+        Create a scoring function for symbolic regression model evaluation.
+
+        This function constructs a combined scoring function that internally uses
+        training and testing evaluation functions produced by
+        `prepare_train_test_evaluation_fns`.
+        The returned function is pre-configured with the provided datasets,
+        graph structure, and optional constant-optimization strategy. It can be
+        applied directly to a candidate program genotype (graph representation).
+
+        Parameters
+        ----------
+        X_train : jnp.ndarray
+            Training input features.
+        y_train : jnp.ndarray
+            Training target values.
+        X_test : jnp.ndarray
+            Test input features.
+        y_test : jnp.ndarray
+            Test target values.
+        graph_structure : GGP
+            A graph-based symbolic program structure to be used when evaluating
+            candidate models.
+        const_optimizer : str, optional
+            Name of the constant-optimization strategy to use during training
+            evaluation. See `prepare_train_test_evaluation_fns` for supported values.
+
+        Returns
+        -------
+        Callable
+            A partially applied scoring function that evaluates both training and
+            test performance using internally prepared evaluation functions.
+
+        Notes
+        -----
+        - The returned scoring function delegates actual evaluation to
+          `regression_scoring_fn`.
+        - The train/test evaluation functions used by the scorer are already bound
+          to the supplied datasets and graph structure.
+        """
+    train_fn, test_fn = prepare_train_test_evaluation_fns(X_train, y_train, X_test, y_test, graph_structure,
+                                                          const_optimizer)
+    return functools.partial(
+        regression_scoring_fn,
+        train_set_evaluation_fn=train_fn,
+        test_set_evaluation_fn=test_fn
+    )

@@ -24,7 +24,7 @@ from gpax.symbolicregression.constants_optimization import optimize_constants_wi
     optimize_constants_with_lbfgs
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, regression_scoring_fn, \
     regression_accuracy_evaluation_with_constants_optimization
-from gpax.symbolicregression.utils import prepare_train_test_evaluation_fns
+from gpax.symbolicregression.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn
 
 
 def run_sym_reg_ga(config: Dict):
@@ -70,14 +70,7 @@ def run_sym_reg_ga(config: Dict):
     init_cgp_genomes = jax.vmap(graph_structure.init)(keys)
 
     # Prepare the scoring function
-
-    train_fn, test_fn = prepare_train_test_evaluation_fns(X_train, y_train, X_test, y_test, graph_structure,
-                                                          const_optimizer)
-    scoring_fn_cgp = functools.partial(
-        regression_scoring_fn,
-        train_set_evaluation_fn=train_fn,
-        test_set_evaluation_fn=test_fn
-    )
+    scoring_fn_cgp = prepare_scoring_fn(X_train, y_train, X_test, y_test, graph_structure, const_optimizer)
 
     # Define a metrics function
     metrics_function = functools.partial(
