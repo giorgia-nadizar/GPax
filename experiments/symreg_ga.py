@@ -24,6 +24,7 @@ from gpax.symbolicregression.constants_optimization import optimize_constants_wi
     optimize_constants_with_lbfgs
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, regression_scoring_fn, \
     regression_accuracy_evaluation_with_constants_optimization
+from gpax.symbolicregression.utils import prepare_train_test_evaluation_fns
 
 
 def run_sym_reg_ga(config: Dict):
@@ -31,7 +32,7 @@ def run_sym_reg_ga(config: Dict):
     # df = pd.read_csv(f"../datasets/{dataset_name}", sep=" ", header=None)
     # X = df.iloc[:, :-1].to_numpy()
     # y = df.iloc[:, -1].to_numpy()
-    const_optimizer = config.get("constants_optimization", False)
+    const_optimizer = config.get("constants_optimization", None)
 
     X, y = load_diabetes(return_X_y=True)
 
@@ -71,27 +72,8 @@ def run_sym_reg_ga(config: Dict):
 
     # Prepare the scoring function
 
-    if const_optimizer == "automl0" or not const_optimizer:
-        train_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_train,
-                                     y=y_train)
-    else:
-        print(const_optimizer)
-        if const_optimizer == "adam":
-            constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
-                                                    n_gradient_steps=100)
-        elif const_optimizer == "rmsprop":
-            constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
-                                                    n_gradient_steps=120, optimizer=optax.rmsprop(1e-3, momentum=.9))
-        elif const_optimizer == "cmaes":
-            constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=8)
-        else:
-            constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=5)
-        train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
-                                     graph_structure=graph_structure,
-                                     X=X_train, y=y_train, reset_weights=False,
-                                     constants_optimization_fn=constants_optimizer)
-
-    test_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_test, y=y_test)
+    train_fn, test_fn = prepare_train_test_evaluation_fns(X_train, y_train, X_test, y_test, graph_structure,
+                                                          const_optimizer)
     scoring_fn_cgp = functools.partial(
         regression_scoring_fn,
         train_set_evaluation_fn=train_fn,
