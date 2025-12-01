@@ -1,6 +1,7 @@
 from functools import partial
 
 import jax
+import pytest
 from qdax.core.emitters.standard_emitters import MixingEmitter
 import jax.numpy as jnp
 
@@ -86,3 +87,38 @@ def test_lamarckian_evolution():
                                                                key=key, lamarckian=lamarckian)
 
         assert lamarckian == jnp.allclose(repertoire.extra_scores["updated_params"], repertoire.genotypes)
+
+
+def dummy_scoring_fn(genotype, rng):
+    return 1.0, {"extra": 0.5}
+
+
+def another_scoring_fn(genotype, rng):
+    return 2.0, {"extra": 1.0}
+
+
+@pytest.fixture
+def ga():
+    # Create a simple instance with a dummy emitter + metrics function
+    emitter = object()
+    metrics_fn = lambda *args, **kwargs: None
+    return GeneticAlgorithmWithExtraScores(dummy_scoring_fn, emitter, metrics_fn)
+
+
+def test_ga_scoring_fn_replacement_returns_new_instance(ga):
+    new_ga = ga.replace_scoring_fn(another_scoring_fn)
+
+    assert isinstance(new_ga, GeneticAlgorithmWithExtraScores)
+    assert new_ga is not ga  # ensure a new object is created
+
+
+def test_ga_scoring_fn_replacement_scoring_fn_is_replaced(ga):
+    new_ga = ga.replace_scoring_fn(another_scoring_fn)
+    assert new_ga._scoring_function is another_scoring_fn
+
+
+def test_ga_scoring_fn_replacement_other_components_are_preserved(ga):
+    new_ga = ga.replace_scoring_fn(another_scoring_fn)
+
+    assert new_ga._emitter is ga._emitter
+    assert new_ga._metrics_function is ga._metrics_function

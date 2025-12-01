@@ -1,9 +1,11 @@
-from typing import Optional, Tuple
+from __future__ import annotations
+
+from typing import Optional, Tuple, Callable
 
 import jax
 
 from qdax.core.emitters.emitter import EmitterState
-from qdax.custom_types import Genotype, Metrics, RNGKey
+from qdax.custom_types import Genotype, Metrics, RNGKey, Fitness, ExtraScores
 from qdax.baselines.genetic_algorithm import GeneticAlgorithm
 
 from gpax.evolution.ga_repertoire_extra_scores import GARepertoireExtraScores
@@ -134,3 +136,26 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         metrics = self._metrics_function(repertoire)
 
         return repertoire, emitter_state, metrics  # type: ignore
+
+    def replace_scoring_fn(self, scoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]]
+                           ) -> GeneticAlgorithmWithExtraScores:
+        """
+        Return a new genetic algorithm instance that uses the given scoring function.
+
+        The new instance keeps the same emitter and metrics function as the current
+        one but replaces the scoring function with `scoring_fn`.
+
+        Parameters
+        ----------
+        scoring_fn : Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]]
+            The scoring function to use in the new algorithm.
+
+        Returns
+        -------
+        GeneticAlgorithmWithExtraScores
+            A copy of the algorithm with the updated scoring function.
+        """
+
+        return GeneticAlgorithmWithExtraScores(
+            scoring_fn, self._emitter, self._metrics_function,
+        )
