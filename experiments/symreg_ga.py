@@ -35,7 +35,6 @@ def run_sym_reg_ga(config: Dict):
     const_optimizer = config.get("constants_optimization", None)
 
     X, y = load_diabetes(return_X_y=True)
-
     y = y.reshape(-1, 1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=config["seed"])
 
