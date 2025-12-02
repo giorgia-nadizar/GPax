@@ -4,7 +4,6 @@ import sys
 import time
 from typing import Dict
 
-import optax
 import pandas as pd
 import jax
 import jax.numpy as jnp
@@ -20,11 +19,7 @@ from gpax.evolution.tournament_selector import TournamentSelector
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
 from gpax.evolution.evolution_metrics import custom_ga_metrics
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
-    optimize_constants_with_lbfgs
-from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, regression_scoring_fn, \
-    regression_accuracy_evaluation_with_constants_optimization
-from gpax.symbolicregression.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn
+from gpax.symbolicregression.utils import prepare_scoring_fn
 
 
 def run_sym_reg_ga(config: Dict):
@@ -93,13 +88,12 @@ def run_sym_reg_ga(config: Dict):
         scoring_function=scoring_fn_cgp,
         emitter=mixing_emitter,
         metrics_function=metrics_function,
+        lamarckian=True
     )
-    init_fn = functools.partial(ga.init, lamarckian=True)
-    update_fn = functools.partial(ga.update, lamarckian=True)
 
     # Evaluate the initial population
     key, subkey = jax.random.split(key)
-    repertoire, emitter_state, init_metrics = init_fn(genotypes=init_cgp_genomes, population_size=config["n_pop"],
+    repertoire, emitter_state, init_metrics = ga.init(genotypes=init_cgp_genomes, population_size=config["n_pop"],
                                                       key=subkey)
 
     # Initialize metrics
@@ -125,7 +119,13 @@ def run_sym_reg_ga(config: Dict):
     for iteration in range(1, config["n_gens"]):
         start_time = time.time()
         key, subkey = jax.random.split(key)
-        repertoire, emitter_state, current_metrics = update_fn(repertoire=repertoire, emitter_state=emitter_state,
+
+        # TODO
+        # update the current dataset sample
+        # update the scoring fn
+        # update the ga
+
+        repertoire, emitter_state, current_metrics = ga.update(repertoire=repertoire, emitter_state=emitter_state,
                                                                key=subkey)
         timelapse = time.time() - start_time
 

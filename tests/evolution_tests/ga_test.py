@@ -77,14 +77,14 @@ def test_lamarckian_evolution():
             scoring_function=fake_scoring_fn,
             emitter=mixing_emitter,
             metrics_function=ga_metrics,
+            lamarckian=lamarckian
         )
         key = jax.random.key(0)
-        repertoire, emitter_state, init_metrics = ga.init(genotypes=fake_genomes, population_size=pop_size, key=key,
-                                                          lamarckian=lamarckian)
+        repertoire, emitter_state, init_metrics = ga.init(genotypes=fake_genomes, population_size=pop_size, key=key, )
         assert lamarckian != jnp.allclose(fake_genomes, repertoire.genotypes)
         assert lamarckian == jnp.allclose(repertoire.extra_scores["updated_params"], repertoire.genotypes)
         repertoire, emitter_state, current_metrics = ga.update(repertoire=repertoire, emitter_state=emitter_state,
-                                                               key=key, lamarckian=lamarckian)
+                                                               key=key)
 
         assert lamarckian == jnp.allclose(repertoire.extra_scores["updated_params"], repertoire.genotypes)
 

@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Optional, Tuple, Callable
 
 import jax
+from qdax.core.containers.ga_repertoire import GARepertoire
 
-from qdax.core.emitters.emitter import EmitterState
+from qdax.core.emitters.emitter import EmitterState, Emitter
 from qdax.custom_types import Genotype, Metrics, RNGKey, Fitness, ExtraScores
 from qdax.baselines.genetic_algorithm import GeneticAlgorithm
 
@@ -16,11 +17,23 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         Extends GeneticAlgorithm to track additional metrics ('extra scores')
         for each individual.
 
+        In addition, it has a lamarckian flag to state whether the genomes are
+        replaced by their updated version before entering the repertoire
+
         The main GA behavior is unchanged.
     """
 
+    def __init__(self,
+                 scoring_function: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]],
+                 emitter: Emitter,
+                 metrics_function: Callable[[GARepertoire], Metrics],
+                 lamarckian: bool = False,
+                 ):
+        super().__init__(scoring_function, emitter, metrics_function)
+        self._lamarckian = lamarckian
+
     def init(
-            self, genotypes: Genotype, population_size: int, key: RNGKey, lamarckian: bool = False
+            self, genotypes: Genotype, population_size: int, key: RNGKey
     ) -> Tuple[GARepertoireExtraScores, Optional[EmitterState], Metrics]:
         """Initialize a GARepertoire with an initial population of genotypes.
 
@@ -28,8 +41,6 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
             genotypes: the initial population of genotypes
             population_size: the maximal size of the repertoire
             key: a random key to handle stochastic operations
-            lamarckian: a flag to state whether the genomes are replaced by their
-             updated version before entering the repertoire
 
         Returns:
             The initial repertoire, an initial emitter state and a new random key.
@@ -42,7 +53,7 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         key, subkey = jax.random.split(key)
         fitnesses, extra_scores = self._scoring_function(genotypes, subkey)
         genotypes = jax.lax.cond(
-            lamarckian,
+            self._lamarckian,
             lambda _: extra_scores["updated_params"],
             lambda _: genotypes,
             operand=None,
@@ -78,7 +89,6 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
             repertoire: GARepertoireExtraScores,
             emitter_state: Optional[EmitterState],
             key: RNGKey,
-            lamarckian: bool = False,
     ) -> Tuple[GARepertoireExtraScores, Optional[EmitterState], Metrics]:
         """
         Performs one iteration of a Genetic algorithm.
@@ -91,8 +101,6 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
             repertoire: a repertoire
             emitter_state: state of the emitter
             key: a jax PRNG random key
-            lamarckian: a flag to state whether the genomes are replaced by their
-             updated version before entering the repertoire
 
         Returns:
             the updated MAP-Elites repertoire
@@ -113,7 +121,7 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         fitnesses, extra_scores = self._scoring_function(genotypes, subkey)
 
         genotypes = jax.lax.cond(
-            lamarckian,
+            self._lamarckian,
             lambda _: extra_scores["updated_params"],
             lambda _: genotypes,
             operand=None,
@@ -157,5 +165,5 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         """
 
         return GeneticAlgorithmWithExtraScores(
-            scoring_fn, self._emitter, self._metrics_function,
+            scoring_fn, self._emitter, self._metrics_function, self._lamarckian
         )
