@@ -122,3 +122,54 @@ def test_ga_scoring_fn_replacement_other_components_are_preserved(ga):
 
     assert new_ga._emitter is ga._emitter
     assert new_ga._metrics_function is ga._metrics_function
+
+
+# Mock classes
+
+def test_ga_update_no_rescore():
+    pop_size = 10
+    fake_scoring_fn = partial(lambda x, k: (jnp.ones((len(x), 1)),
+                                            {
+                                                "extra": jnp.ones((len(x), 1)),
+                                                "updated_params": jnp.ones((len(x), 1)) * 2
+                                            }))
+    fake_rescoring_fun = partial(lambda x, k: (jnp.zeros((len(x), 1)),
+                                               {
+                                                   "extra": jnp.ones((len(x), 1)),
+                                                   "updated_params": jnp.ones((len(x), 1)) * 2
+                                               }))
+    fake_mutate_fn = lambda x, k: x
+    mixing_emitter = MixingEmitter(
+        mutation_fn=fake_mutate_fn,
+        variation_fn=None,
+        variation_percentage=0.0,  # note: CGP works with mutation only
+        batch_size=int(pop_size / 2),
+    )
+    for rescore_repertoire in [True, False]:
+        for fake_rescoring_fn in [fake_rescoring_fun, None]:
+            ga_metrics = partial(
+                custom_ga_metrics,
+                extra_scores_metrics="extra"
+            )
+            fake_genomes = jnp.ones((pop_size, 1))
+
+            # Instantiate GA
+            ga = GeneticAlgorithmWithExtraScores(
+                scoring_function=fake_scoring_fn,
+                emitter=mixing_emitter,
+                metrics_function=ga_metrics,
+                lamarckian=False,
+                rescoring_function=fake_rescoring_fn,
+            )
+            key = jax.random.key(0)
+            repertoire, emitter_state, init_metrics = ga.init(genotypes=fake_genomes, population_size=pop_size,
+                                                              key=key, )
+            repertoire, emitter_state, current_metrics = ga.update(repertoire=repertoire, emitter_state=emitter_state,
+                                                                   key=key, rescore_repertoire=rescore_repertoire)
+            if rescore_repertoire and fake_rescoring_fn:
+                assert jnp.allclose(jnp.sort(repertoire.fitnesses),
+                                    jnp.concatenate(
+                                        (jnp.ones((int(pop_size / 2), 1)), jnp.zeros((int(pop_size / 2), 1), )))
+                                    )
+            else:
+                assert jnp.allclose(repertoire.fitnesses, 1)

@@ -17,8 +17,10 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         Extends GeneticAlgorithm to track additional metrics ('extra scores')
         for each individual.
 
-        In addition, it has a lamarckian flag to state whether the genomes are
+        In addition, it has
+        - a lamarckian flag to state whether the genomes are
         replaced by their updated version before entering the repertoire
+        - a rescoring_function to rescore the repertoire upon update if desired
 
         The main GA behavior is unchanged.
     """
@@ -28,9 +30,11 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
                  emitter: Emitter,
                  metrics_function: Callable[[GARepertoire], Metrics],
                  lamarckian: bool = False,
+                 rescoring_function: Optional[Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]],] = None,
                  ):
         super().__init__(scoring_function, emitter, metrics_function)
         self._lamarckian = lamarckian
+        self._rescoring_function = rescoring_function
 
     def init(
             self, genotypes: Genotype, population_size: int, key: RNGKey
@@ -89,6 +93,7 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
             repertoire: GARepertoireExtraScores,
             emitter_state: Optional[EmitterState],
             key: RNGKey,
+            rescore_repertoire: bool = False
     ) -> Tuple[GARepertoireExtraScores, Optional[EmitterState], Metrics]:
         """
         Performs one iteration of a Genetic algorithm.
@@ -101,6 +106,8 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
             repertoire: a repertoire
             emitter_state: state of the emitter
             key: a jax PRNG random key
+            rescore_repertoire: a flag to determine whether the repertoire needs
+            to be rescored before merging with the offspring
 
         Returns:
             the updated MAP-Elites repertoire
@@ -114,27 +121,46 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
 
         # generate offsprings
         key, subkey = jax.random.split(key)
-        genotypes, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
+        offspring, extra_info = self._emitter.emit(repertoire, emitter_state, subkey)
 
         # score the offsprings
         key, subkey = jax.random.split(key)
-        fitnesses, extra_scores = self._scoring_function(genotypes, subkey)
+        fitnesses, extra_scores = self._scoring_function(offspring, subkey)
 
-        genotypes = jax.lax.cond(
+        offspring = jax.lax.cond(
             self._lamarckian,
             lambda _: extra_scores["updated_params"],
-            lambda _: genotypes,
+            lambda _: offspring,
             operand=None,
         )
 
+        # optionally rescore the repertoire
+        if rescore_repertoire:
+            rescoring_fn = self._rescoring_function if self._rescoring_function else self._scoring_function
+            key, rescore_subkey = jax.random.split(key)
+            rescored_fitnesses, rescored_extra_scores = rescoring_fn(repertoire.genotypes, rescore_subkey)
+            rescored_genotypes = jax.lax.cond(
+                self._lamarckian,
+                lambda _: rescored_extra_scores["updated_params"],
+                lambda _: repertoire.genotypes,
+                operand=None,
+            )
+            repertoire = GARepertoireExtraScores.init(
+                genotypes=rescored_genotypes,
+                fitnesses=rescored_fitnesses,
+                population_size=repertoire.size,
+                extra_scores=rescored_extra_scores,
+                keys_extra_scores=repertoire.keys_extra_scores,
+            )
+
         # update the repertoire
-        repertoire = repertoire.add(genotypes, fitnesses, extra_scores)
+        repertoire = repertoire.add(offspring, fitnesses, extra_scores)
 
         # update emitter state after scoring is made
         emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
             repertoire=repertoire,
-            genotypes=genotypes,
+            genotypes=offspring,
             fitnesses=fitnesses,
             descriptors=None,
             extra_scores={**extra_scores, **extra_info},
@@ -165,5 +191,5 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         """
 
         return GeneticAlgorithmWithExtraScores(
-            scoring_fn, self._emitter, self._metrics_function, self._lamarckian
+            scoring_fn, self._emitter, self._metrics_function, self._lamarckian, self._rescoring_function
         )
