@@ -19,17 +19,19 @@ from gpax.evolution.tournament_selector import TournamentSelector
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
 from gpax.evolution.evolution_metrics import custom_ga_metrics
-from gpax.symbolicregression.utils import prepare_scoring_fn
+from gpax.symbolicregression.dataset_utils import downsample_dataset
+from gpax.symbolicregression.utils import prepare_scoring_fn, prepare_rescoring_fn
 
 
 def run_sym_reg_ga(config: Dict):
-    # dataset_name = config["problem"]
-    # df = pd.read_csv(f"../datasets/{dataset_name}", sep=" ", header=None)
-    # X = df.iloc[:, :-1].to_numpy()
-    # y = df.iloc[:, -1].to_numpy()
     const_optimizer = config.get("constants_optimization", None)
 
-    X, y = load_diabetes(return_X_y=True)
+    dataset_name = config["problem"]
+    df = pd.read_csv(f"../datasets/{dataset_name}.tsv", sep="\t")
+    X = df.iloc[:, :-1].to_numpy()
+    y = df.iloc[:, -1].to_numpy()
+    # X, y = load_diabetes(return_X_y=True)
+
     y = y.reshape(-1, 1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=config["seed"])
 
@@ -44,17 +46,22 @@ def run_sym_reg_ga(config: Dict):
         y_test = y_scaler.transform(y_test)
 
     key = jax.random.key(config["seed"])
+    sample_key, key = jax.random.split(key)
+
+    downsample_fn = functools.partial(downsample_dataset, size=config.get("dataset_size", 1024))
+    X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
 
     # Init the CGP policy graph with default values
     graph_structure = CGP(
         n_inputs=X.shape[1],
         n_outputs=1,
         n_nodes=config["solver"]["n_nodes"],
+        n_input_constants=config["solver"]["n_input_constants"],
         outputs_wrapper=lambda x: x,
         weighted_functions=config["solver"].get("weighted_functions", False),
         weighted_inputs=config["solver"].get("weighted_inputs", False),
         weighted_program_inputs=config["solver"].get("weighted_program_inputs", False),
-        weights_mutation=const_optimizer in [False, "automl0"],
+        weights_mutation=const_optimizer in ["gaussian", "automl0"],
         weights_mutation_type="automl0" if const_optimizer == "automl0" else "gaussian"
     )
     print(graph_structure)
@@ -82,13 +89,15 @@ def run_sym_reg_ga(config: Dict):
     )
 
     # Prepare the scoring function
-    scoring_fn_cgp = prepare_scoring_fn(X_train, y_train, X_test, y_test, graph_structure, const_optimizer)
+    scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure, const_optimizer)
+    rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure)
     # Instantiate GA
     ga = GeneticAlgorithmWithExtraScores(
         scoring_function=scoring_fn_cgp,
         emitter=mixing_emitter,
         metrics_function=metrics_function,
-        lamarckian=True
+        lamarckian=True,
+        rescoring_function=rescoring_fn_cgp
     )
 
     # Evaluate the initial population
@@ -117,16 +126,17 @@ def run_sym_reg_ga(config: Dict):
 
     # Iterations
     for iteration in range(1, config["n_gens"]):
+        key, subkey, sample_key = jax.random.split(key, 3)
+
+        # change batch of the dataset to evaluate upon
+        X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
+        scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure, const_optimizer)
+        rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure)
+        ga = ga.replace_scoring_fns(scoring_fn_cgp, rescoring_fn_cgp)
+
         start_time = time.time()
-        key, subkey = jax.random.split(key)
-
-        # TODO
-        # update the current dataset sample
-        # update the scoring fn
-        # update the ga
-
         repertoire, emitter_state, current_metrics = ga.update(repertoire=repertoire, emitter_state=emitter_state,
-                                                               key=subkey)
+                                                               key=subkey, rescore_repertoire=True)
         timelapse = time.time() - start_time
 
         # Metrics
@@ -153,14 +163,17 @@ if __name__ == '__main__':
     conf = {
         "solver": {
             "n_nodes": 50,
+            "n_input_constants": 5
         },
         "n_offspring": 90,
         "n_pop": 100,
-        "n_gens": 5_000,
+        "n_gens": 500,
         "seed": 0,
         "tournament_size": 3,
-        "constants_optimization": "automl0",
-        "problem": "I.6.2"
+        "problem": "feynman_I_6_2",
+        "scale_x": False,
+        "scale_y": True,
+        "constants_optimization": "gaussian",
     }
     args = sys.argv[1:]
     for arg in args:
@@ -172,18 +185,20 @@ if __name__ == '__main__':
         elif key == "constants_optimization":
             conf["constants_optimization"] = value
 
-    # for problem in ["I.13.12","I.6.2","II.24.17"]:
-    for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
-        if not (w_f or w_in or w_pgs) and conf["sgd"] == True:
-            continue
-        conf["problem"] = "diabetes"
-        conf["solver"]["weighted_inputs"] = w_in
-        conf["solver"]["weighted_functions"] = w_f
-        conf["solver"]["weighted_program_inputs"] = w_pgs
-        extra = conf["constants_optimization"] if conf["constants_optimization"] else "std"
-        extra += f"_win" if w_in else ""
-        extra += f"_wfn" if w_f else ""
-        extra += f"_wpgs" if w_pgs else ""
-        conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
-        print(conf["run_name"])
-        run_sym_reg_ga(conf)
+    for problem in ["I_13_12","I_6_2","II_24_17"]:
+        conf["problem"] = f"feynman_{problem}"
+        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
+            if not (w_f or w_in or w_pgs) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
+                continue
+            conf["solver"]["weighted_inputs"] = w_in
+            conf["solver"]["weighted_functions"] = w_f
+            conf["solver"]["weighted_program_inputs"] = w_pgs
+            extra = conf["constants_optimization"]
+            extra += f"_win" if w_in else ""
+            extra += f"_wfn" if w_f else ""
+            extra += f"_wpgs" if w_pgs else ""
+            if conf["constants_optimization"] == "adam":
+                conf["n_gens"] = int(conf["n_gens"] / 4.2)
+            conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
+            print(conf["run_name"])
+            run_sym_reg_ga(conf)
