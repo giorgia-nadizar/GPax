@@ -15,8 +15,8 @@ class EliteSelector(Selector):
             key: RNGKey,
             num_samples: int,
     ) -> GARepertoireT:
-        topn_idx = jnp.argsort(repertoire.fitnesses.squeeze())[-num_samples:]  # sorted ascending → take last n
-        selected_indexes = topn_idx[::-1]
+        top_n_idx = jnp.argsort(repertoire.fitnesses.squeeze())[-num_samples:]  # sorted ascending → take last n
+        selected_indexes = top_n_idx[::-1]
 
         repertoire_unfolded = unfold_repertoire(repertoire)
         selected: GARepertoireT = jax.tree.map(
