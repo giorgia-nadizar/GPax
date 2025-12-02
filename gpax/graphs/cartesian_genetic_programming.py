@@ -2,6 +2,7 @@
 
 from typing import Callable, Dict, Tuple, Optional, List
 
+import jax
 import jax.numpy as jnp
 from flax import struct
 from jax import random, jit
@@ -109,6 +110,10 @@ class CGP(GGP):
 
         weights = weights or {}
         weights = {**genotype["weights"], **weights}
+        genotype = {
+            "weights": weights,
+            "genes": jax.tree.map(lambda x: x.astype(int), genotype["genes"])
+        }
 
         # define function to update buffer in a certain position: get inputs from the x and y connections
         # then apply the function
@@ -248,6 +253,7 @@ class CGP(GGP):
         n_in = self.n_inputs + self.n_input_constants
         targets = []
         input_constants = genotype["weights"]["program_inputs"]
+
         def _replace_cgp_expression(
                 cgp_genes: Genotype,
                 idx: int) -> str:

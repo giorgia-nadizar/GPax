@@ -115,6 +115,10 @@ class LGP(GGP):
         # take provided weights and replace with genome ones if missing
         weights = weights or {}
         weights = {**genotype["weights"], **weights}
+        genotype = {
+            "weights": weights,
+            "genes": jax.tree.map(lambda x: x.astype(int), genotype["genes"])
+        }
 
         input_constants = genotype["weights"]["program_inputs"]
 
