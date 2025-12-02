@@ -106,19 +106,19 @@ def ga():
 
 
 def test_ga_scoring_fn_replacement_returns_new_instance(ga):
-    new_ga = ga.replace_scoring_fn(another_scoring_fn)
+    new_ga = ga.replace_scoring_fns(another_scoring_fn)
 
     assert isinstance(new_ga, GeneticAlgorithmWithExtraScores)
     assert new_ga is not ga  # ensure a new object is created
 
 
 def test_ga_scoring_fn_replacement_scoring_fn_is_replaced(ga):
-    new_ga = ga.replace_scoring_fn(another_scoring_fn)
+    new_ga = ga.replace_scoring_fns(another_scoring_fn)
     assert new_ga._scoring_function is another_scoring_fn
 
 
 def test_ga_scoring_fn_replacement_other_components_are_preserved(ga):
-    new_ga = ga.replace_scoring_fn(another_scoring_fn)
+    new_ga = ga.replace_scoring_fns(another_scoring_fn)
 
     assert new_ga._emitter is ga._emitter
     assert new_ga._metrics_function is ga._metrics_function

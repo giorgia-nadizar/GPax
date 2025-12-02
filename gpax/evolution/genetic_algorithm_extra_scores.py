@@ -171,8 +171,10 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
 
         return repertoire, emitter_state, metrics  # type: ignore
 
-    def replace_scoring_fn(self, scoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]]
-                           ) -> GeneticAlgorithmWithExtraScores:
+    def replace_scoring_fns(self,
+                            scoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]],
+                            rescoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]] = None,
+                            ) -> GeneticAlgorithmWithExtraScores:
         """
         Return a new genetic algorithm instance that uses the given scoring function.
 
@@ -183,13 +185,14 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
         ----------
         scoring_fn : Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]]
             The scoring function to use in the new algorithm.
+        rescoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]]
+            The function use to rescore the repertoire if needed
 
         Returns
         -------
         GeneticAlgorithmWithExtraScores
-            A copy of the algorithm with the updated scoring function.
+            A copy of the algorithm with the updated scoring functions.
         """
-
         return GeneticAlgorithmWithExtraScores(
-            scoring_fn, self._emitter, self._metrics_function, self._lamarckian, self._rescoring_function
+            scoring_fn, self._emitter, self._metrics_function, self._lamarckian, rescoring_fn
         )
