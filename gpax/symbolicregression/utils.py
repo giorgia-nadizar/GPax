@@ -149,3 +149,51 @@ def prepare_scoring_fn(
         train_set_evaluation_fn=train_fn,
         test_set_evaluation_fn=test_fn
     )
+
+
+def prepare_rescoring_fn(
+        X_train: jnp.ndarray,
+        y_train: jnp.ndarray,
+        graph_structure: GGP,
+) -> Callable:
+    """
+        Create a scoring function for symbolic regression model evaluation.
+
+        This function constructs a combined scoring function that internally uses
+        training and testing evaluation functions produced by
+        `prepare_train_test_evaluation_fns`.
+        The returned function is pre-configured with the provided datasets,
+        graph structure, and optional constant-optimization strategy. It can be
+        applied directly to a candidate program genotype (graph representation).
+
+        Parameters
+        ----------
+        X_train : jnp.ndarray
+            Training input features.
+        y_train : jnp.ndarray
+            Training target values.
+        graph_structure : GGP
+            A graph-based symbolic program structure to be used when evaluating
+            candidate models.
+
+        Returns
+        -------
+        Callable
+            A partially applied scoring function that evaluates only training
+            performance using internally prepared evaluation functions.
+
+        Notes
+        -----
+        - The returned scoring function delegates actual evaluation to
+          `regression_scoring_fn`.
+        - The train/test evaluation functions used by the scorer are already bound
+          to the supplied datasets and graph structure.
+        """
+    train_fn, _ = prepare_train_test_evaluation_fns(X_train, y_train, None, None, graph_structure)
+    test_fn = lambda x, y: (None, None)
+    rescoring_fn = functools.partial(
+        regression_scoring_fn,
+        train_set_evaluation_fn=train_fn,
+        test_set_evaluation_fn=test_fn
+    )
+    return lambda x, y: rescoring_fn(x, y)[0]
