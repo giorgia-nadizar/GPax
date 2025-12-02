@@ -124,8 +124,6 @@ def test_ga_scoring_fn_replacement_other_components_are_preserved(ga):
     assert new_ga._metrics_function is ga._metrics_function
 
 
-# Mock classes
-
 def test_ga_update_no_rescore():
     pop_size = 10
     fake_scoring_fn = partial(lambda x, k: (jnp.ones((len(x), 1)),
@@ -133,11 +131,7 @@ def test_ga_update_no_rescore():
                                                 "extra": jnp.ones((len(x), 1)),
                                                 "updated_params": jnp.ones((len(x), 1)) * 2
                                             }))
-    fake_rescoring_fun = partial(lambda x, k: (jnp.zeros((len(x), 1)),
-                                               {
-                                                   "extra": jnp.ones((len(x), 1)),
-                                                   "updated_params": jnp.ones((len(x), 1)) * 2
-                                               }))
+    fake_rescoring_fun = partial(lambda x, k: (jnp.zeros((len(x), 1))))
     fake_mutate_fn = lambda x, k: x
     mixing_emitter = MixingEmitter(
         mutation_fn=fake_mutate_fn,

@@ -30,7 +30,7 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
                  emitter: Emitter,
                  metrics_function: Callable[[GARepertoire], Metrics],
                  lamarckian: bool = False,
-                 rescoring_function: Optional[Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]],] = None,
+                 rescoring_function: Optional[Callable[[Genotype, RNGKey], Fitness]] = None,
                  ):
         super().__init__(scoring_function, emitter, metrics_function)
         self._lamarckian = lamarckian
@@ -136,20 +136,15 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
 
         # optionally rescore the repertoire
         if rescore_repertoire:
-            rescoring_fn = self._rescoring_function if self._rescoring_function else self._scoring_function
+            rescoring_fn = self._rescoring_function if self._rescoring_function \
+                else lambda g, r: self._scoring_function(g, r)[0]
             key, rescore_subkey = jax.random.split(key)
-            rescored_fitnesses, rescored_extra_scores = rescoring_fn(repertoire.genotypes, rescore_subkey)
-            rescored_genotypes = jax.lax.cond(
-                self._lamarckian,
-                lambda _: rescored_extra_scores["updated_params"],
-                lambda _: repertoire.genotypes,
-                operand=None,
-            )
+            rescored_fitnesses = rescoring_fn(repertoire.genotypes, rescore_subkey)
             repertoire = GARepertoireExtraScores.init(
-                genotypes=rescored_genotypes,
+                genotypes=repertoire.genotypes,
                 fitnesses=rescored_fitnesses,
                 population_size=repertoire.size,
-                extra_scores=rescored_extra_scores,
+                extra_scores=repertoire.extra_scores,
                 keys_extra_scores=repertoire.keys_extra_scores,
             )
 
@@ -173,7 +168,7 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
 
     def replace_scoring_fns(self,
                             scoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]],
-                            rescoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]] = None,
+                            rescoring_fn: Callable[[Genotype, RNGKey], Fitness] = None,
                             ) -> GeneticAlgorithmWithExtraScores:
         """
         Return a new genetic algorithm instance that uses the given scoring function.
