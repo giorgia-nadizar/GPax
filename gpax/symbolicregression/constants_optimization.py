@@ -6,6 +6,8 @@ from jax.flatten_util import ravel_pytree
 from optax import GradientTransformation
 from qdax.baselines.cmaes import CMAES, CMAESState
 from qdax.custom_types import Genotype, RNGKey
+
+from gpax.symbolicregression.dataset_utils import downsample_dataset
 from gpax.symbolicregression.metrics import rmse
 
 
@@ -18,6 +20,7 @@ def optimize_constants_with_cmaes(
         prediction_fn: Callable,
         loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
         max_iter: int = 10,
+        mini_batch_size: int = 32
 ) -> Dict:
     """
     Optimize the constants (weights) of a set of genotypes using CMA-ES.
@@ -50,6 +53,8 @@ def optimize_constants_with_cmaes(
         per sample. Default is `rmse`.
     max_iter : int, optional
         Number of CMA-ES iterations to run per genotype. Default is 10.
+    mini_batch_size: int, optional
+        Size of minibatches for each CMA-ES iteration. Default is 32.
 
     Returns
     -------
@@ -67,6 +72,7 @@ def optimize_constants_with_cmaes(
     weights_array_sample, weights_tree_def = ravel_pytree(jax.tree_map(lambda x: x[0], graph_weights))
     search_dim = weights_array_sample.shape[0]
     pop_size = int(4 + jnp.floor(3 * jnp.log(search_dim)))
+    mini_batch_size = min(mini_batch_size, X.shape[0])
     global_cmaes = CMAES(
         population_size=pop_size,
         search_dim=search_dim,
@@ -75,22 +81,24 @@ def optimize_constants_with_cmaes(
     )
 
     def _single_genome_cmaes(single_genotype: Genotype, cmaes_state: CMAESState, single_key: RNGKey) -> Dict:
-        def _single_weights_fitness_function(s_weights: jnp.ndarray):
+        def _single_weights_fitness_function(s_weights: jnp.ndarray, X_batch, y_batch) -> jnp.ndarray:
             single_pytree_weights = weights_tree_def(s_weights)
-            y_pred = prediction_fn(X, single_genotype, graph_weights=single_pytree_weights)
-            return loss_fn(y, y_pred)
+            y_pred = prediction_fn(X_batch, single_genotype, graph_weights=single_pytree_weights)
+            return loss_fn(y_batch, y_pred)
 
-        def _weights_ranking_function(candidate_array_weights: jnp.ndarray):
-            fitness_values = jax.vmap(_single_weights_fitness_function)(candidate_array_weights)
+        def _weights_ranking_function(candidate_array_weights: jnp.ndarray, random_key: RNGKey):
+            X_batch, y_batch = downsample_dataset(X, y, random_key=random_key, size=mini_batch_size)
+            vmap_weights_fitness_fn = jax.vmap(_single_weights_fitness_function, in_axes=(0, None, None))
+            fitness_values = vmap_weights_fitness_fn(candidate_array_weights, X_batch, y_batch)
             idx_sorted = jnp.argsort(fitness_values)
             sorted_candidates = candidate_array_weights[idx_sorted[: global_cmaes._num_best]]
             return sorted_candidates
 
         def _cmaes_body(i, carry):
             thekey, state = carry
-            key1, thekey = jax.random.split(thekey)
+            key1, key2, thekey = jax.random.split(thekey, 3)
             current_genotypes = global_cmaes.sample(state, key1)
-            sorted_samples = _weights_ranking_function(current_genotypes)
+            sorted_samples = _weights_ranking_function(current_genotypes, key2)
             state = global_cmaes.update_state(state, sorted_samples)
             return thekey, state
 
@@ -308,8 +316,7 @@ def optimize_constants_with_sgd(
     for i in range(n_gradient_steps):
         key, subkey = jax.random.split(key)
         # sample a mini-batch
-        batch_idx = jax.random.choice(subkey, num_samples, shape=(batch_size,), replace=False)
-        X_batch, y_batch = X[batch_idx], y[batch_idx]
+        X_batch, y_batch = downsample_dataset(X, y, random_key=subkey, size=batch_size)
         graph_weights, opt_states, train_losses = step_fn(graph_weights, genotype, opt_states, X_batch, y_batch)
 
     return graph_weights

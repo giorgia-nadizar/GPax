@@ -31,13 +31,15 @@ def test_cmaes_output_shape_and_type():
 
     graph_weights = cgp.get_weights(genotypes)
     prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=cgp))
-    optimized_weights = optimize_constants_with_cmaes(graph_weights, genotypes, key, X, y, prediction_fn)
-    # same keys
-    assert set(optimized_weights.keys()) == set(graph_weights.keys())
-    # check array shapes
-    for k in optimized_weights:
-        assert optimized_weights[k].shape == graph_weights[k].shape
-        assert isinstance(optimized_weights[k], jnp.ndarray)
+    for minibatch_size in [2, 10, 20, 50]:
+        optimized_weights = optimize_constants_with_cmaes(graph_weights, genotypes, key, X, y, prediction_fn,
+                                                          mini_batch_size=minibatch_size)
+        # same keys
+        assert set(optimized_weights.keys()) == set(graph_weights.keys())
+        # check array shapes
+        for k in optimized_weights:
+            assert optimized_weights[k].shape == graph_weights[k].shape
+            assert isinstance(optimized_weights[k], jnp.ndarray)
 
 
 def test_lbfgs_output_shape_and_type():
