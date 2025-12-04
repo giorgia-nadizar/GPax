@@ -160,6 +160,7 @@ def run_sym_reg_ga(config: Dict):
 
 
 if __name__ == '__main__':
+    gaussian_gens = 1_500
     conf = {
         "solver": {
             "n_nodes": 50,
@@ -167,7 +168,6 @@ if __name__ == '__main__':
         },
         "n_offspring": 90,
         "n_pop": 100,
-        "n_gens": 500,
         "seed": 0,
         "tournament_size": 3,
         "problem": "feynman_I_6_2",
@@ -185,9 +185,10 @@ if __name__ == '__main__':
         elif key == "constants_optimization":
             conf["constants_optimization"] = value
 
-    for problem in ["I_13_12","I_6_2","II_24_17"]:
+    for problem in ["I_13_12", "I_6_2", "II_24_17"]:
         conf["problem"] = f"feynman_{problem}"
-        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
+        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
+                                 (False, False, False)]:
             if not (w_f or w_in or w_pgs) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
                 continue
             conf["solver"]["weighted_inputs"] = w_in
@@ -197,8 +198,10 @@ if __name__ == '__main__':
             extra += f"_win" if w_in else ""
             extra += f"_wfn" if w_f else ""
             extra += f"_wpgs" if w_pgs else ""
-            if conf["constants_optimization"] == "adam":
-                conf["n_gens"] = int(conf["n_gens"] / 4.2)
+            if conf["constants_optimization"] == "gaussian":
+                conf["n_gens"] = gaussian_gens
+            else:
+                conf["n_gens"] = int(gaussian_gens / 4.2)
             conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
             print(conf["run_name"])
             run_sym_reg_ga(conf)
