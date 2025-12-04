@@ -76,7 +76,7 @@ def prepare_train_test_evaluation_fns(
                                                 n_gradient_steps=120,
                                                 optimizer=optax.rmsprop(1e-3, momentum=.9))
     elif const_optimizer == "cmaes":
-        constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=8)
+        constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=10)
     elif const_optimizer == "lbfgs":
         constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=5)
     else:
