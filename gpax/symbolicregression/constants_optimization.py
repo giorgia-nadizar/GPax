@@ -316,8 +316,7 @@ def optimize_constants_with_sgd(
     for i in range(n_gradient_steps):
         key, subkey = jax.random.split(key)
         # sample a mini-batch
-        batch_idx = jax.random.choice(subkey, num_samples, shape=(batch_size,), replace=False)
-        X_batch, y_batch = X[batch_idx], y[batch_idx]
+        X_batch, y_batch = downsample_dataset(X, y, random_key=subkey, size=batch_size)
         graph_weights, opt_states, train_losses = step_fn(graph_weights, genotype, opt_states, X_batch, y_batch)
 
     return graph_weights

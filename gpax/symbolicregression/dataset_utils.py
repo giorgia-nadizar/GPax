@@ -50,4 +50,7 @@ def downsample_dataset(
         replace=False
     )
 
-    return X[indices], y[indices]
+    X_batch = jnp.take(X, indices, axis=0)
+    y_batch = jnp.take(y, indices, axis=0)
+
+    return X_batch, y_batch
