@@ -19,6 +19,7 @@ def prepare_train_test_evaluation_fns(
         y_test: jnp.ndarray,
         graph_structure: GGP,
         const_optimizer: str = None,
+        long_const_optimization: bool = False,
 ) -> Tuple[Callable, Callable]:
     """
         Prepare training and testing evaluation functions for symbolic regression models.
@@ -49,8 +50,9 @@ def prepare_train_test_evaluation_fns(
             - ``"lbfgs"``: optimize using L-BFGS.
             - ``"rmsprop"``: optimize using RMSProp.
             - ``"cmaes"``: optimize using CMA-ES.
-
             Any unrecognized value defaults to no constants optimization.
+        long_const_optimization : bool, optional
+            Whether the constants are optimizer for longer or not.
 
         Returns
         -------
@@ -67,18 +69,18 @@ def prepare_train_test_evaluation_fns(
         - If a constant optimizer is specified, training proceeds by first optimizing the
           constants of the program and then evaluating accuracy.
         """
-
+    multiplier = 100 if long_const_optimization else 1
     if const_optimizer == "adam":
         constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
-                                                n_gradient_steps=100)
+                                                n_gradient_steps=100 * multiplier)
     elif const_optimizer == "rmsprop":
         constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
-                                                n_gradient_steps=120,
+                                                n_gradient_steps=120 * multiplier,
                                                 optimizer=optax.rmsprop(1e-3, momentum=.9))
     elif const_optimizer == "cmaes":
-        constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=10)
+        constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=10 * multiplier)
     elif const_optimizer == "lbfgs":
-        constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=5)
+        constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=5 * multiplier)
     else:
         constants_optimizer = None
     if constants_optimizer:
@@ -101,6 +103,7 @@ def prepare_scoring_fn(
         y_test: jnp.ndarray,
         graph_structure: GGP,
         const_optimizer: str = None,
+        long_const_optimization: bool = False,
 ) -> Callable:
     """
         Create a scoring function for symbolic regression model evaluation.
@@ -128,6 +131,8 @@ def prepare_scoring_fn(
         const_optimizer : str, optional
             Name of the constant-optimization strategy to use during training
             evaluation. See `prepare_train_test_evaluation_fns` for supported values.
+        long_const_optimization : bool, optional
+            Whether the constants are optimizer for longer or not.
 
         Returns
         -------
@@ -143,7 +148,7 @@ def prepare_scoring_fn(
           to the supplied datasets and graph structure.
         """
     train_fn, test_fn = prepare_train_test_evaluation_fns(X_train, y_train, X_test, y_test, graph_structure,
-                                                          const_optimizer)
+                                                          const_optimizer, long_const_optimization)
     return functools.partial(
         regression_scoring_fn,
         train_set_evaluation_fn=train_fn,

@@ -1,29 +1,27 @@
-import functools
 import pickle
+import sys
 import time
-
+import pandas as pd
 import jax
 import jax.numpy as jnp
-from optax import rmsprop
 from qdax.utils.metrics import CSVLogger
-from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_lbfgs, \
-    optimize_constants_with_cmaes
-from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation_with_constants_optimization, \
-    regression_accuracy_evaluation, regression_scoring_fn
+from gpax.symbolicregression.utils import prepare_scoring_fn
 
 
-def consants_optimization_post_evolution(conf):
-    file = open(f"../results/{conf['run_name']}.pickle", 'rb')
+def constants_optimization_post_evolution(conf):
+    const_optimizer = conf.get("constants_reoptimization", None)
+
+    file = open(f"../results/{conf['repertoire_path']}.pickle", 'rb')
     repertoire = pickle.load(file)
-    int_genotypes = jax.tree.map(lambda x: x.astype(int), repertoire.genotypes)
 
-    X, y = load_diabetes(return_X_y=True)
-
+    dataset_name = conf["problem"]
+    df = pd.read_csv(f"../datasets/{dataset_name}.tsv", sep="\t")
+    X = df.iloc[:, :-1].to_numpy()
+    y = df.iloc[:, -1].to_numpy()
     y = y.reshape(-1, 1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=conf["seed"])
 
@@ -44,32 +42,26 @@ def consants_optimization_post_evolution(conf):
         n_inputs=X.shape[1],
         n_outputs=1,
         n_nodes=conf["solver"]["n_nodes"],
+        n_input_constants=conf["solver"]["n_input_constants"],
         outputs_wrapper=lambda x: x,
         weighted_functions=conf["solver"].get("weighted_functions", False),
         weighted_inputs=conf["solver"].get("weighted_inputs", False),
         weighted_program_inputs=conf["solver"].get("weighted_program_inputs", False),
-        weights_mutation=False
+        weights_mutation=False,
     )
-    if conf["constants_optimization"] == "lbfgs":
-        constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=200)
-    elif conf["constants_optimization"] == "rmsprop":
-        constants_optimizer = functools.partial(optimize_constants_with_sgd, optimizer=rmsprop(1e-3, momentum=.9),
-                                                n_gradient_steps=12_000)
-    elif conf["constants_optimization"] == "cmaes":
-        constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=600)
-    else:
-        constants_optimizer = functools.partial(optimize_constants_with_sgd, n_gradient_steps=10_000)
-    train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
-                                 graph_structure=graph_structure, constants_optimization_fn=constants_optimizer,
-                                 X=X_train, y=y_train, reset_weights=True)
-    test_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_test, y=y_test)
-    scoring_fn_cgp = functools.partial(
-        regression_scoring_fn,
-        train_set_evaluation_fn=train_fn,
-        test_set_evaluation_fn=test_fn
-    )
+    key1, key2 = jax.random.split(key)
+    no_opt_scoring_fn_cgp = prepare_scoring_fn(X_train, y_train, X_test, y_test, graph_structure)
+    scoring_fn_cgp = prepare_scoring_fn(X_train, y_train, X_test, y_test, graph_structure, const_optimizer,
+                                        long_const_optimization=True)
+
+    previous_train_accuracies, previous_extra_scores = no_opt_scoring_fn_cgp(repertoire.genotypes, key1)
+    previous_best_accuracy = max(previous_train_accuracies)
+    previous_best_idx = jnp.argmax(previous_train_accuracies, axis=0)
+    previous_best_extra_scores = jax.tree.map(lambda x: x[previous_best_idx], previous_extra_scores)
+    previous_best_test_accuracy = previous_best_extra_scores["test_accuracy"]
+
     start_time = time.time()
-    train_accuracies, extra_scores = scoring_fn_cgp(int_genotypes, key)
+    train_accuracies, extra_scores = scoring_fn_cgp(repertoire.genotypes, key2)
     timelapse = time.time() - start_time
     best_accuracy = max(train_accuracies)
     best_idx = jnp.argmax(train_accuracies, axis=0)
@@ -77,47 +69,61 @@ def consants_optimization_post_evolution(conf):
     best_test_accuracy = best_extra_scores["test_accuracy"]
 
     csv_logger = CSVLogger(
-        f'../results/{conf["run_name"]}_{conf["weights"]}.csv',
-        header=["iteration", "time", "max_fitness", "test_accuracy"]
+        f'../results/{conf["run_name"]}.csv',
+        header=["iteration", "time", "max_fitness", "test_accuracy", "previous_max_fitness", "previous_test_accuracy"],
     )
     csv_logger.log({
-        "iteration": conf["n_gens"],
+        "iteration": 0,
         "time": timelapse,
         "max_fitness": best_accuracy[0],
-        "test_accuracy": best_test_accuracy[0][0]
+        "test_accuracy": best_test_accuracy[0][0],
+        "previous_max_fitness": previous_best_accuracy[0],
+        "previous_test_accuracy": previous_best_test_accuracy[0][0],
     }
     )
-    print(best_accuracy[0], best_test_accuracy[0][0])
+    print(best_accuracy[0], best_test_accuracy[0][0], previous_best_accuracy[0], previous_best_test_accuracy[0][0])
 
 
 if __name__ == '__main__':
     conf = {
         "solver": {
             "n_nodes": 50,
+            "n_input_constants": 5
         },
         "n_offspring": 90,
         "n_pop": 100,
-        "n_gens": 5_000,
         "seed": 0,
         "tournament_size": 3,
-        "problem": "diabetes",
-        "constants_optimization": False,
+        "problem": "feynman_I_6_2",
+        "scale_x": False,
+        "scale_y": True,
+        "constants_optimization": "gaussian",
+        "constants_reoptimization": "adam",
     }
-    for constants_optimization in ["adam", "lbfgs", "rmsprop", "cmaes"]:
-        for seed in range(5):
-            conf["seed"] = seed
+    args = sys.argv[1:]
+    for arg in args:
+        key, value = arg.split('=')
+        if key == "problem":
+            conf["problem"] = value
+        elif key == "seed":
+            conf["seed"] = int(value)
+        elif key == "constants_optimization":
+            conf["constants_optimization"] = value
+
+    for constants_reoptimization in ["adam", "cmaes"]:
+        for problem in ["I_13_12", "I_6_2", "II_24_17"]:
+            conf["problem"] = f"feynman_{problem}"
+            conf["constants_reoptimization"] = constants_reoptimization
             for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True)]:
-                # TODO add the re-optimization even if the weights were evolved with mutation
                 conf["solver"]["weighted_inputs"] = w_in
                 conf["solver"]["weighted_functions"] = w_f
                 conf["solver"]["weighted_program_inputs"] = w_pgs
-                conf["constants_optimization"] = constants_optimization
-                conf["weights"] = constants_optimization + "-" + ("win" if w_in else ("wfn" if w_f else "wpgs"))
-                # extra = "sgd" if conf["sgd"] else "std"
-                # extra += f"_win" if w_in else ""
-                # extra += f"_wfn" if w_f else ""
-                # extra += f"_wpgs" if w_pgs else ""
-                extra = "std"
-                conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
-                print(conf["run_name"], conf["weights"])
-                consants_optimization_post_evolution(conf)
+                extra = conf['constants_optimization']
+                extra += "_win" if w_in else ""
+                extra += "_wfn" if w_f else ""
+                extra += "_wpgs" if w_pgs else ""
+                conf["run_name"] = ("ga_" + conf["problem"] + "_" + extra
+                                    + f"_reopt-{conf['constants_reoptimization']}_" + str(conf["seed"]))
+                conf["repertoire_path"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
+                print(conf["run_name"])
+                constants_optimization_post_evolution(conf)

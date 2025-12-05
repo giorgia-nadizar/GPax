@@ -185,7 +185,8 @@ if __name__ == '__main__':
         elif key == "constants_optimization":
             conf["constants_optimization"] = value
 
-    for problem in ["I_13_12", "I_6_2", "II_24_17"]:
+    # for problem in ["I_13_12", "I_6_2", "II_24_17"]:
+    for problem in ["I_9_18", "II_6_15a"]:
         conf["problem"] = f"feynman_{problem}"
         for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
                                  (False, False, False)]:
