@@ -214,6 +214,11 @@ class GGP:
                 o0 = (i0+i1)
                 o1 = sin(i2)
             """
+        genotype = {
+            "weights": genotype["weights"],
+            "genes": jax.tree.map(lambda x: x.astype(int), genotype["genes"])
+        }
+
         inputs_mapping = inputs_mapping or {}
         if isinstance(inputs_mapping, dict):
             inputs_mapping_fn = lambda idx: inputs_mapping.get(idx, f"i{idx}")
