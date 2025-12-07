@@ -36,7 +36,10 @@ def _constants_optimization_post_evolution(conf):
     print(conf["run_name"])
     const_optimizer = conf.get("constants_reoptimization", None)
 
-    file = open(f"../results/{conf['repertoire_path']}.pickle", 'rb')
+    try:
+        file = open(f"../results/{conf['repertoire_path']}.pickle", 'rb')
+    except FileNotFoundError:
+        return
     repertoire = pickle.load(file)
 
     dataset_name = conf["problem"]
