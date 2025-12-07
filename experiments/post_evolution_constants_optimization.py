@@ -143,15 +143,15 @@ if __name__ == '__main__':
         for constants_reoptimization in ["adam", "cmaes"]:
             for problem in ["I_13_12", "I_6_2", "II_24_17", "I_9_18", "II_6_15a"]:
                 config["problem"] = f"feynman_{problem}"
-            config["constants_reoptimization"] = constants_reoptimization
-            config["solver"]["weighted_inputs"] = w_in
-            config["solver"]["weighted_functions"] = w_f
-            config["solver"]["weighted_program_inputs"] = w_pgs
-            extra = config["constants_optimization"]
-            extra += "_win" if w_in else ""
-            extra += "_wfn" if w_f else ""
-            extra += "_wpgs" if w_pgs else ""
-            config["run_name"] = ("ga_" + config["problem"] + "_" + extra
-                                  + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
-            config["repertoire_path"] = "ga_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
-            constants_optimization_post_evolution(config)
+                config["constants_reoptimization"] = constants_reoptimization
+                config["solver"]["weighted_inputs"] = w_in
+                config["solver"]["weighted_functions"] = w_f
+                config["solver"]["weighted_program_inputs"] = w_pgs
+                extra = config["constants_optimization"]
+                extra += "_win" if w_in else ""
+                extra += "_wfn" if w_f else ""
+                extra += "_wpgs" if w_pgs else ""
+                config["run_name"] = ("ga_" + config["problem"] + "_" + extra
+                                      + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
+                config["repertoire_path"] = "ga_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
+                constants_optimization_post_evolution(config)
