@@ -136,7 +136,7 @@ if __name__ == '__main__':
         elif key == "constants_optimization":
             config["constants_optimization"] = value
 
-    for w_f, w_in, w_pgs in [(False, False, False), (True, False, False), (False, True, False), (False, False, True)]:
+    for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
         for constants_reoptimization in ["adam", "cmaes"]:
             for problem in ["I_13_12", "I_6_2", "II_24_17", "I_9_18", "II_6_15a"]:
                 config["problem"] = f"feynman_{problem}"
