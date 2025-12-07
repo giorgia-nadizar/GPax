@@ -13,6 +13,27 @@ from gpax.symbolicregression.utils import prepare_scoring_fn
 
 
 def constants_optimization_post_evolution(conf):
+    if not conf["solver"]["weighted_inputs"] and not conf["solver"]["weighted_functions"] and not conf["solver"][
+        "weighted_program_inputs"]:
+        if conf["constants_optimization"] != "gaussian":
+            return
+        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True)]:
+            config["solver"]["weighted_inputs"] = w_in
+            config["solver"]["weighted_functions"] = w_f
+            config["solver"]["weighted_program_inputs"] = w_pgs
+            extra = "none"
+            extra += "_win" if w_in else ""
+            extra += "_wfn" if w_f else ""
+            extra += "_wpgs" if w_pgs else ""
+            config["run_name"] = ("ga_" + config["problem"] + "_" + extra
+                                  + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
+            _constants_optimization_post_evolution(conf)
+    else:
+        _constants_optimization_post_evolution(conf)
+
+
+def _constants_optimization_post_evolution(conf):
+    print(conf["run_name"])
     const_optimizer = conf.get("constants_reoptimization", None)
 
     file = open(f"../results/{conf['repertoire_path']}.pickle", 'rb')
@@ -57,7 +78,7 @@ def constants_optimization_post_evolution(conf):
     previous_train_accuracies, previous_extra_scores = no_opt_scoring_fn_cgp(repertoire.genotypes, key1)
     previous_best_accuracy = max(previous_train_accuracies)
     previous_best_idx = jnp.argmax(previous_train_accuracies, axis=0)
-    previous_best_extra_scores = jax.tree.map(lambda x: x[previous_best_idx], previous_extra_scores)
+    previous_best_extra_scores = jax.tree.map(lambda x: x[previous_best_idx][0], previous_extra_scores)
     previous_best_test_accuracy = previous_best_extra_scores["test_accuracy"]
 
     start_time = time.time()
@@ -65,27 +86,32 @@ def constants_optimization_post_evolution(conf):
     timelapse = time.time() - start_time
     best_accuracy = max(train_accuracies)
     best_idx = jnp.argmax(train_accuracies, axis=0)
-    best_extra_scores = jax.tree.map(lambda x: x[best_idx], extra_scores)
+    best_extra_scores = jax.tree.map(lambda x: x[best_idx][0], extra_scores)
     best_test_accuracy = best_extra_scores["test_accuracy"]
+    best_updated_params = best_extra_scores["updated_params"]
+    equation = graph_structure.get_readable_expression(best_updated_params)
 
     csv_logger = CSVLogger(
         f'../results/{conf["run_name"]}.csv',
-        header=["iteration", "time", "max_fitness", "test_accuracy", "previous_max_fitness", "previous_test_accuracy"],
+        header=["iteration", "time", "max_fitness", "test_accuracy", "previous_max_fitness", "previous_test_accuracy",
+                "equation"],
     )
     csv_logger.log({
         "iteration": 0,
         "time": timelapse,
         "max_fitness": best_accuracy[0],
-        "test_accuracy": best_test_accuracy[0][0],
+        "test_accuracy": best_test_accuracy[0],
         "previous_max_fitness": previous_best_accuracy[0],
-        "previous_test_accuracy": previous_best_test_accuracy[0][0],
+        "previous_test_accuracy": previous_best_test_accuracy[0],
+        "equation": equation,
     }
     )
-    print(best_accuracy[0], best_test_accuracy[0][0], previous_best_accuracy[0], previous_best_test_accuracy[0][0])
+    print(best_accuracy[0], best_test_accuracy[0], previous_best_accuracy[0], previous_best_test_accuracy[0],
+          equation)
 
 
 if __name__ == '__main__':
-    conf = {
+    config = {
         "solver": {
             "n_nodes": 50,
             "n_input_constants": 5
@@ -104,26 +130,25 @@ if __name__ == '__main__':
     for arg in args:
         key, value = arg.split('=')
         if key == "problem":
-            conf["problem"] = value
+            config["problem"] = value
         elif key == "seed":
-            conf["seed"] = int(value)
+            config["seed"] = int(value)
         elif key == "constants_optimization":
-            conf["constants_optimization"] = value
+            config["constants_optimization"] = value
 
-    for constants_reoptimization in ["adam", "cmaes"]:
-        for problem in ["I_13_12", "I_6_2", "II_24_17"]:
-            conf["problem"] = f"feynman_{problem}"
-            conf["constants_reoptimization"] = constants_reoptimization
-            for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True)]:
-                conf["solver"]["weighted_inputs"] = w_in
-                conf["solver"]["weighted_functions"] = w_f
-                conf["solver"]["weighted_program_inputs"] = w_pgs
-                extra = conf['constants_optimization']
-                extra += "_win" if w_in else ""
-                extra += "_wfn" if w_f else ""
-                extra += "_wpgs" if w_pgs else ""
-                conf["run_name"] = ("ga_" + conf["problem"] + "_" + extra
-                                    + f"_reopt-{conf['constants_reoptimization']}_" + str(conf["seed"]))
-                conf["repertoire_path"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
-                print(conf["run_name"])
-                constants_optimization_post_evolution(conf)
+    for w_f, w_in, w_pgs in [(False, False, False), (True, False, False), (False, True, False), (False, False, True)]:
+        for constants_reoptimization in ["adam", "cmaes"]:
+            for problem in ["I_13_12", "I_6_2", "II_24_17", "I_9_18", "II_6_15a"]:
+                config["problem"] = f"feynman_{problem}"
+            config["constants_reoptimization"] = constants_reoptimization
+            config["solver"]["weighted_inputs"] = w_in
+            config["solver"]["weighted_functions"] = w_f
+            config["solver"]["weighted_program_inputs"] = w_pgs
+            extra = config["constants_optimization"]
+            extra += "_win" if w_in else ""
+            extra += "_wfn" if w_f else ""
+            extra += "_wpgs" if w_pgs else ""
+            config["run_name"] = ("ga_" + config["problem"] + "_" + extra
+                                  + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
+            config["repertoire_path"] = "ga_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
+            constants_optimization_post_evolution(config)
