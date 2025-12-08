@@ -154,7 +154,7 @@ if __name__ == '__main__':
         "tournament_size": 3,
         "problem": "feynman_I_6_2",
         "scale_x": False,
-        "scale_y": True,
+        "scale_y": False,
         "constants_optimization": "gaussian",
     }
     args = sys.argv[1:]
