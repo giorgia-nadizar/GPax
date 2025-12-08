@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,9475.963749408722,0.51668763,0.5188934,0.51938426,0.52156794,o0 = <lambda>((cos((sin((i2--0.7426785))+(0.54956746*i3)))+-0.084691994))
