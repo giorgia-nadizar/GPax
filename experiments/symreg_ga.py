@@ -44,7 +44,8 @@ def run_sym_reg_ga(config: Dict):
         weighted_inputs=config["solver"].get("weighted_inputs", False),
         weighted_program_inputs=config["solver"].get("weighted_program_inputs", False),
         weights_mutation=const_optimizer in ["gaussian", "automl0"],
-        weights_mutation_type="automl0" if const_optimizer == "automl0" else "gaussian"
+        weights_mutation_type="automl0" if const_optimizer == "automl0" else "gaussian",
+        weights_initialization=config["solver"].get("weights_initialization", "uniform"),
     )
     print(graph_structure)
 
