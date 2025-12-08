@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.utils import prepare_scoring_fn
+from gpax.symbolicregression.utils import prepare_scoring_fn, load_dataset
 
 
 def constants_optimization_post_evolution(conf):
@@ -42,22 +42,11 @@ def _constants_optimization_post_evolution(conf):
         return
     repertoire = pickle.load(file)
 
-    dataset_name = conf["problem"]
-    df = pd.read_csv(f"../datasets/{dataset_name}.tsv", sep="\t")
-    X = df.iloc[:, :-1].to_numpy()
-    y = df.iloc[:, -1].to_numpy()
-    y = y.reshape(-1, 1)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=conf["seed"])
-
-    # Create scalers
-    if conf.get("scale_x", False):
-        X_scaler = StandardScaler()
-        X_train = X_scaler.fit_transform(X_train)
-        X_test = X_scaler.transform(X_test)
-    if conf.get("scale_y", False):
-        y_scaler = StandardScaler()
-        y_train = y_scaler.fit_transform(y_train)
-        y_test = y_scaler.transform(y_test)
+    X_train, X_test, y_train, y_test = load_dataset(conf["problem"],
+                                                    scale_x=conf.get("scale_x", False),
+                                                    scale_y=conf.get("scale_y", False),
+                                                    random_state=conf["seed"]
+                                                    )
 
     key = jax.random.key(conf["seed"])
 
