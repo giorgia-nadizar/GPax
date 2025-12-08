@@ -144,6 +144,9 @@ def run_sym_reg_ga(config: Dict):
 
 if __name__ == '__main__':
     gaussian_gens = 1_500
+    adam_gens = int(gaussian_gens / 4.2)
+    cmaes_gens = adam_gens
+    # cmaes_gens = int(gaussian_gens / 7.4)
     conf = {
         "solver": {
             "n_nodes": 50,
@@ -181,10 +184,12 @@ if __name__ == '__main__':
             extra += f"_win" if w_in else ""
             extra += f"_wfn" if w_f else ""
             extra += f"_wpgs" if w_pgs else ""
-            if conf["constants_optimization"] == "gaussian":
-                conf["n_gens"] = gaussian_gens
+            if conf["constants_optimization"] == "adam":
+                conf["n_gens"] = adam_gens
+            elif conf["constants_optimization"] == "cmaes":
+                conf["n_gens"] = cmaes_gens
             else:
-                conf["n_gens"] = int(gaussian_gens / 4.2)
+                conf["n_gens"] = gaussian_gens
             conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
             print(conf["run_name"])
             run_sym_reg_ga(conf)

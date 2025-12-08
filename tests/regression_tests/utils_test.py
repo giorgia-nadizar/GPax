@@ -81,7 +81,7 @@ def test_prepare_eval_fns_cmaes_optimizer(sample_data):
     assert train_fn.func is regression_accuracy_evaluation_with_constants_optimization
     opt_fn = train_fn.keywords["constants_optimization_fn"]
     assert opt_fn.func is optimize_constants_with_cmaes
-    assert opt_fn.keywords["max_iter"] == 10
+    assert opt_fn.keywords["max_iter"] == 20
 
 
 def test_prepare_eval_fns_lbfgs_optimizer(sample_data):
