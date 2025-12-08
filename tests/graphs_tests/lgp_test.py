@@ -60,6 +60,46 @@ def test_genome_bounds() -> None:
     _test_bounds(crossed_genome)
 
 
+@pytest.mark.parametrize("init_type", ["uniform", "ones"])
+@pytest.mark.parametrize("weighted_functions", [True, False])
+@pytest.mark.parametrize("weighted_inputs", [True, False])
+def test_weights_initialization(init_type, weighted_functions, weighted_inputs) -> None:
+    key = jax.random.PRNGKey(0)
+    n_lines = 4
+    n_input_constants = 5
+    lgp = LGP(
+        n_inputs=2,
+        n_outputs=4,
+        n_program_lines=n_lines,
+        n_input_constants=n_input_constants,
+        weighted_functions=weighted_functions,
+        weighted_inputs=weighted_inputs,
+        weights_initialization=init_type,
+    )
+    weights = lgp.init_weights(key)
+
+    # Check shapes
+    assert weights["program_inputs"].shape[0] == n_input_constants
+    assert weights["functions"].shape[0] == n_lines
+    assert weights["inputs1"].shape[0] == n_lines
+    assert weights["inputs2"].shape[0] == n_lines
+
+    # Check values for "ones"
+    if init_type == "ones":
+        assert jnp.all(weights["functions"] == 1)
+        assert jnp.all(weights["inputs1"] == 1)
+        assert jnp.all(weights["inputs2"] == 1)
+
+    # Check values for "uniform"
+    if init_type == "uniform":
+        assert jnp.all(weights["functions"] <= 1)
+        assert jnp.all(weights["functions"] >= -1)
+        assert jnp.all(weights["inputs1"] <= 1)
+        assert jnp.all(weights["inputs1"] >= -1)
+        assert jnp.all(weights["inputs2"] <= 1)
+        assert jnp.all(weights["inputs2"] >= -1)
+
+
 def test_weights_changes_after_mutation() -> None:
     """Test that the weights of a LGP genome change (or not) correctly given the set flag.
     """

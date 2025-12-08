@@ -254,6 +254,46 @@ def test_readable_expression() -> None:
     print(cgp.get_readable_expression(cgp_genome, outputs_mapping=outputs_mapping_dict), "\n")
 
 
+@pytest.mark.parametrize("init_type", ["uniform", "ones"])
+@pytest.mark.parametrize("weighted_functions", [True, False])
+@pytest.mark.parametrize("weighted_inputs", [True, False])
+def test_weights_initialization(init_type, weighted_functions, weighted_inputs) -> None:
+    key = jax.random.PRNGKey(0)
+    n_nodes = 4
+    n_input_constants = 5
+    cgp = CGP(
+        n_inputs=2,
+        n_outputs=4,
+        n_nodes=n_nodes,
+        n_input_constants=n_input_constants,
+        weighted_functions=weighted_functions,
+        weighted_inputs=weighted_inputs,
+        weights_initialization=init_type,
+    )
+    weights = cgp.init_weights(key)
+
+    # Check shapes
+    assert weights["program_inputs"].shape[0] == n_input_constants
+    assert weights["functions"].shape[0] == n_nodes
+    assert weights["inputs1"].shape[0] == n_nodes
+    assert weights["inputs2"].shape[0] == n_nodes
+
+    # Check values for "ones"
+    if init_type == "ones":
+        assert jnp.all(weights["functions"] == 1)
+        assert jnp.all(weights["inputs1"] == 1)
+        assert jnp.all(weights["inputs2"] == 1)
+
+    # Check values for "uniform"
+    if init_type == "uniform":
+        assert jnp.all(weights["functions"] <= 1)
+        assert jnp.all(weights["functions"] >= -1)
+        assert jnp.all(weights["inputs1"] <= 1)
+        assert jnp.all(weights["inputs1"] >= -1)
+        assert jnp.all(weights["inputs2"] <= 1)
+        assert jnp.all(weights["inputs2"] >= -1)
+
+
 def test_weights_update() -> None:
     """Test that the weights update works correctly.
             """

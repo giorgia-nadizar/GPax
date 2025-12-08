@@ -29,8 +29,9 @@ class GGP:
         weighted_program_inputs: whether the genotype will contain optimizable inputs for the program.
         weighted_functions: whether the genotype will contain weighting factors for each node/program line.
         weighted_inputs: whether the genotype will contain weighting factors for each connection.
+        weights_initialization: how to initialize the weights before their optimization (either `uniform` or `ones`).
         weights_mutation: whether weights will undergo mutation or not.
-        weights_mutation_type: what type of mutation is used (is weights_mutation is True) to mutate the weights.
+        weights_mutation_type: what type of mutation is used (if weights_mutation is True) to mutate the weights.
     """
 
     n_inputs: int
@@ -41,6 +42,7 @@ class GGP:
     weighted_program_inputs: bool = False
     weighted_functions: bool = False
     weighted_inputs: bool = False
+    weights_initialization: str = "uniform"
     weights_mutation: bool = True
     weights_mutation_type: str = "gaussian"
 
@@ -252,9 +254,13 @@ class GGP:
     def init_weights(self, key: RNGKey) -> Dict[str, jnp.ndarray]:
         """Initialize the weights' dictionary."""
         key1, key2 = random.split(key)
-        random_weights = random.uniform(key=key1, shape=(self.n_functions * 3,)) * 2 - 1
-        random_node_weights, random_input_weights1, random_input_weights2 = jnp.split(
-            random_weights, 3)
+        if self.weights_initialization == "uniform":
+            random_weights = random.uniform(key=key1, shape=(self.n_functions * 3,)) * 2 - 1
+        elif self.weights_initialization == "ones":
+            random_weights = jnp.ones(shape=(self.n_functions * 3,), dtype=jnp.float32)
+        else:
+            raise NotImplementedError
+        random_node_weights, random_input_weights1, random_input_weights2 = jnp.split(random_weights, 3)
         program_inputs = random.uniform(key=key2, shape=(self.n_input_constants,)) * 2 - 1
         if not self.weighted_program_inputs:
             program_inputs = program_inputs.at[:2].set(jnp.asarray([0.1, 1.0]))
