@@ -1,12 +1,9 @@
 import pickle
 import sys
 import time
-import pandas as pd
 import jax
 import jax.numpy as jnp
 from qdax.utils.metrics import CSVLogger
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.symbolicregression.utils import prepare_scoring_fn, load_dataset
@@ -52,7 +49,7 @@ def _constants_optimization_post_evolution(conf):
 
     # Init the CGP policy graph with default values
     graph_structure = CGP(
-        n_inputs=X.shape[1],
+        n_inputs=X_train.shape[1],
         n_outputs=1,
         n_nodes=conf["solver"]["n_nodes"],
         n_input_constants=conf["solver"]["n_input_constants"],
