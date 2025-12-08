@@ -2,6 +2,11 @@ import functools
 from typing import Callable, Tuple
 
 import optax
+import pandas as pd
+import numpy as np
+from sklearn.datasets import load_diabetes
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 from gpax.graphs.graph_genetic_programming import GGP
 import jax.numpy as jnp
@@ -10,6 +15,66 @@ from gpax.symbolicregression.constants_optimization import optimize_constants_wi
     optimize_constants_with_lbfgs
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, \
     regression_accuracy_evaluation_with_constants_optimization, regression_scoring_fn
+
+
+def load_dataset(dataset_name: str,
+                 scale_x: bool = False,
+                 scale_y: bool = False,
+                 test_split: float = 0.25,
+                 random_state: int = 0,
+                 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Load a dataset, split into train/test sets, and optionally scale features and targets.
+
+    Parameters
+    ----------
+    dataset_name : str
+        Name of the dataset ('diabetes', Feynman TSV, or custom CSV).
+    scale_x : bool, default=False
+        If True, standardize input features.
+    scale_y : bool
+        If True, standardize target values, default=False.
+    test_split : float, default=0.25
+        Fraction of data for testing (ignored for pre-split CSVs).
+    random_state : int, default=0
+        Seed for reproducible train/test split.
+
+    Returns
+    -------
+    X_train, X_test : np.ndarray
+        Training and testing features.
+    y_train, y_test : np.ndarray
+        Training and testing targets, reshaped to (-1, 1).
+    """
+    if "diabetes" in dataset_name:
+        X, y = load_diabetes(return_X_y=True)
+        y = y.reshape(-1, 1)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_split, random_state=random_state)
+    elif "feynman" in dataset_name:
+        df = pd.read_csv(f"../datasets/{dataset_name}.tsv", sep="\t")
+        X = df.iloc[:, :-1].to_numpy()
+        y = df.iloc[:, -1].to_numpy()
+        y = y.reshape(-1, 1)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_split, random_state=random_state)
+    else:
+        df_train = pd.read_csv(f"../datasets/{dataset_name}_train.csv")
+        df_test = pd.read_csv(f"../datasets/{dataset_name}_test.csv")
+        X_train = df_train.drop(columns=["target"], inplace=False).to_numpy()
+        X_test = df_test.drop(columns=["target"], inplace=False).to_numpy()
+        y_train = df_train["target"].to_numpy().reshape(-1, 1)
+        y_test = df_test["target"].to_numpy().reshape(-1, 1)
+
+    # Create scalers
+    if scale_x:
+        X_scaler = StandardScaler()
+        X_train = X_scaler.fit_transform(X_train)
+        X_test = X_scaler.transform(X_test)
+    if scale_y:
+        y_scaler = StandardScaler()
+        y_train = y_scaler.fit_transform(y_train)
+        y_test = y_scaler.transform(y_test)
+
+    return X_train, X_test, y_train, y_test
 
 
 def prepare_train_test_evaluation_fns(

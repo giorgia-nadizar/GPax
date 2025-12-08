@@ -5,12 +5,13 @@ import jax.numpy as jnp
 import pytest
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.graphs.graph_genetic_programming import GGP
+import numpy as np
 from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, \
     regression_accuracy_evaluation_with_constants_optimization, regression_scoring_fn
-from gpax.symbolicregression.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn, prepare_rescoring_fn
+from gpax.symbolicregression.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn, prepare_rescoring_fn, \
+    load_dataset
 
 
 @pytest.fixture
@@ -80,7 +81,7 @@ def test_prepare_eval_fns_cmaes_optimizer(sample_data):
     assert train_fn.func is regression_accuracy_evaluation_with_constants_optimization
     opt_fn = train_fn.keywords["constants_optimization_fn"]
     assert opt_fn.func is optimize_constants_with_cmaes
-    assert opt_fn.keywords["max_iter"] == 8
+    assert opt_fn.keywords["max_iter"] == 10
 
 
 def test_prepare_eval_fns_lbfgs_optimizer(sample_data):
@@ -168,3 +169,62 @@ def test_prepare_rescoring_fn(sample_data):
 
     resulting_fitness = rescoring_fn(population, key)
     assert jnp.allclose(resulting_fitness, 0)
+
+
+@pytest.mark.parametrize("dataset_name", ["diabetes", "feynman_I_6_2", "nikuradse_1"])
+@pytest.mark.parametrize("scale_x", [True, False])
+@pytest.mark.parametrize("scale_y", [True, False])
+def test_load_dataset_shapes(dataset_name, scale_x, scale_y, monkeypatch):
+    """
+    Test that load_dataset returns arrays of correct shape.
+    """
+    # Mock reading files for feynman and custom datasets
+    if "feynman" in dataset_name:
+        import pandas as pd
+        df_mock = pd.DataFrame(np.random.rand(100, 5), columns=[f"x{i}" for i in range(4)] + ["y"])
+        monkeypatch.setattr("pandas.read_csv", lambda *args, **kwargs: df_mock)
+    elif "nikuradse" in dataset_name:
+        import pandas as pd
+        df_train = pd.DataFrame(np.random.rand(80, 5), columns=[f"x{i}" for i in range(4)] + ["target"])
+        df_test = pd.DataFrame(np.random.rand(20, 5), columns=[f"x{i}" for i in range(4)] + ["target"])
+
+        def mock_read_csv(path, *args, **kwargs):
+            if "train" in path:
+                return df_train
+            else:
+                return df_test
+
+        monkeypatch.setattr("pandas.read_csv", mock_read_csv)
+
+    X_train, X_test, y_train, y_test = load_dataset(
+        dataset_name=dataset_name,
+        scale_x=scale_x,
+        scale_y=scale_y,
+        test_split=0.2,
+        random_state=42
+    )
+
+    # Check shapes
+    assert X_train.shape[0] > 0
+    assert X_test.shape[0] > 0
+    assert X_train.shape[1] == X_test.shape[1]
+    assert y_train.shape[0] == X_train.shape[0]
+    assert y_test.shape[0] == X_test.shape[0]
+    assert y_train.shape[1] == 1
+    assert y_test.shape[1] == 1
+
+    # Check scaling if requested
+    if scale_x:
+        assert np.isclose(np.mean(X_train, axis=0), 0, atol=1e-6).all()
+        assert np.isclose(np.std(X_train, axis=0), 1, atol=1e-6).all()
+    if scale_y:
+        assert np.isclose(np.mean(y_train), 0, atol=1e-6)
+        assert np.isclose(np.std(y_train), 1, atol=1e-6)
+
+
+def test_invalid_dataset():
+    """
+    Test that an invalid dataset raises an error (FileNotFoundError or similar)
+    """
+    with pytest.raises(Exception):
+        load_dataset("nonexistent_dataset", scale_x=False, scale_y=False)

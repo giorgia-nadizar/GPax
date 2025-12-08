@@ -4,47 +4,29 @@ import sys
 import time
 from typing import Dict
 
-import pandas as pd
 import jax
 import jax.numpy as jnp
 from qdax.core.containers.ga_repertoire import GARepertoire
 
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.utils.metrics import CSVLogger
-from sklearn.datasets import load_diabetes
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 from gpax.evolution.tournament_selector import TournamentSelector
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
 from gpax.evolution.evolution_metrics import custom_ga_metrics
 from gpax.symbolicregression.dataset_utils import downsample_dataset
-from gpax.symbolicregression.utils import prepare_scoring_fn, prepare_rescoring_fn
+from gpax.symbolicregression.utils import prepare_scoring_fn, prepare_rescoring_fn, load_dataset
 
 
 def run_sym_reg_ga(config: Dict):
     const_optimizer = config.get("constants_optimization", None)
 
-    dataset_name = config["problem"]
-    df = pd.read_csv(f"../datasets/{dataset_name}.tsv", sep="\t")
-    X = df.iloc[:, :-1].to_numpy()
-    y = df.iloc[:, -1].to_numpy()
-    # X, y = load_diabetes(return_X_y=True)
-
-    y = y.reshape(-1, 1)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=config["seed"])
-
-    # Create scalers
-    if config.get("scale_x", False):
-        X_scaler = StandardScaler()
-        X_train = X_scaler.fit_transform(X_train)
-        X_test = X_scaler.transform(X_test)
-    if config.get("scale_y", False):
-        y_scaler = StandardScaler()
-        y_train = y_scaler.fit_transform(y_train)
-        y_test = y_scaler.transform(y_test)
-
+    X_train, X_test, y_train, y_test = load_dataset(config["problem"],
+                                                    scale_x=config.get("scale_x", False),
+                                                    scale_y=config.get("scale_y", False),
+                                                    random_state=config["seed"]
+                                                    )
     key = jax.random.key(config["seed"])
     sample_key, key = jax.random.split(key)
 
@@ -53,7 +35,7 @@ def run_sym_reg_ga(config: Dict):
 
     # Init the CGP policy graph with default values
     graph_structure = CGP(
-        n_inputs=X.shape[1],
+        n_inputs=X_train.shape[1],
         n_outputs=1,
         n_nodes=config["solver"]["n_nodes"],
         n_input_constants=config["solver"]["n_input_constants"],
