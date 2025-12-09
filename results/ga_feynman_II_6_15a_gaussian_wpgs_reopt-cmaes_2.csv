@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,2616.520489215851,0.9054512,0.9046541,0.90794545,0.90608126,o0 = <lambda>((((exp(sin((i2+i2)))*((i5+(cos(i0)+i1))*0.24734166))-1.2291698)*(exp(sin((i2+i2)))*((i5+(cos(i0)+i1))*0.24734166))))

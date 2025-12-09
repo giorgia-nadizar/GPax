@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,2518.678772211075,0.72135204,0.7178038,0.72135204,0.7178038,o0 = <lambda>(((i2*abs(((i1-cos(abs(i4)))-cos(i0))))-(i3-i6)))

@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,676.6817066669464,0.7425808,0.74318635,0.74256134,0.74315643,o0 = <lambda>(sin(((i1+-0.45378903)+(i1*sqrt(cos((sqrt(i0)+-0.49439287)))))))

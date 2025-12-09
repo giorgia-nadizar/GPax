@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,2616.945100069046,0.80547357,0.8086345,0.80728793,0.81022286,o0 = <lambda>((i5*(sin((i1*((log((i2*-0.27265283))+(((i5-i1)-i0)*-0.092804596))-sqrt(((i2*-0.27265283)+0.39031088)))))-((log((i2*-0.27265283))+(((i5-i1)-i0)*-0.092804596))-sqrt(((i2*-0.27265283)+0.39031088))))))

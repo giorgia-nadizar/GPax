@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,678.4244248867035,0.97674525,0.9768623,0.9767498,0.9768483,o0 = <lambda>((sin(abs((i1--0.76947767)))*((-0.66674334+i0)-exp(i1))))
