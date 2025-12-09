@@ -150,7 +150,8 @@ if __name__ == '__main__':
     conf = {
         "solver": {
             "n_nodes": 50,
-            "n_input_constants": 5
+            "n_input_constants": 5,
+            "weights_initialization": "ones"
         },
         "n_offspring": 90,
         "n_pop": 100,
@@ -176,10 +177,11 @@ if __name__ == '__main__':
     for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
                     "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min", "nikuradse"]:
         conf["problem"] = problem
-        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
-                                 (False, False, False)]:
-            if not (w_f or w_in or w_pgs) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
-                continue
+        # for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
+        #                          (False, False, False)]:
+        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), ]:
+            # if not (w_f or w_in or w_pgs) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
+            #     continue
             conf["solver"]["weighted_inputs"] = w_in
             conf["solver"]["weighted_functions"] = w_f
             conf["solver"]["weighted_program_inputs"] = w_pgs
@@ -187,6 +189,7 @@ if __name__ == '__main__':
             extra += f"_win" if w_in else ""
             extra += f"_wfn" if w_f else ""
             extra += f"_wpgs" if w_pgs else ""
+            extra += "_1" if conf["solver"].get("weights_initialization") == "ones" else ""
             if conf["constants_optimization"] == "adam":
                 conf["n_gens"] = adam_gens
             elif conf["constants_optimization"] == "cmaes":
