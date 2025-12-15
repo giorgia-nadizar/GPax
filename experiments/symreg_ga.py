@@ -175,7 +175,7 @@ if __name__ == '__main__':
     # for problem in ["I_13_12", "I_6_2", "II_24_17", "I_9_18", "II_6_15a"]:
     #     conf["problem"] = f"feynman_{problem}"
     for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
-                    "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min", "nikuradse"]:
+                    "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min"]:
         conf["problem"] = problem
         # for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
         #                          (False, False, False)]:

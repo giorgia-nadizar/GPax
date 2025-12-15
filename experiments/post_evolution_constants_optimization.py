@@ -131,7 +131,7 @@ if __name__ == '__main__':
                     constants_reoptimization != config["constants_optimization"]):
                 continue
             for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
-                            "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min", "nikuradse"]:
+                            "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min"]:
                 config["problem"] = problem
                 config["constants_reoptimization"] = constants_reoptimization
                 config["solver"]["weighted_inputs"] = w_in
