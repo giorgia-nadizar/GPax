@@ -103,7 +103,8 @@ if __name__ == '__main__':
     config = {
         "solver": {
             "n_nodes": 50,
-            "n_input_constants": 5
+            "n_input_constants": 5,
+            "weights_initialization": "uniform"
         },
         "n_offspring": 90,
         "n_pop": 100,
@@ -141,6 +142,7 @@ if __name__ == '__main__':
                 extra += "_win" if w_in else ""
                 extra += "_wfn" if w_f else ""
                 extra += "_wpgs" if w_pgs else ""
+                extra += "_1" if config["solver"].get("weights_initialization") == "ones" else ""
                 config["run_name"] = ("ga_" + config["problem"] + "_" + extra
                                       + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
                 config["repertoire_path"] = "ga_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
