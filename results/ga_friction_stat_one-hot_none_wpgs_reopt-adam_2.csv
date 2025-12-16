@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,329.5054657459259,0.52153504,-0.04903376,0.004910171,0.0056989193,o0 = <lambda>((abs(abs(1.7835985))*cos((sqrt(i0)*1.6302372))))

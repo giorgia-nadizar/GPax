@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,641.8607585430145,0.0,-0.016588211,-8.522821,-6.277729,o0 = <lambda>(nan*sqrt(nan*sqrt(i56)))

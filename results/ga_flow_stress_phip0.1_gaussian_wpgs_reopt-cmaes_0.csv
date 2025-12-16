@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,303.21771216392517,0.0,-0.0063900948,-5060.3896,-7247.867,o0 = <lambda>(exp(exp((cos((nan+i0))+nan))))

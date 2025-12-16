@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,284.3141188621521,0.0,-0.143376,-57.193718,-53.53917,o0 = <lambda>(exp(exp(abs(nan))))

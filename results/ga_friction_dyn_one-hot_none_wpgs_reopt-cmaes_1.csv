@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,186.65162897109985,0.0,-0.0055463314,-9.405613e-05,0.0032747388,o0 = <lambda>(sin((cos((i1*nan))-sqrt(cos(nan)))))
