@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,425.7920024394989,0.0,-0.002977252,-0.0067743063,-0.0021197796,o0 = <lambda>(cos(nan*abs(nan*sin(nan*0.091730356))))
