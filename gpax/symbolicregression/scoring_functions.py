@@ -53,8 +53,8 @@ def predict_regression_output(
         """
     parallel_apply = jax.vmap(jax.jit(graph_structure.apply), in_axes=(None, 0, None))
     prediction = parallel_apply(genotype, X, graph_weights)
-    pred = jnp.nan_to_num(prediction, nan=0.0, posinf=1e6, neginf=-1e6)
-    return jnp.clip(pred, -1e6, 1e6)
+    pred = jnp.nan_to_num(prediction, nan=0.0, posinf=max_norm, neginf=-max_norm)
+    return jnp.clip(pred, -max_norm, max_norm)
 
 
 def regression_accuracy_evaluation(
