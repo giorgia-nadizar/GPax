@@ -172,8 +172,10 @@ if __name__ == '__main__':
         elif key == "constants_optimization":
             conf["constants_optimization"] = value
 
-    for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
-                    "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min"]:
+    # for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
+    #                 "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min"]:
+    for problem in ["mtr/rf1", "mtr/scm20d", "mtr/edm", "mtr/sf1", "mtr/sf2", "mtr/jura", "mtr/wq", "mtr/enb",
+                    "mtr/slump", "mtr/andro", "mtr/scfp"]:
         conf["problem"] = problem
         for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
                                  (False, False, False)]:
@@ -193,6 +195,6 @@ if __name__ == '__main__':
                 conf["n_gens"] = cmaes_gens
             else:
                 conf["n_gens"] = gaussian_gens
-            conf["run_name"] = "ga_" + conf["problem"] + "_" + extra + "_" + str(conf["seed"])
+            conf["run_name"] = "ga_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
             print(conf["run_name"])
             run_sym_reg_ga(conf)
