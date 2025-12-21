@@ -103,3 +103,36 @@ def test_sgd_output_shape_and_type():
         for k in optimized_weights:
             assert optimized_weights[k].shape == graph_weights[k].shape
             assert isinstance(optimized_weights[k], jnp.ndarray)
+
+
+def test_multiregression_constants_optimization():
+    """ Ensure the constants optimization works also for multiple outputs. """
+    n_genomes, n_features, n_samples, n_outputs = 3, 5, 20, 3
+    X = jnp.ones((n_samples, n_features))
+    y = jnp.ones((n_samples, n_outputs))
+
+    cgp = CGP(
+        n_inputs=n_features,
+        n_outputs=n_outputs,
+        n_nodes=10,
+        weighted_functions=True,
+    )
+    key = jax.random.key(42)
+
+    # init genomes
+    init_key, key = jax.random.split(key)
+    init_keys = jax.random.split(init_key, n_genomes)
+    genotypes = jax.vmap(jax.jit(cgp.init))(init_keys)
+
+    graph_weights = cgp.get_weights(genotypes)
+    prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=cgp))
+    for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3, momentum=0.9)]:
+        optimized_weights = optimize_constants_with_sgd(graph_weights, genotypes, key, X, y, prediction_fn,
+                                                        optimizer=optimizer, batch_size=n_samples)
+
+        # same keys
+        assert set(optimized_weights.keys()) == set(graph_weights.keys())
+        # check array shapes
+        for k in optimized_weights:
+            assert optimized_weights[k].shape == graph_weights[k].shape
+            assert isinstance(optimized_weights[k], jnp.ndarray)
