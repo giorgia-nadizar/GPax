@@ -171,56 +171,106 @@ def test_prepare_rescoring_fn(sample_data):
     assert jnp.allclose(resulting_fitness, 0)
 
 
-@pytest.mark.parametrize("dataset_name", ["diabetes", "feynman_I_6_2", "nikuradse_1"])
+@pytest.mark.parametrize(
+    "dataset_name, expected_targets",
+    [
+        ("diabetes", 1),
+        ("feynman_I_6_2", 1),
+        ("nikuradse_1", 1),
+        ("mtr/edm", 2),  # edm has 2 targets
+    ],
+)
 @pytest.mark.parametrize("scale_x", [True, False])
 @pytest.mark.parametrize("scale_y", [True, False])
-def test_load_dataset_shapes(dataset_name, scale_x, scale_y, monkeypatch):
+def test_load_dataset_shapes(dataset_name, expected_targets, scale_x, scale_y, monkeypatch):
     """
     Test that load_dataset returns arrays of correct shape.
     """
-    # Mock reading files for feynman and custom datasets
+
+    # ---- Mock feynman TSV ----
     if "feynman" in dataset_name:
         import pandas as pd
-        df_mock = pd.DataFrame(np.random.rand(100, 5), columns=[f"x{i}" for i in range(4)] + ["y"])
+
+        df_mock = pd.DataFrame(
+            np.random.rand(100, 5),
+            columns=[f"x{i}" for i in range(4)] + ["y"],
+        )
         monkeypatch.setattr("pandas.read_csv", lambda *args, **kwargs: df_mock)
+
+    # ---- Mock custom train/test CSV ----
     elif "nikuradse" in dataset_name:
         import pandas as pd
-        df_train = pd.DataFrame(np.random.rand(80, 5), columns=[f"x{i}" for i in range(4)] + ["target"])
-        df_test = pd.DataFrame(np.random.rand(20, 5), columns=[f"x{i}" for i in range(4)] + ["target"])
+
+        df_train = pd.DataFrame(
+            np.random.rand(80, 5),
+            columns=[f"x{i}" for i in range(4)] + ["target"],
+        )
+        df_test = pd.DataFrame(
+            np.random.rand(20, 5),
+            columns=[f"x{i}" for i in range(4)] + ["target"],
+        )
 
         def mock_read_csv(path, *args, **kwargs):
-            if "train" in path:
-                return df_train
-            else:
-                return df_test
+            return df_train if "train" in path else df_test
 
         monkeypatch.setattr("pandas.read_csv", mock_read_csv)
 
+    # ---- Mock MTR dataset ----
+    elif "mtr" in dataset_name:
+        import pandas as pd
+
+        # statistics.csv
+        statistics = pd.DataFrame(
+            {
+                "name": ["edm"],
+                "targets": [2],
+            }
+        )
+        monkeypatch.setattr("pandas.read_csv", lambda *args, **kwargs: statistics)
+
+        # ARFF loader
+        X = np.random.rand(100, 16)
+        y = np.random.rand(100, 2)
+        data = np.hstack([X, y])
+
+        def mock_loadarff(*args, **kwargs):
+            return (data, None)
+
+        monkeypatch.setattr(
+            "scipy.io.arff.loadarff",
+            mock_loadarff,
+        )
+
+    # ---- Call loader ----
     X_train, X_test, y_train, y_test = load_dataset(
         dataset_name=dataset_name,
         scale_x=scale_x,
         scale_y=scale_y,
         test_split=0.2,
-        random_state=42
+        random_state=42,
     )
 
-    # Check shapes
+    # ---- Shape checks ----
+    assert X_train.ndim == 2
+    assert X_test.ndim == 2
+    assert y_train.ndim == 2
+    assert y_test.ndim == 2
+
     assert X_train.shape[0] > 0
     assert X_test.shape[0] > 0
     assert X_train.shape[1] == X_test.shape[1]
-    assert y_train.shape[0] == X_train.shape[0]
-    assert y_test.shape[0] == X_test.shape[0]
-    assert y_train.shape[1] == 1
-    assert y_test.shape[1] == 1
 
-    # Check scaling if requested
+    assert y_train.shape == (X_train.shape[0], expected_targets)
+    assert y_test.shape == (X_test.shape[0], expected_targets)
+
+    # ---- Scaling checks ----
     if scale_x:
-        assert np.isclose(np.mean(X_train, axis=0), 0, atol=1e-6).all()
-        assert np.isclose(np.std(X_train, axis=0), 1, atol=1e-6).all()
-    if scale_y:
-        assert np.isclose(np.mean(y_train), 0, atol=1e-6)
-        assert np.isclose(np.std(y_train), 1, atol=1e-6)
+        assert np.allclose(X_train.mean(axis=0), 0, atol=1e-6)
+        assert np.allclose(X_train.std(axis=0), 1, atol=1e-6)
 
+    if scale_y:
+        assert np.allclose(y_train.mean(axis=0), 0, atol=1e-6)
+        assert np.allclose(y_train.std(axis=0), 1, atol=1e-6)
 
 def test_invalid_dataset():
     """

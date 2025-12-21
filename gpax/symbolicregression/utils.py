@@ -4,6 +4,7 @@ from typing import Callable, Tuple
 import optax
 import pandas as pd
 import numpy as np
+import scipy
 from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -55,6 +56,14 @@ def load_dataset(dataset_name: str,
         X = df.iloc[:, :-1].to_numpy()
         y = df.iloc[:, -1].to_numpy()
         y = y.reshape(-1, 1)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_split, random_state=random_state)
+    elif "mtr" in dataset_name:
+        statistics = pd.read_csv("../datasets/mtr/statistics.csv")
+        n_targets = statistics.loc[statistics["name"] == dataset_name.replace("mtr/", ""), "targets"].iloc[0]
+        raw_data = scipy.io.arff.loadarff(f"../datasets/{dataset_name}.arff")
+        df = pd.DataFrame(raw_data[0])
+        X = df.iloc[:, :-n_targets].to_numpy()
+        y = df.iloc[:, -n_targets:].to_numpy()
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_split, random_state=random_state)
     else:
         df_train = pd.read_csv(f"../datasets/{dataset_name}_train.csv")
