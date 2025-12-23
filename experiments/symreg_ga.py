@@ -2,7 +2,7 @@ import functools
 import pickle
 import sys
 import time
-from typing import Dict
+from typing import Dict, List
 
 import jax
 import jax.numpy as jnp
@@ -17,6 +17,13 @@ from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithEx
 from gpax.evolution.evolution_metrics import custom_ga_metrics
 from gpax.symbolicregression.dataset_utils import downsample_dataset
 from gpax.symbolicregression.utils import prepare_scoring_fn, prepare_rescoring_fn, load_dataset
+
+
+def process_metrics_mtr(metrics: Dict, headers: List) -> Dict:
+    test_accuracy_values = metrics.pop("test_accuracy")
+    for idx, header in enumerate(headers):
+        metrics[header] = test_accuracy_values[idx]
+    return metrics
 
 
 def run_sym_reg_ga(config: Dict):
@@ -89,23 +96,27 @@ def run_sym_reg_ga(config: Dict):
                                                       key=subkey)
 
     # Initialize metrics
-    metrics = {key: jnp.array([]) for key in ["iteration", "max_fitness", "time", "test_accuracy"]}
+    n_targets = y_test.shape[1]
+    test_accuracy_header = ["test_accuracy"] if n_targets == 1 else [f"rrmse_{i}" for i in range(n_targets)]
+    metrics = {key: jnp.array([]) for key in ["iteration", "max_fitness", "time"] + test_accuracy_header}
 
     # Set up init metrics
-    init_metrics = jax.tree.map(lambda x: jnp.array([x]) if x.shape == () else x, init_metrics)
-    init_metrics["iteration"] = jnp.array([0], dtype=jnp.int32)
-    init_metrics["time"] = jnp.array([0.0])  # No time recorded for initialization
+    # init_metrics = jax.tree.map(lambda x: jnp.array([x]) if x.shape == () else x, init_metrics)
+    init_metrics["iteration"] = 0
+    init_metrics["max_fitness"] = init_metrics["max_fitness"][0]
+    init_metrics["time"] = 0.0  # No time recorded for initialization
 
     # Convert init_metrics to match the metrics dictionary structure
-    metrics = jax.tree.map(lambda metric, init_metric: jnp.concatenate([metric, init_metric], axis=0), metrics,
-                           init_metrics)
+    # metrics = jax.tree.map(lambda metric, init_metric: jnp.concatenate([metric, init_metric], axis=0), metrics,
+    #                        init_metrics)
     csv_logger = CSVLogger(
         f'../results/{config["run_name"]}.csv',
         header=list(metrics.keys())
     )
 
     # Log initial metrics
-    csv_logger.log(jax.tree.map(lambda x: x[-1], metrics))
+    # csv_logger.log(jax.tree.map(lambda x: x[-1], init_metrics))
+    csv_logger.log(process_metrics_mtr(init_metrics, test_accuracy_header))
 
     # Iterations
     for iteration in range(1, config["n_gens"]):
@@ -123,9 +134,12 @@ def run_sym_reg_ga(config: Dict):
         timelapse = time.time() - start_time
 
         # Metrics
-        unwrapped_metrics = jax.tree.map(lambda x: x[-1], current_metrics)
+        unwrapped_metrics = jax.tree.map(lambda x: jnp.ravel(x), current_metrics)
         unwrapped_metrics["iteration"] = iteration
         unwrapped_metrics["time"] = timelapse
+        unwrapped_metrics["max_fitness"] = unwrapped_metrics["max_fitness"][0]
+        if len(test_accuracy_header) > 1:
+            unwrapped_metrics = process_metrics_mtr(unwrapped_metrics, test_accuracy_header)
 
         print(unwrapped_metrics)
 
@@ -174,8 +188,7 @@ if __name__ == '__main__':
 
     # for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
     #                 "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min"]:
-    for problem in ["mtr/rf1", "mtr/scm20d", "mtr/edm", "mtr/sf1", "mtr/sf2", "mtr/jura", "mtr/wq", "mtr/enb",
-                    "mtr/slump", "mtr/andro", "mtr/scfp"]:
+    for problem in ["mtr/rf1", "mtr/scm20d", "mtr/edm", "mtr/jura", "mtr/wq", "mtr/enb", "mtr/slump", "mtr/andro", ]:
         conf["problem"] = problem
         for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
                                  (False, False, False)]:
