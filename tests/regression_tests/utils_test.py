@@ -8,6 +8,7 @@ from gpax.graphs.cartesian_genetic_programming import CGP
 import numpy as np
 from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
+from gpax.symbolicregression.metrics import rrmse_per_target
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, \
     regression_accuracy_evaluation_with_constants_optimization, regression_scoring_fn
 from gpax.symbolicregression.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn, prepare_rescoring_fn, \
@@ -20,6 +21,15 @@ def sample_data():
     y_train = jnp.ones(4)
     X_test = jnp.ones((2, 3))
     y_test = jnp.ones(2)
+    return X_train, y_train, X_test, y_test
+
+
+@pytest.fixture
+def sample_data_mtr():
+    X_train = jnp.ones((4, 3))
+    y_train = jnp.ones((4, 2))
+    X_test = jnp.ones((2, 3))
+    y_test = jnp.ones((2, 2))
     return X_train, y_train, X_test, y_test
 
 
@@ -105,6 +115,18 @@ def test_prepare_eval_fns_test_fn_always_simple(sample_data):
     )
 
     assert test_fn.func is regression_accuracy_evaluation
+
+
+def test_prepare_eval_fns_test_fn_mtr(sample_data_mtr):
+    X_train, y_train, X_test, y_test = sample_data_mtr
+
+    _, test_fn = prepare_train_test_evaluation_fns(
+        X_train, y_train, X_test, y_test, const_optimizer="adam", graph_structure=None
+    )
+
+    assert test_fn.func is regression_accuracy_evaluation
+    assert test_fn.keywords["accuracy_fn"].func is rrmse_per_target
+    assert jnp.all(test_fn.keywords["accuracy_fn"].keywords["y_train"] == y_train)
 
 
 def test_prepare_scoring_fn_returns_partial(sample_data):
@@ -271,6 +293,7 @@ def test_load_dataset_shapes(dataset_name, expected_targets, scale_x, scale_y, m
     if scale_y:
         assert np.allclose(y_train.mean(axis=0), 0, atol=1e-6)
         assert np.allclose(y_train.std(axis=0), 1, atol=1e-6)
+
 
 def test_invalid_dataset():
     """

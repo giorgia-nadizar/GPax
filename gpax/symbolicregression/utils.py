@@ -14,6 +14,7 @@ import jax.numpy as jnp
 
 from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
+from gpax.symbolicregression.metrics import r2_score, rrmse_per_target
 from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, \
     regression_accuracy_evaluation_with_constants_optimization, regression_scoring_fn
 
@@ -143,6 +144,7 @@ def prepare_train_test_evaluation_fns(
         - If a constant optimizer is specified, training proceeds by first optimizing the
           constants of the program and then evaluating accuracy.
         """
+    multi_regression = y_train.shape[1] > 1
     multiplier = 100 if long_const_optimization else 1
     if const_optimizer == "adam":
         constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
@@ -166,7 +168,9 @@ def prepare_train_test_evaluation_fns(
         train_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_train,
                                      y=y_train)
 
-    test_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_test, y=y_test)
+    accuracy_fn = r2_score if not multi_regression else functools.partial(rrmse_per_target, y_train=y_train)
+    test_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_test, y=y_test,
+                                accuracy_fn=accuracy_fn)
     return train_fn, test_fn
 
 
