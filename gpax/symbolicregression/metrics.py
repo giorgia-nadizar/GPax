@@ -38,3 +38,37 @@ def rmse(y_true: jnp.ndarray, y_pred: jnp.ndarray) -> jnp.ndarray:
     mse_val = mse(y_true, y_pred)
     rmse_val = jnp.sqrt(mse_val)
     return jnp.nan_to_num(rmse_val, nan=1e6, posinf=1e6, neginf=1e6)
+
+
+def rrmse_per_target(y_test: jnp.ndarray, y_pred: jnp.ndarray, y_train: jnp.ndarray) -> jnp.ndarray:
+    """
+    Compute RRMSE for each target in a multi-target regression problem.
+
+    Parameters
+    ----------
+    y_test : jnp.ndarray, shape (N, T)
+        True target values on the test set.
+    y_pred : jnp.ndarray, shape (N, T)
+        Predicted target values on the test set.
+    y_train : jnp.ndarray, shape (N_train, T)
+        Target values from the training set.
+
+    Returns
+    -------
+    rrmse : jnp.ndarray, shape (T,)
+        RRMSE value for each target.
+    """
+
+    # Mean of each target over the training set
+    y_train_mean = jnp.mean(y_train, axis=0)  # (T,)
+
+    # Numerator: sum of squared prediction errors per target
+    num = jnp.sum((y_pred - y_test) ** 2, axis=0)
+
+    # Denominator: sum of squared deviations from training mean per target
+    den = jnp.sum((y_train_mean - y_test) ** 2, axis=0)
+
+    # Small epsilon for numerical stability
+    eps = 1e-12
+
+    return jnp.sqrt(num / (den + eps))

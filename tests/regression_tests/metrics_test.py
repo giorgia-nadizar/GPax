@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from sklearn.metrics import root_mean_squared_error, r2_score as sklearn_r2_score, mean_squared_error
 
-from gpax.symbolicregression.metrics import r2_score, rmse, mse
+from gpax.symbolicregression.metrics import r2_score, rmse, mse, rrmse_per_target
 
 
 def test_r2_score_perfect():
@@ -67,3 +67,64 @@ def test_rmse_known_value():
     result = rmse(y, y_pred)
     expected = root_mean_squared_error(y, y_pred)
     assert jnp.isclose(result, expected)
+
+
+def test_perfect_prediction():
+    """RRMSE should be zero when predictions are perfect."""
+    y_train = jnp.array([[1., 2.],
+                         [2., 3.],
+                         [3., 4.]])
+    y_test = jnp.array([[2., 3.],
+                        [1., 2.]])
+    y_pred = y_test.copy()
+
+    rrmse = rrmse_per_target(y_test, y_pred, y_train)
+
+    assert jnp.allclose(rrmse, jnp.zeros_like(rrmse)), rrmse
+
+
+def test_mean_predictor_rrmse_is_one():
+    """
+    Predicting the training mean for each target should yield RRMSE = 1.
+    """
+    y_train = jnp.array([[1., 2.],
+                         [3., 4.],
+                         [5., 6.]])
+    y_test = jnp.array([[2., 3.],
+                        [4., 5.]])
+
+    y_train_mean = jnp.mean(y_train, axis=0)
+    y_pred = jnp.tile(y_train_mean, (y_test.shape[0], 1))
+
+    rrmse = rrmse_per_target(y_test, y_pred, y_train)
+
+    assert jnp.allclose(rrmse, jnp.ones_like(rrmse)), rrmse
+
+
+def test_output_shape():
+    """Output shape must be (T,)"""
+    y_train = jnp.ones((10, 5))
+    y_test = jnp.ones((4, 5))
+    y_pred = jnp.ones((4, 5))
+
+    rrmse = rrmse_per_target(y_test, y_pred, y_train)
+
+    assert rrmse.shape == (5,), rrmse.shape
+
+
+def test_zero_variance_target():
+    """
+    If a target has zero variance in test data,
+    RRMSE should be finite (due to epsilon).
+    """
+    y_train = jnp.array([[1., 5.],
+                         [1., 5.],
+                         [1., 5.]])
+    y_test = jnp.array([[1., 5.],
+                        [1., 5.]])
+    y_pred = jnp.array([[1., 4.],
+                        [1., 6.]])
+
+    rrmse = rrmse_per_target(y_test, y_pred, y_train)
+
+    assert jnp.all(jnp.isfinite(rrmse)), rrmse
