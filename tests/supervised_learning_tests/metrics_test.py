@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from sklearn.metrics import root_mean_squared_error, r2_score as sklearn_r2_score, mean_squared_error
 
-from gpax.supervised_learning.metrics import r2_score, rmse, mse, rrmse_per_target
+from gpax.supervised_learning.metrics import r2_score, rmse, mse, rrmse_per_target, categorical_cross_entropy
 
 
 def test_r2_score_perfect():
@@ -128,3 +128,64 @@ def test_zero_variance_target():
     rrmse = rrmse_per_target(y_test, y_pred, y_train)
 
     assert jnp.all(jnp.isfinite(rrmse)), rrmse
+
+
+def test_categorical_cross_entropy_output_shape_and_type():
+    # Random logits and one-hot labels (3 samples, 4 classes)
+    logits = jnp.array([[1.0, 2.0, 0.5, 0.1],
+                        [0.2, 0.3, 0.5, 0.0],
+                        [1.0, 2.0, 1.0, 0.0]])
+    y_true = jnp.array([[0, 1, 0, 0],
+                        [0, 0, 1, 0],
+                        [0, 1, 0, 0]])
+
+    loss = categorical_cross_entropy(y_true, logits)
+
+    assert isinstance(loss, jnp.ndarray), "Loss should be a JAX array"
+    assert loss.shape == (), "Loss should be a scalar"
+
+
+def test_categorical_cross_entropy_perfect_predictions_have_low_loss():
+    # Perfect predictions (logits align with one-hot labels)
+    y_true = jnp.array([[1, 0], [0, 1]])
+    logits = jnp.array([[10.0, 0.0], [0.0, 10.0]])
+
+    loss = categorical_cross_entropy(y_true, logits)
+
+    assert loss < 1e-4, "Loss should be near zero for perfect predictions"
+
+
+def test_categorical_cross_entropy_wrong_predictions_have_high_loss():
+    # Completely wrong predictions
+    y_true = jnp.array([[1, 0], [0, 1]])
+    logits = jnp.array([[0.0, 10.0], [10.0, 0.0]])
+
+    loss = categorical_cross_entropy(y_true, logits)
+
+    assert loss > 9.0, "Loss should be large for totally wrong predictions"
+
+
+def test_categorical_cross_entropy_binary_classification_one_hot():
+    # Binary case: one-hot encoded labels
+    y_true = jnp.array([[1, 0], [0, 1], [1, 0]])
+    logits = jnp.array([[2.0, -1.0], [-1.0, 2.0], [2.0, -1.0]])
+
+    loss = categorical_cross_entropy(y_true, logits)
+
+    assert loss > 0, "Loss should be positive"
+    assert loss < 1.0, "Loss should be small for mostly correct predictions"
+
+
+def test_categorical_cross_entropy_multiclass_classification():
+    # Multi-class case: 5 classes
+    y_true = jnp.eye(5)  # identity matrix, perfect one-hot
+    logits = jnp.array([[5, 1, 0, 0, 0],
+                        [0, 5, 1, 0, 0],
+                        [0, 0, 5, 1, 0],
+                        [0, 0, 0, 5, 1],
+                        [1, 0, 0, 0, 5]])
+
+    loss = categorical_cross_entropy(y_true, logits)
+
+    assert loss > 0, "Loss should be positive"
+    assert loss < 1.0, "Loss should be small for mostly correct predictions"

@@ -1,3 +1,4 @@
+import jax
 import jax.numpy as jnp
 
 
@@ -72,3 +73,29 @@ def rrmse_per_target(y_test: jnp.ndarray, y_pred: jnp.ndarray, y_train: jnp.ndar
     eps = 1e-12
 
     return jnp.sqrt(num / (den + eps))
+
+
+def categorical_cross_entropy(y_true: jnp.ndarray, logits: jnp.ndarray, ) -> jnp.ndarray:
+    """
+    Computes categorical cross-entropy loss.
+
+    Args:
+        y_true: jnp.ndarray of shape (batch_size, n_classes)
+                One-hot encoded labels
+        logits: jnp.ndarray of shape (batch_size, n_classes)
+                Raw outputs from the model (no softmax required)
+
+    Returns:
+        Scalar: mean cross-entropy loss over batch
+    """
+    # Apply softmax to logits
+    probs = jax.nn.softmax(logits, axis=-1)
+
+    # Clip probabilities to avoid log(0)
+    probs = jnp.clip(probs, 1e-7, 1.0)
+
+    # Compute cross-entropy
+    loss = -jnp.sum(y_true * jnp.log(probs), axis=-1)
+
+    # Return mean over batch
+    return jnp.mean(loss)
