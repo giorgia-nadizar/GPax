@@ -6,21 +6,21 @@ import pytest
 
 from gpax.graphs.cartesian_genetic_programming import CGP
 import numpy as np
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
+from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
-from gpax.symbolicregression.metrics import rrmse_per_target
-from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, \
+from gpax.supervised_learning.metrics import rrmse_per_target
+from gpax.supervised_learning.scoring_functions import regression_accuracy_evaluation, \
     regression_accuracy_evaluation_with_constants_optimization, regression_scoring_fn
-from gpax.symbolicregression.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn, prepare_rescoring_fn, \
+from gpax.supervised_learning.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn, prepare_rescoring_fn, \
     load_dataset
 
 
 @pytest.fixture
 def sample_data():
     X_train = jnp.ones((4, 3))
-    y_train = jnp.ones(4)
+    y_train = jnp.ones((4, 1))
     X_test = jnp.ones((2, 3))
-    y_test = jnp.ones(2)
+    y_test = jnp.ones((2, 1))
     return X_train, y_train, X_test, y_test
 
 

@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from sklearn.metrics import root_mean_squared_error, r2_score as sklearn_r2_score, mean_squared_error
 
-from gpax.symbolicregression.metrics import r2_score, rmse, mse, rrmse_per_target
+from gpax.supervised_learning.metrics import r2_score, rmse, mse, rrmse_per_target
 
 
 def test_r2_score_perfect():

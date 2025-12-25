@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from qdax.utils.metrics import CSVLogger
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.utils import prepare_scoring_fn, load_dataset
+from gpax.supervised_learning.utils import prepare_scoring_fn, load_dataset
 
 
 def constants_optimization_post_evolution(conf):

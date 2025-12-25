@@ -5,9 +5,9 @@ import jax.numpy as jnp
 import optax
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, \
+from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, \
     optimize_constants_with_lbfgs, optimize_constants_with_cmaes
-from gpax.symbolicregression.scoring_functions import predict_regression_output
+from gpax.supervised_learning.scoring_functions import predict_regression_output
 
 
 def test_cmaes_output_shape_and_type():

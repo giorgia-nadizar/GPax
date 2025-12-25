@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from gpax.symbolicregression.dataset_utils import downsample_dataset
+from gpax.supervised_learning.dataset_utils import downsample_dataset
 
 
 @pytest.fixture

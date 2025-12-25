@@ -6,9 +6,9 @@ import optax
 from sklearn.model_selection import train_test_split
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, \
+from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, \
     optimize_constants_with_lbfgs, optimize_constants_with_cmaes
-from gpax.symbolicregression.scoring_functions import predict_regression_output, regression_accuracy_evaluation, \
+from gpax.supervised_learning.scoring_functions import predict_regression_output, regression_accuracy_evaluation, \
     regression_scoring_fn, regression_accuracy_evaluation_with_constants_optimization
 
 

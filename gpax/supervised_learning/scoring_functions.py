@@ -16,8 +16,8 @@ from qdax.custom_types import (
 )
 
 from gpax.graphs.graph_genetic_programming import GGP
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd
-from gpax.symbolicregression.metrics import r2_score, rmse
+from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd
+from gpax.supervised_learning.metrics import r2_score, rmse
 
 
 def predict_regression_output(

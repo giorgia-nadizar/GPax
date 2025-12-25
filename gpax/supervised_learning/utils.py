@@ -12,10 +12,10 @@ from sklearn.preprocessing import StandardScaler
 from gpax.graphs.graph_genetic_programming import GGP
 import jax.numpy as jnp
 
-from gpax.symbolicregression.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
+from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
-from gpax.symbolicregression.metrics import r2_score, rrmse_per_target
-from gpax.symbolicregression.scoring_functions import regression_accuracy_evaluation, \
+from gpax.supervised_learning.metrics import r2_score, rrmse_per_target
+from gpax.supervised_learning.scoring_functions import regression_accuracy_evaluation, \
     regression_accuracy_evaluation_with_constants_optimization, regression_scoring_fn
 
 
