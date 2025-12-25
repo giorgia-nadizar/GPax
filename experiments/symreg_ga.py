@@ -15,8 +15,8 @@ from gpax.evolution.tournament_selector import TournamentSelector
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
 from gpax.evolution.evolution_metrics import custom_ga_metrics
-from gpax.supervised_learning.dataset_utils import downsample_dataset
-from gpax.supervised_learning.utils import prepare_scoring_fn, prepare_rescoring_fn, load_dataset
+from gpax.supervised_learning.dataset_utils import downsample_dataset, load_dataset
+from gpax.supervised_learning.utils import prepare_scoring_fn, prepare_rescoring_fn
 
 
 def process_metrics_mtr(metrics: Dict, headers: List) -> Dict:

@@ -11,8 +11,8 @@ from gpax.supervised_learning.constants_optimization import optimize_constants_w
 from gpax.supervised_learning.metrics import rrmse_per_target
 from gpax.supervised_learning.scoring_functions import regression_accuracy_evaluation, \
     regression_accuracy_evaluation_with_constants_optimization, regression_scoring_fn
-from gpax.supervised_learning.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn, prepare_rescoring_fn, \
-    load_dataset
+from gpax.supervised_learning.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn, prepare_rescoring_fn
+from gpax.supervised_learning.dataset_utils import load_dataset
 
 
 @pytest.fixture
