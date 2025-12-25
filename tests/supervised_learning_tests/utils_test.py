@@ -8,7 +8,7 @@ from gpax.graphs.cartesian_genetic_programming import CGP
 import numpy as np
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
-from gpax.supervised_learning.metrics import rrmse_per_target
+from gpax.supervised_learning.metrics import rrmse_per_target, classification_accuracy
 from gpax.supervised_learning.scoring_functions import supervised_learning_accuracy_evaluation, \
     supervised_learning_accuracy_evaluation_with_constants_optimization, supervised_learning_scoring_fn
 from gpax.supervised_learning.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn, prepare_rescoring_fn
@@ -31,6 +31,16 @@ def sample_data_mtr():
     X_test = jnp.ones((2, 3))
     y_test = jnp.ones((2, 2))
     return X_train, y_train, X_test, y_test
+
+
+def test_prepare_eval_fns_supported_tasks(sample_data):
+    X_train, y_train, X_test, y_test = sample_data
+
+    for task in ["regression", "classification", "multi-regression", "multi_regression", "multiregression"]:
+        prepare_train_test_evaluation_fns(X_train, y_train, X_test, y_test, graph_structure=None, task=task)
+
+    with pytest.raises(NotImplementedError):
+        prepare_train_test_evaluation_fns(X_train, y_train, X_test, y_test, graph_structure=None, task="fake_task")
 
 
 def test_prepare_eval_fns_default_behavior(sample_data):
@@ -121,12 +131,23 @@ def test_prepare_eval_fns_test_fn_mtr(sample_data_mtr):
     X_train, y_train, X_test, y_test = sample_data_mtr
 
     _, test_fn = prepare_train_test_evaluation_fns(
-        X_train, y_train, X_test, y_test, const_optimizer="adam", graph_structure=None
+        X_train, y_train, X_test, y_test, const_optimizer="adam", graph_structure=None, task="multi-regression"
     )
 
     assert test_fn.func is supervised_learning_accuracy_evaluation
     assert test_fn.keywords["accuracy_fn"].func is rrmse_per_target
     assert jnp.all(test_fn.keywords["accuracy_fn"].keywords["y_train"] == y_train)
+
+
+def test_prepare_eval_fns_test_fn_classification(sample_data):
+    X_train, y_train, X_test, y_test = sample_data
+
+    _, test_fn = prepare_train_test_evaluation_fns(
+        X_train, y_train, X_test, y_test, const_optimizer="adam", graph_structure=None, task="classification"
+    )
+
+    assert test_fn.func is supervised_learning_accuracy_evaluation
+    assert test_fn.keywords["accuracy_fn"] is classification_accuracy
 
 
 def test_prepare_scoring_fn_returns_partial(sample_data):

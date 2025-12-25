@@ -8,7 +8,8 @@ import jax.numpy as jnp
 
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
-from gpax.supervised_learning.metrics import r2_score, rrmse_per_target
+from gpax.supervised_learning.metrics import r2_score, rrmse_per_target, classification_accuracy, rmse, \
+    categorical_cross_entropy
 from gpax.supervised_learning.scoring_functions import supervised_learning_accuracy_evaluation, \
     supervised_learning_accuracy_evaluation_with_constants_optimization, supervised_learning_scoring_fn
 
@@ -21,6 +22,7 @@ def prepare_train_test_evaluation_fns(
         graph_structure: GGP,
         const_optimizer: str = None,
         long_const_optimization: bool = False,
+        task: str = "regression"
 ) -> Tuple[Callable, Callable]:
     """
         Prepare training and testing evaluation functions for symbolic regression models.
@@ -54,6 +56,9 @@ def prepare_train_test_evaluation_fns(
             Any unrecognized value defaults to no constants optimization.
         long_const_optimization : bool, optional
             Whether the constants are optimizer for longer or not.
+        task : str, optional
+            The supervised learning task considered, either `regression`, `classification`,
+            or `multi-regression`
 
         Returns
         -------
@@ -70,35 +75,57 @@ def prepare_train_test_evaluation_fns(
         - If a constant optimizer is specified, training proceeds by first optimizing the
           constants of the program and then evaluating accuracy.
         """
-    multi_regression = y_train.shape[1] > 1
+    # Avoid misspelling of multi-regression
+    task = task.replace("-", "").replace("_", "")
+    if task not in ["regression", "classification", "multiregression"]:
+        raise NotImplementedError("Task not supported.")
+
+    # Accuracy fns per task
+    train_accuracy_fns = {
+        "regression": r2_score,
+        "classification": classification_accuracy,
+        "multiregression": r2_score,
+    }
+    test_accuracy_fns = {
+        "regression": r2_score,
+        "classification": classification_accuracy,
+        "multiregression": functools.partial(rrmse_per_target, y_train=y_train),
+    }
+    loss_fns = {
+        "regression": rmse,
+        "classification": categorical_cross_entropy,
+        "multiregression": rmse,
+    }
+    train_accuracy_fn = train_accuracy_fns[task]
+    test_accuracy_fn = test_accuracy_fns[task]
+    loss_fn = loss_fns[task]
+
     multiplier = 100 if long_const_optimization else 1
     if const_optimizer == "adam":
         constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
-                                                n_gradient_steps=100 * multiplier)
+                                                n_gradient_steps=100 * multiplier, loss_fn=loss_fn)
     elif const_optimizer == "rmsprop":
         constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
-                                                n_gradient_steps=120 * multiplier,
+                                                n_gradient_steps=120 * multiplier, loss_fn=loss_fn,
                                                 optimizer=optax.rmsprop(1e-3, momentum=.9))
     elif const_optimizer == "cmaes":
-        constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=20 * multiplier)
+        constants_optimizer = functools.partial(optimize_constants_with_cmaes, max_iter=20 * multiplier,
+                                                loss_fn=loss_fn)
     elif const_optimizer == "lbfgs":
-        constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=5 * multiplier)
+        constants_optimizer = functools.partial(optimize_constants_with_lbfgs, max_iter=5 * multiplier, loss_fn=loss_fn)
     else:
         constants_optimizer = None
+
     if constants_optimizer:
         train_fn = functools.partial(supervised_learning_accuracy_evaluation_with_constants_optimization,
-                                     graph_structure=graph_structure,
-                                     X=X_train, y=y_train, reset_weights=False,
-                                     constants_optimization_fn=constants_optimizer)
+                                     graph_structure=graph_structure, X=X_train, y=y_train, reset_weights=False,
+                                     constants_optimization_fn=constants_optimizer, accuracy_fn=train_accuracy_fn)
     else:
         train_fn = functools.partial(supervised_learning_accuracy_evaluation, graph_structure=graph_structure,
-                                     X=X_train,
-                                     y=y_train)
+                                     X=X_train, y=y_train, accuracy_fn=train_accuracy_fn)
 
-    accuracy_fn = r2_score if not multi_regression else functools.partial(rrmse_per_target, y_train=y_train)
     test_fn = functools.partial(supervised_learning_accuracy_evaluation, graph_structure=graph_structure, X=X_test,
-                                y=y_test,
-                                accuracy_fn=accuracy_fn)
+                                y=y_test, accuracy_fn=test_accuracy_fn)
     return train_fn, test_fn
 
 
@@ -141,7 +168,7 @@ def prepare_scoring_fn(
         long_const_optimization : bool, optional
             Whether the constants are optimizer for longer or not.
         task : str, optional
-            The task the scoring fn will be used for, either `regression` or `classification`.
+            The task the scoring fn will be used for, either `regression`, `multi-regression` or `classification`.
 
         Returns
         -------
@@ -157,7 +184,7 @@ def prepare_scoring_fn(
           to the supplied datasets and graph structure.
         """
     train_fn, test_fn = prepare_train_test_evaluation_fns(X_train, y_train, X_test, y_test, graph_structure,
-                                                          const_optimizer, long_const_optimization)
+                                                          const_optimizer, long_const_optimization, task=task)
     return functools.partial(
         supervised_learning_scoring_fn,
         train_set_evaluation_fn=train_fn,
@@ -169,6 +196,7 @@ def prepare_rescoring_fn(
         X_train: jnp.ndarray,
         y_train: jnp.ndarray,
         graph_structure: GGP,
+        task: str = "regression"
 ) -> Callable:
     """
         Create a scoring function for symbolic regression model evaluation.
@@ -189,6 +217,7 @@ def prepare_rescoring_fn(
         graph_structure : GGP
             A graph-based symbolic program structure to be used when evaluating
             candidate models.
+        task: the supervised learning task considered.
 
         Returns
         -------
@@ -203,7 +232,7 @@ def prepare_rescoring_fn(
         - The train/test evaluation functions used by the scorer are already bound
           to the supplied datasets and graph structure.
         """
-    train_fn, _ = prepare_train_test_evaluation_fns(X_train, y_train, None, None, graph_structure)
+    train_fn, _ = prepare_train_test_evaluation_fns(X_train, y_train, None, None, graph_structure, task=task)
     test_fn = lambda x, y: (None, None)
     rescoring_fn = functools.partial(
         supervised_learning_scoring_fn,
