@@ -28,6 +28,7 @@ def process_metrics_mtr(metrics: Dict, headers: List) -> Dict:
 
 def run_sym_reg_ga(config: Dict):
     const_optimizer = config.get("constants_optimization", None)
+    task = "regression" if "mtr" not in config["problem"] else "multiregression"
 
     X_train, X_test, y_train, y_test = load_dataset(config["problem"],
                                                     scale_x=config.get("scale_x", False),
@@ -79,8 +80,9 @@ def run_sym_reg_ga(config: Dict):
     )
 
     # Prepare the scoring function
-    scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure, const_optimizer)
-    rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure)
+    scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure, const_optimizer,
+                                        task=task)
+    rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure, task=task)
     # Instantiate GA
     ga = GeneticAlgorithmWithExtraScores(
         scoring_function=scoring_fn_cgp,
@@ -124,8 +126,9 @@ def run_sym_reg_ga(config: Dict):
 
         # change batch of the dataset to evaluate upon
         X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
-        scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure, const_optimizer)
-        rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure)
+        scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure, const_optimizer,
+                                            task=task)
+        rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure, task=task)
         ga = ga.replace_scoring_fns(scoring_fn_cgp, rescoring_fn_cgp)
 
         start_time = time.time()

@@ -27,6 +27,7 @@ def process_metrics_mtr(metrics: Dict, headers: List) -> Dict:
 
 
 def run_sym_reg_ga(config: Dict):
+    task = "classification"
     const_optimizer = config.get("constants_optimization", None)
 
     X_train, X_test, y_train, y_test = load_dataset(config["problem"],
@@ -37,8 +38,11 @@ def run_sym_reg_ga(config: Dict):
     key = jax.random.key(config["seed"])
     sample_key, key = jax.random.split(key)
 
-    downsample_fn = functools.partial(downsample_dataset, size=config.get("dataset_size", 1024))
-    X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
+    if len(X_train) > 2000:
+        downsample_fn = functools.partial(downsample_dataset, size=config.get("dataset_size", 1024))
+        X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
+    else:
+        X_train_sub, y_train_sub = X_train, y_train
 
     # Init the CGP policy graph with default values
     graph_structure = CGP(
@@ -79,8 +83,9 @@ def run_sym_reg_ga(config: Dict):
     )
 
     # Prepare the scoring function
-    scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure, const_optimizer)
-    rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure)
+    scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure, const_optimizer,
+                                        task=task)
+    rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure, task=task)
     # Instantiate GA
     ga = GeneticAlgorithmWithExtraScores(
         scoring_function=scoring_fn_cgp,
@@ -122,11 +127,13 @@ def run_sym_reg_ga(config: Dict):
     for iteration in range(1, config["n_gens"]):
         key, subkey, sample_key = jax.random.split(key, 3)
 
-        # change batch of the dataset to evaluate upon
-        X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
-        scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure, const_optimizer)
-        rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure)
-        ga = ga.replace_scoring_fns(scoring_fn_cgp, rescoring_fn_cgp)
+        if len(X_train) > 2000:
+            # change batch of the dataset to evaluate upon
+            X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
+            scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure,
+                                                const_optimizer, task=task)
+            rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure, task=task)
+            ga = ga.replace_scoring_fns(scoring_fn_cgp, rescoring_fn_cgp)
 
         start_time = time.time()
         repertoire, emitter_state, current_metrics = ga.update(repertoire=repertoire, emitter_state=emitter_state,
@@ -172,7 +179,7 @@ if __name__ == '__main__':
         "seed": 0,
         "tournament_size": 3,
         "problem": "diabetes_classification",
-        "scale_x": False,
+        "scale_x": True,
         "scale_y": False,
         "constants_optimization": "gaussian",
     }
@@ -186,8 +193,6 @@ if __name__ == '__main__':
         elif key == "constants_optimization":
             conf["constants_optimization"] = value
 
-    # for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
-    #                 "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min"]:
     for problem in ["diabetes_classification", "breast_cancer", "glass", ]:
         conf["problem"] = problem
         for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
