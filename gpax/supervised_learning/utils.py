@@ -9,8 +9,8 @@ import jax.numpy as jnp
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
 from gpax.supervised_learning.metrics import r2_score, rrmse_per_target
-from gpax.supervised_learning.scoring_functions import regression_accuracy_evaluation, \
-    regression_accuracy_evaluation_with_constants_optimization, regression_scoring_fn
+from gpax.supervised_learning.scoring_functions import supervised_learning_accuracy_evaluation, \
+    supervised_learning_accuracy_evaluation_with_constants_optimization, supervised_learning_scoring_fn
 
 
 def prepare_train_test_evaluation_fns(
@@ -86,16 +86,18 @@ def prepare_train_test_evaluation_fns(
     else:
         constants_optimizer = None
     if constants_optimizer:
-        train_fn = functools.partial(regression_accuracy_evaluation_with_constants_optimization,
+        train_fn = functools.partial(supervised_learning_accuracy_evaluation_with_constants_optimization,
                                      graph_structure=graph_structure,
                                      X=X_train, y=y_train, reset_weights=False,
                                      constants_optimization_fn=constants_optimizer)
     else:
-        train_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_train,
+        train_fn = functools.partial(supervised_learning_accuracy_evaluation, graph_structure=graph_structure,
+                                     X=X_train,
                                      y=y_train)
 
     accuracy_fn = r2_score if not multi_regression else functools.partial(rrmse_per_target, y_train=y_train)
-    test_fn = functools.partial(regression_accuracy_evaluation, graph_structure=graph_structure, X=X_test, y=y_test,
+    test_fn = functools.partial(supervised_learning_accuracy_evaluation, graph_structure=graph_structure, X=X_test,
+                                y=y_test,
                                 accuracy_fn=accuracy_fn)
     return train_fn, test_fn
 
@@ -108,6 +110,7 @@ def prepare_scoring_fn(
         graph_structure: GGP,
         const_optimizer: str = None,
         long_const_optimization: bool = False,
+        task: str = "regression"
 ) -> Callable:
     """
         Create a scoring function for symbolic regression model evaluation.
@@ -137,6 +140,8 @@ def prepare_scoring_fn(
             evaluation. See `prepare_train_test_evaluation_fns` for supported values.
         long_const_optimization : bool, optional
             Whether the constants are optimizer for longer or not.
+        task : str, optional
+            The task the scoring fn will be used for, either `regression` or `classification`.
 
         Returns
         -------
@@ -154,7 +159,7 @@ def prepare_scoring_fn(
     train_fn, test_fn = prepare_train_test_evaluation_fns(X_train, y_train, X_test, y_test, graph_structure,
                                                           const_optimizer, long_const_optimization)
     return functools.partial(
-        regression_scoring_fn,
+        supervised_learning_scoring_fn,
         train_set_evaluation_fn=train_fn,
         test_set_evaluation_fn=test_fn
     )
@@ -201,7 +206,7 @@ def prepare_rescoring_fn(
     train_fn, _ = prepare_train_test_evaluation_fns(X_train, y_train, None, None, graph_structure)
     test_fn = lambda x, y: (None, None)
     rescoring_fn = functools.partial(
-        regression_scoring_fn,
+        supervised_learning_scoring_fn,
         train_set_evaluation_fn=train_fn,
         test_set_evaluation_fn=test_fn
     )

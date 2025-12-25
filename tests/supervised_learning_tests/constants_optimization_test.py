@@ -7,7 +7,7 @@ import optax
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, \
     optimize_constants_with_lbfgs, optimize_constants_with_cmaes
-from gpax.supervised_learning.scoring_functions import predict_regression_output
+from gpax.supervised_learning.scoring_functions import compute_model_predictions
 
 
 def test_cmaes_output_shape_and_type():
@@ -30,7 +30,7 @@ def test_cmaes_output_shape_and_type():
     genotypes = jax.vmap(jax.jit(cgp.init))(init_keys)
 
     graph_weights = cgp.get_weights(genotypes)
-    prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=cgp))
+    prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
     for minibatch_size in [2, 10, 20, 50]:
         optimized_weights = optimize_constants_with_cmaes(graph_weights, genotypes, key, X, y, prediction_fn,
                                                           mini_batch_size=minibatch_size)
@@ -62,7 +62,7 @@ def test_lbfgs_output_shape_and_type():
     genotypes = jax.vmap(jax.jit(cgp.init))(init_keys)
 
     graph_weights = cgp.get_weights(genotypes)
-    prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=cgp))
+    prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
     optimized_weights = optimize_constants_with_lbfgs(graph_weights, genotypes, key, X, y, prediction_fn)
     # same keys
     assert set(optimized_weights.keys()) == set(graph_weights.keys())
@@ -92,7 +92,7 @@ def test_sgd_output_shape_and_type():
     genotypes = jax.vmap(jax.jit(cgp.init))(init_keys)
 
     graph_weights = cgp.get_weights(genotypes)
-    prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=cgp))
+    prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
     for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3, momentum=0.9)]:
         optimized_weights = optimize_constants_with_sgd(graph_weights, genotypes, key, X, y, prediction_fn,
                                                         optimizer=optimizer, batch_size=n_samples)
@@ -125,7 +125,7 @@ def test_multiregression_constants_optimization():
     genotypes = jax.vmap(jax.jit(cgp.init))(init_keys)
 
     graph_weights = cgp.get_weights(genotypes)
-    prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=cgp))
+    prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
     for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3, momentum=0.9)]:
         optimized_weights = optimize_constants_with_sgd(graph_weights, genotypes, key, X, y, prediction_fn,
                                                         optimizer=optimizer, batch_size=n_samples)

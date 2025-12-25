@@ -8,8 +8,9 @@ from sklearn.model_selection import train_test_split
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, \
     optimize_constants_with_lbfgs, optimize_constants_with_cmaes
-from gpax.supervised_learning.scoring_functions import predict_regression_output, regression_accuracy_evaluation, \
-    regression_scoring_fn, regression_accuracy_evaluation_with_constants_optimization
+from gpax.supervised_learning.scoring_functions import compute_model_predictions, \
+    supervised_learning_accuracy_evaluation, \
+    supervised_learning_scoring_fn, supervised_learning_accuracy_evaluation_with_constants_optimization
 
 
 def test_prediction_shape():
@@ -37,7 +38,7 @@ def test_prediction_shape():
     random_X = jax.random.uniform(key, (n_data_points, n_inputs))
 
     # simulate prediction
-    jit_predict = jax.jit(partial(predict_regression_output, graph_structure=cgp))
+    jit_predict = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
     prediction = jit_predict(random_X, cgp_genome)
     assert prediction.shape == (n_data_points, n_outputs)
 
@@ -71,7 +72,7 @@ def test_regression_accuracy_evaluation_shape():
     X = jax.random.uniform(x_key, (n_samples, n_inputs))
     y = jax.random.uniform(y_key, (n_samples, 1))
 
-    accuracies, returned_genotypes = regression_accuracy_evaluation(
+    accuracies, returned_genotypes = supervised_learning_accuracy_evaluation(
         genotype=genotypes,
         key=key,
         graph_structure=cgp,
@@ -108,7 +109,7 @@ def test_regression_accuracy_evaluation_with_sgd_shape():
     X = jax.random.uniform(x_key, (n_samples, n_inputs))
     y = jax.random.uniform(y_key, (n_samples, 1))
 
-    non_sgd_accuracies, non_sgd_returned_genotypes = regression_accuracy_evaluation(
+    non_sgd_accuracies, non_sgd_returned_genotypes = supervised_learning_accuracy_evaluation(
         genotype=genotypes,
         key=key,
         graph_structure=cgp,
@@ -117,7 +118,7 @@ def test_regression_accuracy_evaluation_with_sgd_shape():
     )
     for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3, momentum=0.9)]:
         constants_opt_fn = partial(optimize_constants_with_sgd, batch_size=4, optimizer=optimizer)
-        accuracies, returned_genotypes = regression_accuracy_evaluation_with_constants_optimization(
+        accuracies, returned_genotypes = supervised_learning_accuracy_evaluation_with_constants_optimization(
             genotype=genotypes,
             key=key,
             graph_structure=cgp,
@@ -163,7 +164,7 @@ def test_regression_accuracy_evaluation_with_constants_optimization():
     constants_opt_fn_4 = optimize_constants_with_cmaes
 
     for constants_opt_fn in [constants_opt_fn_1, constants_opt_fn_2, constants_opt_fn_3, constants_opt_fn_4]:
-        accuracies, returned_genotypes = regression_accuracy_evaluation_with_constants_optimization(
+        accuracies, returned_genotypes = supervised_learning_accuracy_evaluation_with_constants_optimization(
             genotype=genotypes,
             key=key,
             graph_structure=cgp,
@@ -172,7 +173,7 @@ def test_regression_accuracy_evaluation_with_constants_optimization():
             constants_optimization_fn=constants_opt_fn
         )
 
-        non_sgd_accuracies, non_sgd_returned_genotypes = regression_accuracy_evaluation(
+        non_sgd_accuracies, non_sgd_returned_genotypes = supervised_learning_accuracy_evaluation(
             genotype=genotypes,
             key=key,
             graph_structure=cgp,
@@ -210,11 +211,11 @@ def test_regression_scoring_fn():
     y = jax.random.uniform(y_key, (n_samples, 1))
 
     # define train and test fn
-    train_fn = partial(regression_accuracy_evaluation, graph_structure=cgp, X=X, y=y)
+    train_fn = partial(supervised_learning_accuracy_evaluation, graph_structure=cgp, X=X, y=y)
     test_fn = train_fn
 
     # compute scoring fn
-    fitness, extra_scores = regression_scoring_fn(genotypes, key, train_fn, test_fn)
+    fitness, extra_scores = supervised_learning_scoring_fn(genotypes, key, train_fn, test_fn)
     assert len(fitness) == n_genotypes
     assert jnp.array_equal(fitness, extra_scores["test_accuracy"])
     assert genotypes == extra_scores["updated_params"]
@@ -248,12 +249,12 @@ def test_regression_scoring_fn_with_sgd():
     for reset_weights in [True, False]:
         for batch_size in [4, None]:
             constants_opt_fn = partial(optimize_constants_with_sgd, batch_size=batch_size)
-            train_fn = partial(regression_accuracy_evaluation_with_constants_optimization, graph_structure=cgp, X=X,
-                               y=y, constants_optimization_fn=constants_opt_fn, reset_weights=reset_weights)
-            test_fn = partial(regression_accuracy_evaluation, graph_structure=cgp, X=X, y=y)
+            train_fn = partial(supervised_learning_accuracy_evaluation_with_constants_optimization, graph_structure=cgp,
+                               X=X, y=y, constants_optimization_fn=constants_opt_fn, reset_weights=reset_weights)
+            test_fn = partial(supervised_learning_accuracy_evaluation, graph_structure=cgp, X=X, y=y)
 
             # compute scoring fn
-            fitness, extra_scores = regression_scoring_fn(genotypes, key, train_fn, test_fn)
+            fitness, extra_scores = supervised_learning_scoring_fn(genotypes, key, train_fn, test_fn)
             assert len(fitness) == n_genotypes
             assert jnp.array_equal(fitness, extra_scores["test_accuracy"])
             assert not all(jax.tree_leaves(
@@ -277,12 +278,12 @@ def test_train_and_test_set_accuracy():
 
         data_key, key = jax.random.split(key)
         X = jax.random.uniform(data_key, (n_total_samples, n_inputs))
-        y = jax.vmap(predict_regression_output, in_axes=(None, 0, None))(X, random_graph, cgp)[1]
+        y = jax.vmap(compute_model_predictions, in_axes=(None, 0, None))(X, random_graph, cgp)[1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
 
-        train_fn = partial(regression_accuracy_evaluation, graph_structure=cgp, X=X_train, y=y_train)
-        test_fn = partial(regression_accuracy_evaluation, graph_structure=cgp, X=X_test, y=y_test)
+        train_fn = partial(supervised_learning_accuracy_evaluation, graph_structure=cgp, X=X_train, y=y_train)
+        test_fn = partial(supervised_learning_accuracy_evaluation, graph_structure=cgp, X=X_test, y=y_test)
 
-        fitness, extra_scores = regression_scoring_fn(random_graph, key, train_fn, test_fn)
+        fitness, extra_scores = supervised_learning_scoring_fn(random_graph, key, train_fn, test_fn)
         assert jnp.isclose(fitness, 1.)
         assert jnp.isclose(extra_scores["test_accuracy"], 1.)

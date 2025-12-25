@@ -20,7 +20,7 @@ from gpax.supervised_learning.constants_optimization import optimize_constants_w
 from gpax.supervised_learning.metrics import r2_score, rmse
 
 
-def predict_regression_output(
+def compute_model_predictions(
         X: jnp.ndarray,
         genotype: Genotype,
         graph_structure: GGP,
@@ -28,7 +28,8 @@ def predict_regression_output(
         max_norm: float = 1e6,
 ) -> jnp.ndarray:
     """
-        Compute regression predictions for a batch of inputs.
+        Compute model predictions for a batch of inputs (in a supervised
+        learning setting).
         The batch of input is processed in parallel via vectorization.
 
         Parameters
@@ -57,7 +58,7 @@ def predict_regression_output(
     return jnp.clip(pred, -max_norm, max_norm)
 
 
-def regression_accuracy_evaluation(
+def supervised_learning_accuracy_evaluation(
         genotype: Genotype,
         key: RNGKey,
         graph_structure: GGP,
@@ -66,7 +67,7 @@ def regression_accuracy_evaluation(
         accuracy_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = r2_score,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
-        Evaluate regression accuracy for a batch of genotypes on a dataset.
+        Evaluate supervised learning accuracy for a batch of genotypes on a dataset.
 
         This function computes predictions for each genotype in the batch on
         the input data `X`, and then evaluates the predictions against the target
@@ -99,7 +100,7 @@ def regression_accuracy_evaluation(
             genotype : Genotype
                 The batch of genotypes that were evaluated, returned for convenience.
         """
-    prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=graph_structure))
+    prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=graph_structure))
 
     def _accuracy_fn(single_genotype: Genotype):
         prediction = prediction_fn(X, single_genotype)
@@ -110,7 +111,7 @@ def regression_accuracy_evaluation(
     return jnp.expand_dims(accuracies, 1), genotype
 
 
-def regression_accuracy_evaluation_with_constants_optimization(
+def supervised_learning_accuracy_evaluation_with_constants_optimization(
         genotype: Genotype,
         key: RNGKey,
         graph_structure: GGP,
@@ -121,10 +122,10 @@ def regression_accuracy_evaluation_with_constants_optimization(
         reset_weights: bool = False
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
-    Evaluate regression accuracy after optimizing the constants of a genotype's
-    computational graph.
+    Evaluate supervised learning accuracy after optimizing the constants of a
+    genotype's computational graph.
 
-    This function optionally reinitializes the weights of the given genotype(s),
+    This function optionally re-initializes the weights of the given genotype(s),
     performs constant optimization (e.g., via Adam/SGD), updates the genotype(s)
     with the optimized weights, and finally computes regression accuracy.
 
@@ -168,16 +169,16 @@ def regression_accuracy_evaluation_with_constants_optimization(
         new_weights = jax.vmap(jax.jit(graph_structure.init_weights))(weights_keys)
         graph_weights = {k: new_weights[k] for k in graph_weights.keys() if k in new_weights}
 
-    prediction_fn = jax.jit(partial(predict_regression_output, graph_structure=graph_structure))
+    prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=graph_structure))
     graph_weights = constants_optimization_fn(graph_weights, genotype, key, X, y, prediction_fn)
 
     # update the weights in the genomes
     updated_genotype = jax.vmap(jax.jit(graph_structure.update_weights), in_axes=(0, 0))(genotype, graph_weights)
 
-    return regression_accuracy_evaluation(updated_genotype, key, graph_structure, X, y, accuracy_fn)
+    return supervised_learning_accuracy_evaluation(updated_genotype, key, graph_structure, X, y, accuracy_fn)
 
 
-def regression_scoring_fn(
+def supervised_learning_scoring_fn(
         functions_params: Genotype,
         key: RNGKey,
         train_set_evaluation_fn: Callable[[Params, RNGKey], Tuple[jnp.ndarray, jnp.ndarray]],

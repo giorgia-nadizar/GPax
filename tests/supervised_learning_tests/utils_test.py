@@ -9,8 +9,8 @@ import numpy as np
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
 from gpax.supervised_learning.metrics import rrmse_per_target
-from gpax.supervised_learning.scoring_functions import regression_accuracy_evaluation, \
-    regression_accuracy_evaluation_with_constants_optimization, regression_scoring_fn
+from gpax.supervised_learning.scoring_functions import supervised_learning_accuracy_evaluation, \
+    supervised_learning_accuracy_evaluation_with_constants_optimization, supervised_learning_scoring_fn
 from gpax.supervised_learning.utils import prepare_train_test_evaluation_fns, prepare_scoring_fn, prepare_rescoring_fn
 from gpax.supervised_learning.dataset_utils import load_dataset
 
@@ -40,8 +40,8 @@ def test_prepare_eval_fns_default_behavior(sample_data):
         X_train, y_train, X_test, y_test, graph_structure=None
     )
 
-    assert train_fn.func is regression_accuracy_evaluation
-    assert test_fn.func is regression_accuracy_evaluation
+    assert train_fn.func is supervised_learning_accuracy_evaluation
+    assert test_fn.func is supervised_learning_accuracy_evaluation
 
 
 @pytest.mark.parametrize("opt", ["automl0", "mutation"])
@@ -52,7 +52,7 @@ def test_prepare_eval_fns_no_optimizer_aliases(sample_data, opt):
         X_train, y_train, X_test, y_test, const_optimizer=opt, graph_structure=None
     )
 
-    assert train_fn.func is regression_accuracy_evaluation
+    assert train_fn.func is supervised_learning_accuracy_evaluation
 
 
 def test_prepare_eval_fns_adam_optimizer(sample_data):
@@ -62,7 +62,7 @@ def test_prepare_eval_fns_adam_optimizer(sample_data):
         X_train, y_train, X_test, y_test, const_optimizer="adam", graph_structure=None
     )
 
-    assert train_fn.func is regression_accuracy_evaluation_with_constants_optimization
+    assert train_fn.func is supervised_learning_accuracy_evaluation_with_constants_optimization
     opt_fn = train_fn.keywords["constants_optimization_fn"]
     assert opt_fn.func is optimize_constants_with_sgd
     assert opt_fn.keywords["n_gradient_steps"] == 100
@@ -75,7 +75,7 @@ def test_prepare_eval_fns_rmsprop_optimizer(sample_data):
         X_train, y_train, X_test, y_test, const_optimizer="rmsprop", graph_structure=None
     )
 
-    assert train_fn.func is regression_accuracy_evaluation_with_constants_optimization
+    assert train_fn.func is supervised_learning_accuracy_evaluation_with_constants_optimization
     opt_fn = train_fn.keywords["constants_optimization_fn"]
     assert opt_fn.func is optimize_constants_with_sgd
     assert opt_fn.keywords["n_gradient_steps"] == 120
@@ -88,7 +88,7 @@ def test_prepare_eval_fns_cmaes_optimizer(sample_data):
         X_train, y_train, X_test, y_test, const_optimizer="cmaes", graph_structure=None
     )
 
-    assert train_fn.func is regression_accuracy_evaluation_with_constants_optimization
+    assert train_fn.func is supervised_learning_accuracy_evaluation_with_constants_optimization
     opt_fn = train_fn.keywords["constants_optimization_fn"]
     assert opt_fn.func is optimize_constants_with_cmaes
     assert opt_fn.keywords["max_iter"] == 20
@@ -101,7 +101,7 @@ def test_prepare_eval_fns_lbfgs_optimizer(sample_data):
         X_train, y_train, X_test, y_test, const_optimizer="lbfgs", graph_structure=None
     )
 
-    assert train_fn.func is regression_accuracy_evaluation_with_constants_optimization
+    assert train_fn.func is supervised_learning_accuracy_evaluation_with_constants_optimization
     opt_fn = train_fn.keywords["constants_optimization_fn"]
     assert opt_fn.func is optimize_constants_with_lbfgs
     assert opt_fn.keywords["max_iter"] == 5
@@ -114,7 +114,7 @@ def test_prepare_eval_fns_test_fn_always_simple(sample_data):
         X_train, y_train, X_test, y_test, const_optimizer="adam", graph_structure=None
     )
 
-    assert test_fn.func is regression_accuracy_evaluation
+    assert test_fn.func is supervised_learning_accuracy_evaluation
 
 
 def test_prepare_eval_fns_test_fn_mtr(sample_data_mtr):
@@ -124,7 +124,7 @@ def test_prepare_eval_fns_test_fn_mtr(sample_data_mtr):
         X_train, y_train, X_test, y_test, const_optimizer="adam", graph_structure=None
     )
 
-    assert test_fn.func is regression_accuracy_evaluation
+    assert test_fn.func is supervised_learning_accuracy_evaluation
     assert test_fn.keywords["accuracy_fn"].func is rrmse_per_target
     assert jnp.all(test_fn.keywords["accuracy_fn"].keywords["y_train"] == y_train)
 
@@ -138,7 +138,7 @@ def test_prepare_scoring_fn_returns_partial(sample_data):
     )
 
     assert isinstance(scoring_fn, functools.partial)
-    assert scoring_fn.func is regression_scoring_fn
+    assert scoring_fn.func is supervised_learning_scoring_fn
 
 
 def test_prepare_scoring_fn_partial_contains_train_and_test_fns(sample_data):
@@ -153,8 +153,8 @@ def test_prepare_scoring_fn_partial_contains_train_and_test_fns(sample_data):
     test_fn = scoring_fn.keywords["test_set_evaluation_fn"]
 
     # default: no constants optimizer → simple evaluation
-    assert train_fn.func is regression_accuracy_evaluation
-    assert test_fn.func is regression_accuracy_evaluation
+    assert train_fn.func is supervised_learning_accuracy_evaluation
+    assert test_fn.func is supervised_learning_accuracy_evaluation
 
 
 def test_prepare_scoring_fn_constants_optimizer_flow(sample_data):
@@ -169,8 +169,8 @@ def test_prepare_scoring_fn_constants_optimizer_flow(sample_data):
     train_fn = scoring_fn.keywords["train_set_evaluation_fn"]
     test_fn = scoring_fn.keywords["test_set_evaluation_fn"]
 
-    assert train_fn.func is regression_accuracy_evaluation_with_constants_optimization
-    assert test_fn.func is regression_accuracy_evaluation  # always simple
+    assert train_fn.func is supervised_learning_accuracy_evaluation_with_constants_optimization
+    assert test_fn.func is supervised_learning_accuracy_evaluation  # always simple
 
 
 def test_prepare_rescoring_fn(sample_data):
