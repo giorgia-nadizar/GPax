@@ -99,3 +99,30 @@ def categorical_cross_entropy(y_true: jnp.ndarray, logits: jnp.ndarray, ) -> jnp
 
     # Return mean over batch
     return jnp.mean(loss)
+
+
+def classification_accuracy(y_true: jnp.ndarray, logits: jnp.ndarray) -> jnp.ndarray:
+    """
+    Computes classification accuracy.
+
+    Args:
+        y_true: jnp.ndarray of shape (batch_size, n_classes)
+                One-hot encoded labels
+        logits: jnp.ndarray of shape (batch_size, n_classes)
+                Raw outputs from the model (before softmax)
+                Note: it also works if the outputs have been
+                encoded for classification already.
+
+    Returns:
+        Accuracy as a float (0.0 to 1.0)
+    """
+    # Predicted class index
+    y_pred = jnp.argmax(logits, axis=-1)
+
+    # True class index
+    y_labels = jnp.argmax(y_true, axis=-1)
+
+    # Compute accuracy
+    acc = jnp.mean(y_pred == y_labels)
+
+    return acc

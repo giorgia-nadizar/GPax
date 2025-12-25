@@ -1,7 +1,9 @@
+import jax
 import jax.numpy as jnp
 from sklearn.metrics import root_mean_squared_error, r2_score as sklearn_r2_score, mean_squared_error
 
-from gpax.supervised_learning.metrics import r2_score, rmse, mse, rrmse_per_target, categorical_cross_entropy
+from gpax.supervised_learning.metrics import r2_score, rmse, mse, rrmse_per_target, categorical_cross_entropy, \
+    classification_accuracy
 
 
 def test_r2_score_perfect():
@@ -189,3 +191,63 @@ def test_categorical_cross_entropy_multiclass_classification():
 
     assert loss > 0, "Loss should be positive"
     assert loss < 1.0, "Loss should be small for mostly correct predictions"
+
+
+def test_classification_accuracy_binary_perfect():
+    """Binary classification, perfect predictions"""
+    y_true = jnp.array([[1, 0], [0, 1], [1, 0]])
+    logits = jnp.array([[2.0, -1.0], [-1.0, 2.0], [2.0, -1.0]])
+
+    acc = classification_accuracy(y_true, logits)
+    assert acc == 1.0, "Accuracy should be 1.0 for perfect binary predictions"
+
+
+def test_classification_accuracy_binary_wrong():
+    """Binary classification, completely wrong predictions"""
+    y_true = jnp.array([[1, 0], [0, 1]])
+    logits = jnp.array([[-1.0, 2.0], [2.0, -1.0]])
+
+    acc = classification_accuracy(y_true, logits)
+    assert acc == 0.0, "Accuracy should be 0.0 for totally wrong binary predictions"
+
+
+def test_classification_accuracy_multiclass_perfect():
+    """Multi-class classification, perfect predictions"""
+    y_true = jnp.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    logits = jnp.array([[5, 1, 0], [0, 5, 1], [1, 0, 5]])
+
+    acc = classification_accuracy(y_true, logits)
+    assert acc == 1.0, "Accuracy should be 1.0 for perfect multi-class predictions"
+
+
+def test_classification_accuracy_multiclass_partial():
+    """Multi-class classification, some wrong predictions"""
+    y_true = jnp.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    logits = jnp.array([[0, 5, 0], [0, 5, 1], [1, 0, 5]])
+
+    acc = classification_accuracy(y_true, logits)
+    # First prediction wrong, next two correct
+    expected_acc = 2 / 3
+    assert jnp.isclose(acc, expected_acc), "Accuracy should match partially correct predictions"
+
+
+def test_classification_accuracy_softmax_inputs():
+    """Check that function works when inputs are already softmaxed"""
+    y_true = jnp.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    logits = jnp.array([[5, 1, 0], [0, 5, 1], [1, 0, 5]])
+    probs = jax.nn.softmax(logits, axis=-1)
+
+    acc_logits = classification_accuracy(y_true, logits)
+    acc_probs = classification_accuracy(y_true, probs)
+
+    assert acc_logits == acc_probs, "Accuracy should be same for logits or softmaxed probabilities"
+
+
+def test_classification_accuracy_zero_batch():
+    """Edge case: empty batch"""
+    y_true = jnp.empty((0, 2))
+    logits = jnp.empty((0, 2))
+
+    # Expect nan due to mean over empty array
+    acc = classification_accuracy(y_true, logits)
+    assert jnp.isnan(acc), "Accuracy should be nan for empty batch"
