@@ -171,7 +171,7 @@ if __name__ == '__main__':
         "n_pop": 100,
         "seed": 0,
         "tournament_size": 3,
-        "problem": "feynman_I_6_2",
+        "problem": "diabetes_classification",
         "scale_x": False,
         "scale_y": False,
         "constants_optimization": "gaussian",
@@ -188,7 +188,7 @@ if __name__ == '__main__':
 
     # for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
     #                 "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min"]:
-    for problem in ["mtr/rf1", "mtr/scm20d", "mtr/edm", "mtr/jura", "mtr/wq", "mtr/enb", "mtr/slump", "mtr/andro", ]:
+    for problem in ["diabetes_classification", "breast_cancer", "glass", ]:
         conf["problem"] = problem
         for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
                                  (False, False, False)]:

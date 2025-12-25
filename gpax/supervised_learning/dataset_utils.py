@@ -8,7 +8,8 @@ import scipy
 from qdax.custom_types import RNGKey
 from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from ucimlrepo import fetch_ucirepo
 
 
 def downsample_dataset(
@@ -93,12 +94,32 @@ def load_dataset(dataset_name: str,
     y_train, y_test : np.ndarray
         Training and testing targets, reshaped to (-1, 1).
     """
-    if "diabetes" in dataset_name:
+    uci_classification_datasets = {
+        "breast_cancer": 17,
+        "glass": 42
+    }
+    local_classification_datasets = ["diabetes_classification"]
+
+    if dataset_name in uci_classification_datasets.keys():
+        dataset = fetch_ucirepo(id=uci_classification_datasets[dataset_name])
+        X = dataset.data.features.to_numpy()
+        y_raw = dataset.data.targets.squeeze()
+        encoder = OneHotEncoder(sparse_output=False)
+        y = encoder.fit_transform(y_raw.to_frame())
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_split, random_state=random_state)
+    elif dataset_name in local_classification_datasets:
+        df = pd.read_csv(f"../datasets/classification/{dataset_name}.csv")
+        X = df.iloc[:, :-1].to_numpy()
+        y_raw = df.iloc[:, -1].to_numpy().reshape(-1, 1)
+        encoder = OneHotEncoder(sparse_output=False)
+        y = encoder.fit_transform(y_raw)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_split, random_state=random_state)
+    elif "diabetes" in dataset_name:
         X, y = load_diabetes(return_X_y=True)
         y = y.reshape(-1, 1)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_split, random_state=random_state)
     elif "feynman" in dataset_name:
-        df = pd.read_csv(f"../datasets/{dataset_name}.tsv", sep="\t")
+        df = pd.read_csv(f"../datasets/regression/{dataset_name}.tsv", sep="\t")
         X = df.iloc[:, :-1].to_numpy()
         y = df.iloc[:, -1].to_numpy()
         y = y.reshape(-1, 1)
@@ -112,8 +133,8 @@ def load_dataset(dataset_name: str,
         y = df.iloc[:, -n_targets:].to_numpy()
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_split, random_state=random_state)
     else:
-        df_train = pd.read_csv(f"../datasets/{dataset_name}_train.csv")
-        df_test = pd.read_csv(f"../datasets/{dataset_name}_test.csv")
+        df_train = pd.read_csv(f"../datasets/regression/{dataset_name}_train.csv")
+        df_test = pd.read_csv(f"../datasets/regression/{dataset_name}_test.csv")
         X_train = df_train.drop(columns=["target"], inplace=False).to_numpy()
         X_test = df_test.drop(columns=["target"], inplace=False).to_numpy()
         y_train = df_train["target"].to_numpy().reshape(-1, 1)
