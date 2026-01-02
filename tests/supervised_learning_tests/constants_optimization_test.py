@@ -7,6 +7,7 @@ import optax
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, \
     optimize_constants_with_lbfgs, optimize_constants_with_cmaes
+from gpax.supervised_learning.regularization import sticky_pm_target_regularizer, snap_to_pm_target
 from gpax.supervised_learning.scoring_functions import compute_model_predictions
 
 
@@ -136,3 +137,36 @@ def test_multiregression_constants_optimization():
         for k in optimized_weights:
             assert optimized_weights[k].shape == graph_weights[k].shape
             assert isinstance(optimized_weights[k], jnp.ndarray)
+
+
+def test_sgd_push_to_pm_target():
+    """ Ensure the constants optimization with sgd have the correct shape. """
+    n_genomes, n_features, n_samples = 3, 5, 20
+    X = jnp.ones((n_samples, n_features))
+    y = jnp.ones((n_samples,))
+
+    for wgt in [True, False]:
+        cgp = CGP(
+            n_inputs=n_features,
+            n_outputs=1,
+            n_nodes=5,
+            weighted_functions=wgt,
+            weighted_inputs=not wgt
+        )
+        key = jax.random.key(42)
+
+        # init genomes
+        init_key, key = jax.random.split(key)
+        init_keys = jax.random.split(init_key, n_genomes)
+        genotypes = jax.vmap(jax.jit(cgp.init))(init_keys)
+
+        graph_weights = cgp.get_weights(genotypes)
+        prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
+        reg_loss_fn = sticky_pm_target_regularizer
+        reg_update_fn = partial(snap_to_pm_target, target=1, eps=1e-1)
+        optimized_weights = optimize_constants_with_sgd(graph_weights, genotypes, key, X, y, prediction_fn,
+                                                        batch_size=n_samples, regularization_loss_fn=reg_loss_fn,
+                                                        regularization_update_fn=reg_update_fn, n_gradient_steps=100,
+                                                        optimizer=optax.adam(1e-1), regularization_strength=10)
+        for w in optimized_weights.values():
+            assert jnp.allclose(jnp.abs(w), 1)

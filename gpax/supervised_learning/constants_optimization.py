@@ -9,6 +9,7 @@ from qdax.custom_types import Genotype, RNGKey
 
 from gpax.supervised_learning.dataset_utils import downsample_dataset
 from gpax.supervised_learning.metrics import rmse
+from gpax.supervised_learning.regularization import no_regularizer, no_snap
 
 
 def optimize_constants_with_cmaes(
@@ -230,63 +231,76 @@ def optimize_constants_with_sgd(
         prediction_fn: Callable,
         optimizer: GradientTransformation = optax.adam(1e-3),
         loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
+        regularization_loss_fn: Callable[[Dict], jnp.ndarray] = no_regularizer,
+        regularization_update_fn: Callable[[Dict], Dict] = no_snap,
         n_gradient_steps: int = 100,
         batch_size: int = 32,
+        regularization_strength: float = 1e-2,
 ) -> Dict:
     """
-        Optimize the constant parameters (weights) of a batch of computational graphs
-        using mini-batch stochastic gradient descent with an Optax optimizer
-        (default Adam) and gradient clipping.
+    Optimize the constant parameters (weights) of a batch of computational graphs
+    using mini-batch stochastic gradient descent with an Optax optimizer
+    (default Adam), gradient clipping, and optional regularization.
 
-        This function operates over a batch of genomes in parallel via `jax.vmap`,
-        performing iterative gradient updates on each genome’s weight dictionary.
-        During each optimization step, a random mini-batch is sampled, loss and
-        gradients are computed, and weights are updated.
+    This function operates over a batch of genomes in parallel via `jax.vmap`,
+    performing iterative gradient updates on each genome’s weight dictionary.
+    During each optimization step, a random mini-batch is sampled, loss and
+    gradients are computed, weights are updated, and optional regularization is applied.
 
-        Parameters
-        ----------
-        graph_weights : Dict
-            A PyTree-compatible dictionary containing the current constant/weight
-            parameters for each genome in the batch. The leading dimension corresponds
-            to the batch size (number of genomes).
-        genotype : Genotype
-            The batch of genotypes associated with the weight dictionaries. Used by
-            the prediction function to interpret the weights.
-        key : RNGKey
-            JAX random key used for mini-batch sampling during optimization.
-        X : jnp.ndarray
-            Input feature matrix of shape (n_samples, n_features).
-        y : jnp.ndarray
-            Target regression outputs of shape (n_samples,) or (n_samples, n_outputs).
-        prediction_fn : Callable
-            A function with signature `(X, genotype, graph_weights) -> predictions`
-            that computes regression model outputs given weights.
-        optimizer : GradientTransformation, optional
-            An Optax optimizer transformation used to update weights. Defaults to
-            `optax.adam(1e-3)`. Gradient clipping is automatically prepended.
-        loss_fn : Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray], optional
-            A differentiable loss function comparing predicted and target outputs.
-            Defaults to `rmse`.
-        n_gradient_steps : int, optional
-            Number of optimization steps to perform. Defaults to 100.
-        batch_size : int or None, optional
-            Mini-batch size. If None, uses the full dataset (i.e., full-batch gradient
-            descent). Defaults to None.
+    Parameters
+    ----------
+    graph_weights : Dict
+        A PyTree-compatible dictionary containing the current constant/weight
+        parameters for each genome in the batch. The leading dimension corresponds
+        to the batch size (number of genomes).
+    genotype : Genotype
+        The batch of genotypes associated with the weight dictionaries. Used by
+        the prediction function to interpret the weights.
+    key : RNGKey
+        JAX random key used for mini-batch sampling during optimization.
+    X : jnp.ndarray
+        Input feature matrix of shape (n_samples, n_features).
+    y : jnp.ndarray
+        Target regression outputs of shape (n_samples,) or (n_samples, n_outputs).
+    prediction_fn : Callable
+        A function with signature `(X, genotype, graph_weights) -> predictions`
+        that computes regression model outputs given weights.
+    optimizer : GradientTransformation, optional
+        An Optax optimizer transformation used to update weights. Defaults to
+        `optax.adam(1e-3)`. Gradient clipping is automatically prepended.
+    loss_fn : Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray], optional
+        A differentiable loss function comparing predicted and target outputs.
+        Defaults to `rmse`.
+    regularization_loss_fn : Callable[[Dict], jnp.ndarray], optional
+        A differentiable regularization function that computes a scalar penalty
+        from the current weights. Defaults to `no_regularizer` (no penalty).
+    regularization_update_fn : Callable[[Dict], Dict], optional
+        A function that optionally modifies weights after each optimizer step
+        (e.g., snapping to discrete values). Defaults to `no_snap` (no modification).
+    n_gradient_steps : int, optional
+        Number of optimization steps to perform. Defaults to 100.
+    batch_size : int or None, optional
+        Mini-batch size. If None, uses the full dataset (i.e., full-batch gradient
+        descent). Defaults to 32.
+    regularization_strength : float, optional
+        Scaling factor for the regularization loss. Defaults to 1e-2.
 
-        Returns
-        -------
-        Dict
-            A dictionary of optimized graph/constant weights, with the same structure
-            as the input `graph_weights`, containing updated values after SGD/Adam
-            training.
+    Returns
+    -------
+    Dict
+        A dictionary of optimized graph/constant weights, with the same structure
+        as the input `graph_weights`, containing updated values after SGD/Adam
+        training.
 
-        Notes
-        -----
-        - Optimization is parallelized across genomes using `jax.vmap`.
-        - Gradient clipping (`clip_by_global_norm`) is automatically added to prevent
-          exploding gradients and reduce the likelihood of NaNs.
-        - Mini-batch sampling is stochastic and driven by the provided PRNG key.
-        """
+    Notes
+    -----
+    - Optimization is parallelized across genomes using `jax.vmap`.
+    - Gradient clipping (`clip_by_global_norm`) is automatically added to prevent
+      exploding gradients and reduce the likelihood of NaNs.
+    - Mini-batch sampling is stochastic and driven by the provided PRNG key.
+    - Regularization can be used to bias constants toward target values or enforce
+      constraints via `regularization_loss_fn` and `regularization_update_fn`.
+    """
     # add gradient clipping to the pipeline to prevent nan values
     optimizer = optax.chain(
         optax.clip_by_global_norm(1.),
@@ -300,7 +314,10 @@ def optimize_constants_with_sgd(
     @jax.jit
     def _single_genome_loss(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, X_batch: jnp.ndarray,
                             y_batch: jnp.ndarray) -> jnp.ndarray:
-        return loss_fn(y_batch, prediction_fn(X_batch, single_genotype, graph_weights=single_weights))
+        data_loss = loss_fn(y_batch, prediction_fn(X_batch, single_genotype, graph_weights=single_weights))
+        regularization_loss = regularization_loss_fn(single_weights)
+        total_loss = data_loss + regularization_loss * regularization_strength
+        return total_loss
 
     @jax.jit
     def _single_genome_gradient_step(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, opt_st: Any,
@@ -308,6 +325,7 @@ def optimize_constants_with_sgd(
         loss, grads = jax.value_and_grad(_single_genome_loss)(single_weights, single_genotype, X_batch, y_batch)
         weights_updates, new_opt_st = optimizer.update(grads, opt_st)
         updated_weights = optax.apply_updates(single_weights, weights_updates)
+        updated_weights = regularization_update_fn(updated_weights)
         return updated_weights, new_opt_st, loss
 
     step_fn = jax.vmap(jax.jit(_single_genome_gradient_step), in_axes=(0, 0, 0, None, None))
