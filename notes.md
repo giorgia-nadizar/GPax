@@ -16,3 +16,8 @@
 
 - add back to weight init
 - "variance": jnp.zeros((1,), dtype=jnp.float32),
+
+# GECCO todos
+- track results of constants optimization -> https://arxiv.org/pdf/1810.04119
+- try classification on given datasets
+- implement sparsity of constants
