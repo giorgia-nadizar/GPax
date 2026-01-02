@@ -26,7 +26,7 @@ def process_metrics_mtr(metrics: Dict, headers: List) -> Dict:
     return metrics
 
 
-def run_sym_reg_ga(config: Dict):
+def run_classification_ga(config: Dict):
     task = "classification"
     const_optimizer = config.get("constants_optimization", None)
 
@@ -47,7 +47,7 @@ def run_sym_reg_ga(config: Dict):
     # Init the CGP policy graph with default values
     graph_structure = CGP(
         n_inputs=X_train.shape[1],
-        n_outputs=1,
+        n_outputs=y_train.shape[1],
         n_nodes=config["solver"]["n_nodes"],
         n_input_constants=config["solver"]["n_input_constants"],
         outputs_wrapper=lambda x: x,
@@ -215,4 +215,4 @@ if __name__ == '__main__':
                 conf["n_gens"] = gaussian_gens
             conf["run_name"] = "ga_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
             print(conf["run_name"])
-            run_sym_reg_ga(conf)
+            run_classification_ga(conf)
