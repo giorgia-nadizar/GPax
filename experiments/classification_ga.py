@@ -101,15 +101,12 @@ def run_classification_ga(config: Dict):
                                                       key=subkey)
 
     # Initialize metrics
-    n_targets = y_test.shape[1]
-    test_accuracy_header = ["test_accuracy"] if n_targets == 1 else [f"rrmse_{i}" for i in range(n_targets)]
-    metrics = {key: jnp.array([]) for key in ["iteration", "max_fitness", "time"] + test_accuracy_header}
+    metrics = {key: jnp.array([]) for key in ["iteration", "max_fitness", "time", "test_accuracy"]}
 
     # Set up init metrics
-    # init_metrics = jax.tree.map(lambda x: jnp.array([x]) if x.shape == () else x, init_metrics)
-    init_metrics["iteration"] = 0
-    init_metrics["max_fitness"] = init_metrics["max_fitness"][0]
-    init_metrics["time"] = 0.0  # No time recorded for initialization
+    init_metrics = jax.tree.map(lambda x: jnp.array([x]) if x.shape == () else x, init_metrics)
+    init_metrics["iteration"] = jnp.asarray([0])
+    init_metrics["time"] = jnp.asarray([0.])  # No time recorded for initialization
 
     # Convert init_metrics to match the metrics dictionary structure
     # metrics = jax.tree.map(lambda metric, init_metric: jnp.concatenate([metric, init_metric], axis=0), metrics,
@@ -120,8 +117,7 @@ def run_classification_ga(config: Dict):
     )
 
     # Log initial metrics
-    # csv_logger.log(jax.tree.map(lambda x: x[-1], init_metrics))
-    csv_logger.log(process_metrics_mtr(init_metrics, test_accuracy_header))
+    csv_logger.log(jax.tree.map(lambda x: x[-1], init_metrics))
 
     # Iterations
     for iteration in range(1, config["n_gens"]):
@@ -141,12 +137,11 @@ def run_classification_ga(config: Dict):
         timelapse = time.time() - start_time
 
         # Metrics
-        unwrapped_metrics = jax.tree.map(lambda x: jnp.ravel(x), current_metrics)
+        # csv_logger.log(jax.tree.map(lambda x: x[-1], init_metrics))
+        unwrapped_metrics = jax.tree.map(lambda x: x[-1], current_metrics)
         unwrapped_metrics["iteration"] = iteration
         unwrapped_metrics["time"] = timelapse
-        unwrapped_metrics["max_fitness"] = unwrapped_metrics["max_fitness"][0]
-        if len(test_accuracy_header) > 1:
-            unwrapped_metrics = process_metrics_mtr(unwrapped_metrics, test_accuracy_header)
+        # unwrapped_metrics["max_fitness"] = unwrapped_metrics["max_fitness"][0]
 
         print(unwrapped_metrics)
 
