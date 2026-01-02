@@ -195,24 +195,28 @@ if __name__ == '__main__':
 
     for problem in ["diabetes_classification", "breast_cancer", "glass", ]:
         conf["problem"] = problem
-        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
-                                 (False, False, False)]:
-            if not (w_f or w_in or w_pgs) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
-                continue
-            conf["solver"]["weighted_inputs"] = w_in
-            conf["solver"]["weighted_functions"] = w_f
-            conf["solver"]["weighted_program_inputs"] = w_pgs
-            extra = conf["constants_optimization"]
-            extra += f"_win" if w_in else ""
-            extra += f"_wfn" if w_f else ""
-            extra += f"_wpgs" if w_pgs else ""
-            extra += "_1" if conf["solver"].get("weights_initialization") == "ones" else ""
-            if conf["constants_optimization"] == "adam":
-                conf["n_gens"] = adam_gens
-            elif conf["constants_optimization"] == "cmaes":
-                conf["n_gens"] = cmaes_gens
-            else:
-                conf["n_gens"] = gaussian_gens
-            conf["run_name"] = "ga_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
-            print(conf["run_name"])
-            run_classification_ga(conf)
+        for weights_initialization in ["uniform", "ones"]:
+            conf["weights_initialization"] = weights_initialization
+            for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
+                                     (False, False, False)]:
+                if not (w_f or w_in or w_pgs) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
+                    continue
+                if weights_initialization == "ones" and not w_in and not w_f:
+                    continue
+                conf["solver"]["weighted_inputs"] = w_in
+                conf["solver"]["weighted_functions"] = w_f
+                conf["solver"]["weighted_program_inputs"] = w_pgs
+                extra = conf["constants_optimization"]
+                extra += f"_win" if w_in else ""
+                extra += f"_wfn" if w_f else ""
+                extra += f"_wpgs" if w_pgs else ""
+                extra += "_1" if conf["solver"].get("weights_initialization") == "ones" else ""
+                if conf["constants_optimization"] == "adam":
+                    conf["n_gens"] = adam_gens
+                elif conf["constants_optimization"] == "cmaes":
+                    conf["n_gens"] = cmaes_gens
+                else:
+                    conf["n_gens"] = gaussian_gens
+                conf["run_name"] = "ga_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
+                print(conf["run_name"])
+                run_classification_ga(conf)
