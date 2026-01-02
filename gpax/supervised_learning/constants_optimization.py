@@ -296,7 +296,6 @@ def optimize_constants_with_sgd(
     opt_states = jax.vmap(optimizer.init)(graph_weights)
 
     batch_size = batch_size if batch_size is not None else X.shape[0]
-    num_samples = X.shape[0]
 
     @jax.jit
     def _single_genome_loss(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, X_batch: jnp.ndarray,
