@@ -166,7 +166,7 @@ if __name__ == '__main__':
     # cmaes_gens = int(gaussian_gens / 7.4)
     conf = {
         "solver": {
-            "n_nodes": 10,
+            "n_nodes": 100,
             "n_input_constants": 2,
             "weights_initialization": "uniform"
         },
