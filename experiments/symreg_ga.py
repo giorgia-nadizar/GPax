@@ -166,8 +166,8 @@ if __name__ == '__main__':
     # cmaes_gens = int(gaussian_gens / 7.4)
     conf = {
         "solver": {
-            "n_nodes": 50,
-            "n_input_constants": 5,
+            "n_nodes": 10,
+            "n_input_constants": 2,
             "weights_initialization": "uniform"
         },
         "n_offspring": 90,
@@ -189,9 +189,10 @@ if __name__ == '__main__':
         elif key == "constants_optimization":
             conf["constants_optimization"] = value
 
-    # for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
-    #                 "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min"]:
-    for problem in ["mtr/rf1", "mtr/scm20d", "mtr/edm", "mtr/jura", "mtr/wq", "mtr/enb", "mtr/slump", "mtr/andro", ]:
+    for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
+                    "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min", "nikuradse_1",
+                    "nikuradse_2"]:
+        # for problem in ["mtr/rf1", "mtr/scm20d", "mtr/edm", "mtr/jura", "mtr/wq", "mtr/enb", "mtr/slump", "mtr/andro", ]:
         conf["problem"] = problem
         for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
                                  (False, False, False)]:
