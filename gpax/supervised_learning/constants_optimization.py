@@ -323,9 +323,20 @@ def optimize_constants_with_sgd(
     def _single_genome_gradient_step(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, opt_st: Any,
                                      X_batch: jnp.ndarray, y_batch: jnp.ndarray):
         loss, grads = jax.value_and_grad(_single_genome_loss)(single_weights, single_genotype, X_batch, y_batch)
+        # clamp loss
+        loss = jnp.where(jnp.isfinite(loss), loss, jnp.inf)
+        # zero-out non-finite gradients to prevent nan constants
+        grads = jax.tree_map(
+            lambda g: jnp.where(jnp.isfinite(g), g, 0.0),
+            grads,
+        )
         weights_updates, new_opt_st = optimizer.update(grads, opt_st)
         updated_weights = optax.apply_updates(single_weights, weights_updates)
         updated_weights = regularization_update_fn(updated_weights)
+        updated_weights = jax.tree_map(
+            lambda w: jnp.clip(w, -1e4, 1e4),
+            updated_weights,
+        )
         return updated_weights, new_opt_st, loss
 
     step_fn = jax.vmap(jax.jit(_single_genome_gradient_step), in_axes=(0, 0, 0, None, None))
