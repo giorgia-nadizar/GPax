@@ -161,7 +161,7 @@ def run_sym_reg_ga(config: Dict):
 
 if __name__ == '__main__':
     gaussian_gens = 1_500
-    adam_gens = int(gaussian_gens / 4.2)
+    adam_gens = gaussian_gens  # int(gaussian_gens / 4.2)
     cmaes_gens = adam_gens
     # cmaes_gens = int(gaussian_gens / 7.4)
     conf = {
@@ -194,24 +194,29 @@ if __name__ == '__main__':
                     "nikuradse_2"]:
         # for problem in ["mtr/rf1", "mtr/scm20d", "mtr/edm", "mtr/jura", "mtr/wq", "mtr/enb", "mtr/slump", "mtr/andro", ]:
         conf["problem"] = problem
-        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True),
-                                 (False, False, False)]:
-            if not (w_f or w_in or w_pgs) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
+        for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
+                                     (True, False, True, False), (False, True, True, False),
+                                     (True, False, False, True), (False, True, False, True), ]:
+            if not (w_f or w_in) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
                 continue
             conf["solver"]["weighted_inputs"] = w_in
             conf["solver"]["weighted_functions"] = w_f
-            conf["solver"]["weighted_program_inputs"] = w_pgs
+            conf["solver"]["weighted_program_inputs"] = False
+            conf["solver"]["biased_inputs"] = b_in
+            conf["solver"]["biased_functions"] = b_f
             extra = conf["constants_optimization"]
             extra += f"_win" if w_in else ""
             extra += f"_wfn" if w_f else ""
-            extra += f"_wpgs" if w_pgs else ""
-            extra += "_1" if conf["solver"].get("weights_initialization") == "ones" else ""
+            extra += f"_bin" if b_in else ""
+            extra += f"_bfn" if b_f else ""
+            # extra += f"_wpgs" if w_pgs else ""
+            extra += "_1" if conf["solver"].get("weights_initialization") == "natural" else ""
             if conf["constants_optimization"] == "adam":
                 conf["n_gens"] = adam_gens
             elif conf["constants_optimization"] == "cmaes":
                 conf["n_gens"] = cmaes_gens
             else:
                 conf["n_gens"] = gaussian_gens
-            conf["run_name"] = "ga_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
+            conf["run_name"] = "ga2_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
             print(conf["run_name"])
             run_sym_reg_ga(conf)
