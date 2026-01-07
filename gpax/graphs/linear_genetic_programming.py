@@ -66,6 +66,9 @@ class LGP(GGP):
                     - `"inputs2"`
                     - `"functions"`
                     - `"program_inputs"`
+                    - `"inputs1_biases"`
+                    - `"inputs2_biases"`
+                    - `"functions_biases"`
                 The encoding is inspired by that of MLPs.
             """
         # determine bounds for genes for each section of the genome
@@ -313,6 +316,16 @@ class LGP(GGP):
                 "functions": jnp.where(mask,
                                        genotype1["weights"]["functions"],
                                        genotype2["weights"]["functions"]),
+                "inputs1_biases": jnp.where(mask,
+                                     genotype1["weights"]["inputs1_biases"],
+                                     genotype2["weights"]["inputs1_biases"]),
+                "inputs2_biases": jnp.where(mask,
+                                     genotype1["weights"]["inputs2_biases"],
+                                     genotype2["weights"]["inputs2_biases"]),
+                "functions_biases": jnp.where(mask,
+                                       genotype1["weights"]["functions_biases"],
+                                       genotype2["weights"]["functions_biases"]),
+
             }
         }
 
@@ -364,18 +377,19 @@ class LGP(GGP):
         for line_idx in range(self.n_program_lines):
             if active_lines[line_idx]:
                 function = functions[genotype["genes"]["functions"][line_idx]]
-                line_weight = f"{genotype['weights']['lines'][line_idx]:.2f}*(" if self.weighted_functions else ""
-                x_weight = f"{genotype['weights']['inputs1'][line_idx]:.2f}*" if self.weighted_inputs else ""
-                y_weight = f"{genotype['weights']['inputs2'][line_idx]:.2f}*" if self.weighted_inputs else ""
+                line_weight, x_weight, y_weight = self._weights_representations(genotype, line_idx)
+                line_bias, x_bias, y_bias = self._biases_representations(genotype, line_idx)
                 target_reg = genotype['genes']['targets'][line_idx]
                 x_reg = genotype['genes']['inputs1'][line_idx]
                 y_reg = genotype['genes']['inputs2'][line_idx]
+                i_p1, i_p2 = ("(", ")") if self.biased_inputs else ("", "")
                 if function.arity > 1:
-                    program_lines.append(f"r[{target_reg}] = {line_weight} {x_weight}r[{x_reg}] {function.symbol} "
-                                         f"{y_weight}r[{y_reg}] {')' if self.weighted_functions else ''}")
+                    program_lines.append(f"r[{target_reg}] = {line_weight}({i_p1}{x_weight}r[{x_reg}]{x_bias}{i_p2} "
+                                         f"{function.symbol} "
+                                         f"{i_p2}{y_weight}r[{y_reg}]{y_bias}{i_p2}){line_bias}")
                 else:
-                    program_lines.append(f"r[{target_reg}] = {line_weight.replace('(', '')}{function.symbol}"
-                                         f"({x_weight}r[{x_reg}])")
+                    program_lines.append(f"r[{target_reg}] = {line_weight}{function.symbol}"
+                                         f"({x_weight}r[{x_reg}]{x_bias}){line_bias}")
 
         # output selection
         program_lines.append(f"outputs = r[{list(range(self.n_registers - self.n_outputs, self.n_registers))}]")
@@ -387,7 +401,7 @@ class LGP(GGP):
             genotype: Genotype,
             inputs_mapping_fn: Callable[[int], str],
             outputs_mapping_fn: Callable[[int], str], ) -> List[str]:
-        """Worker class for computing the readable symbolic representation of a CGP genotype."""
+        """Worker class for computing the readable symbolic representation of a LGP genotype."""
         n_in = self.n_inputs + self.n_input_constants
         targets = []
 
@@ -399,14 +413,19 @@ class LGP(GGP):
                 if int(lgp_genes['genes']['targets'][row_idx]) == reg_idx:
                     function = functions[lgp_genes["genes"]["functions"][row_idx]]
                     line_weight, x_weight, y_weight = self._weights_representations(lgp_genes, row_idx)
+                    line_bias, x_bias, y_bias = self._biases_representations(lgp_genes, row_idx)
+                    n_p1, n_p2 = ("(", ")") if self.biased_functions else ("", "")
+                    i_p1, i_p2 = ("(", ")") if self.biased_inputs else ("", "")
                     if function.arity == 1:
-                        return (f"{line_weight}{function.symbol}({x_weight}"
-                                f"{_replace_lgp_expression(lgp_genes, int(lgp_genes['genes']['inputs1'][row_idx]), row_idx)})")
+                        return (f"{n_p1}{line_weight}{function.symbol}({x_weight}"
+                                f"{_replace_lgp_expression(lgp_genes, int(lgp_genes['genes']['inputs1'][row_idx]), row_idx)}{x_bias})"
+                                f"{line_bias}{n_p2}")
                     else:
-                        return (f"{line_weight}({x_weight}"
+                        return (f"{n_p1}{line_weight}({i_p1}{x_weight}"
                                 f"{_replace_lgp_expression(lgp_genes, int(lgp_genes['genes']['inputs1'][row_idx]), row_idx)}"
-                                f"{function.symbol}{y_weight}"
-                                f"{_replace_lgp_expression(lgp_genes, int(lgp_genes['genes']['inputs2'][row_idx]), row_idx)})")
+                                f"{x_bias}{i_p2}{function.symbol}{i_p1}{y_weight}"
+                                f"{_replace_lgp_expression(lgp_genes, int(lgp_genes['genes']['inputs2'][row_idx]), row_idx)}"
+                                f"{y_bias}{i_p2}){node_bias}{n_p2}")
             if reg_idx < self.n_inputs:
                 return inputs_mapping_fn(int(reg_idx))
             elif reg_idx < n_in:

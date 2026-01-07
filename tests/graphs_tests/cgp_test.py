@@ -39,6 +39,9 @@ def test_genome_bounds() -> None:
         pytest.assume(jnp.all(genome["weights"]["functions"] == 1))
         pytest.assume(jnp.all(genome["weights"]["inputs1"] == 1))
         pytest.assume(jnp.all(genome["weights"]["inputs2"] == 1))
+        pytest.assume(jnp.all(genome["weights"]["functions_biases"] == 0))
+        pytest.assume(jnp.all(genome["weights"]["inputs1_biases"] == 0))
+        pytest.assume(jnp.all(genome["weights"]["inputs2_biases"] == 0))
         pytest.assume(jnp.allclose(genome["weights"]["program_inputs"], jnp.asarray([.1, 1])))
 
     _test_bounds(initial_cgp_genome)
@@ -254,7 +257,7 @@ def test_readable_expression() -> None:
     print(cgp.get_readable_expression(cgp_genome, outputs_mapping=outputs_mapping_dict), "\n")
 
 
-@pytest.mark.parametrize("init_type", ["uniform", "ones"])
+@pytest.mark.parametrize("init_type", ["uniform", "natural"])
 @pytest.mark.parametrize("weighted_functions", [True, False])
 @pytest.mark.parametrize("weighted_inputs", [True, False])
 def test_weights_initialization(init_type, weighted_functions, weighted_inputs) -> None:
@@ -278,11 +281,14 @@ def test_weights_initialization(init_type, weighted_functions, weighted_inputs) 
     assert weights["inputs1"].shape[0] == n_nodes
     assert weights["inputs2"].shape[0] == n_nodes
 
-    # Check values for "ones"
-    if init_type == "ones":
+    # Check values for "natural"
+    if init_type == "natural":
         assert jnp.all(weights["functions"] == 1)
         assert jnp.all(weights["inputs1"] == 1)
         assert jnp.all(weights["inputs2"] == 1)
+        assert jnp.all(weights["functions_biases"] == 0)
+        assert jnp.all(weights["inputs1_biases"] == 0)
+        assert jnp.all(weights["inputs2_biases"] == 0)
 
     # Check values for "uniform"
     if init_type == "uniform":
@@ -292,6 +298,12 @@ def test_weights_initialization(init_type, weighted_functions, weighted_inputs) 
         assert jnp.all(weights["inputs1"] >= -1)
         assert jnp.all(weights["inputs2"] <= 1)
         assert jnp.all(weights["inputs2"] >= -1)
+        assert jnp.all(weights["functions_biases"] <= 1)
+        assert jnp.all(weights["functions_biases"] >= -1)
+        assert jnp.all(weights["inputs1_biases"] <= 1)
+        assert jnp.all(weights["inputs1_biases"] >= -1)
+        assert jnp.all(weights["inputs2_biases"] <= 1)
+        assert jnp.all(weights["inputs2_biases"] >= -1)
 
 
 def test_weights_update() -> None:
@@ -329,29 +341,36 @@ def test_get_weights() -> None:
     for w_fn in [True, False]:
         for w_in in [True, False]:
             for w_pr_in in [True, False]:
-                cgp = CGP(
-                    n_inputs=3,
-                    n_input_constants=0,
-                    n_outputs=2,
-                    n_nodes=4,
-                    weighted_functions=w_fn,
-                    weighted_inputs=w_in,
-                    weighted_program_inputs=w_pr_in
-                )
+                for b_fn in [True, False]:
+                    for b_in in [True, False]:
+                        cgp = CGP(
+                            n_inputs=3,
+                            n_input_constants=0,
+                            n_outputs=2,
+                            n_nodes=4,
+                            weighted_functions=w_fn,
+                            weighted_inputs=w_in,
+                            weighted_program_inputs=w_pr_in,
+                            biased_inputs=b_in,
+                            biased_functions=b_fn
+                        )
 
-                # Init the population of CGP genomes
-                key = jax.random.key(0)
-                key, subkey = jax.random.split(key)
-                keys = jax.random.split(subkey, num=10)
-                init_cgp_genomes = jax.vmap(cgp.init)(keys)
+                        # Init the population of CGP genomes
+                        key = jax.random.key(0)
+                        key, subkey = jax.random.split(key)
+                        keys = jax.random.split(subkey, num=10)
+                        init_cgp_genomes = jax.vmap(cgp.init)(keys)
 
-                # Get the trainable weights
-                weights = jax.vmap(jax.jit(cgp.get_weights))(init_cgp_genomes)
+                        # Get the trainable weights
+                        weights = jax.vmap(jax.jit(cgp.get_weights))(init_cgp_genomes)
 
-                assert w_fn == ("functions" in weights)
-                assert w_in == ("inputs1" in weights)
-                assert w_in == ("inputs2" in weights)
-                assert w_pr_in == ("program_inputs" in weights)
+                        assert w_fn == ("functions" in weights)
+                        assert w_in == ("inputs1" in weights)
+                        assert w_in == ("inputs2" in weights)
+                        assert w_pr_in == ("program_inputs" in weights)
+                        assert b_fn == ("functions_biases" in weights)
+                        assert b_in == ("inputs1_biases" in weights)
+                        assert b_in == ("inputs2_biases" in weights)
 
 
 def test_gradient_optimization_of_function_weights() -> None:
@@ -377,6 +396,9 @@ def test_gradient_optimization_of_function_weights() -> None:
             "inputs1": jnp.ones(cgp.n_nodes),
             "inputs2": jnp.ones(cgp.n_nodes),
             "program_inputs": jnp.ones(0),
+            "functions_biases": jnp.zeros(cgp.n_nodes),
+            "inputs1_biases": jnp.zeros(cgp.n_nodes),
+            "inputs2_biases": jnp.zeros(cgp.n_nodes),
         }
     }
     active = cgp.compute_active_mask(cgp_genome)
@@ -446,6 +468,9 @@ def test_gradient_optimization_of_input_weights() -> None:
             "inputs2": target_weights2,
             "functions": jnp.ones(cgp.n_nodes),
             "program_inputs": jnp.ones(0),
+            "functions_biases": jnp.zeros(cgp.n_nodes),
+            "inputs1_biases": jnp.zeros(cgp.n_nodes),
+            "inputs2_biases": jnp.zeros(cgp.n_nodes),
         }
     }
     active = cgp.compute_active_mask(cgp_genome)

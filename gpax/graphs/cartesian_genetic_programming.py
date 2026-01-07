@@ -61,6 +61,9 @@ class CGP(GGP):
                     - `"inputs2"`
                     - `"functions"`
                     - `"program_inputs"`
+                    - `"inputs1_biases"`
+                    - `"inputs2_biases"`
+                    - `"functions_biases"`
                 The encoding is inspired by that of MLPs.
             """
         # determine bounds for genes for each section of the genome
@@ -265,12 +268,19 @@ class CGP(GGP):
             gene_idx = idx - n_in
             function = functions[cgp_genes["genes"]["functions"][gene_idx]]
             node_weight, x_weight, y_weight = self._weights_representations(cgp_genes, gene_idx)
+            node_bias, x_bias, y_bias = self._biases_representations(cgp_genes, gene_idx)
+            n_p1, n_p2 = ("(", ")") if self.biased_functions else ("", "")
+            i_p1, i_p2 = ("(", ")") if self.biased_inputs else ("", "")
             if function.arity == 1:
-                return (f"{node_weight}{function.symbol}({x_weight}"
-                        f"{_replace_cgp_expression(cgp_genes, int(cgp_genes['genes']['inputs1'][gene_idx]))})")
+                return (f"{n_p1}{node_weight}{function.symbol}({x_weight}"
+                        f"{_replace_cgp_expression(cgp_genes, int(cgp_genes['genes']['inputs1'][gene_idx]))}{x_bias})"
+                        f"{node_bias}{n_p2}")
             else:
-                return f"{node_weight}({x_weight}{_replace_cgp_expression(cgp_genes, int(cgp_genes['genes']['inputs1'][gene_idx]))}" \
-                       f"{function.symbol}{y_weight}{_replace_cgp_expression(cgp_genes, int(cgp_genes['genes']['inputs2'][gene_idx]))})"
+                return (f"{n_p1}{node_weight}({i_p1}{x_weight}"
+                        f"{_replace_cgp_expression(cgp_genes, int(cgp_genes['genes']['inputs1'][gene_idx]))}"
+                        f"{x_bias}{i_p2}{function.symbol}{i_p1}{y_weight}"
+                        f"{_replace_cgp_expression(cgp_genes, int(cgp_genes['genes']['inputs2'][gene_idx]))}"
+                        f"{y_bias}{i_p2}){node_bias}{n_p2}")
 
         for i, out in enumerate(genotype["genes"]["outputs"].tolist()):
             targets.append(

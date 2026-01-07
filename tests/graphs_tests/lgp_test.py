@@ -36,6 +36,9 @@ def test_genome_bounds() -> None:
         pytest.assume(jnp.all(genome["weights"]["functions"] == 1))
         pytest.assume(jnp.all(genome["weights"]["inputs1"] == 1))
         pytest.assume(jnp.all(genome["weights"]["inputs2"] == 1))
+        pytest.assume(jnp.all(genome["weights"]["functions_biases"] == 0))
+        pytest.assume(jnp.all(genome["weights"]["inputs1_biases"] == 0))
+        pytest.assume(jnp.all(genome["weights"]["inputs2_biases"] == 0))
         pytest.assume(jnp.allclose(genome["weights"]["program_inputs"], jnp.asarray([.1, 1])))
 
     _test_bounds(initial_lgp_genome)
@@ -60,7 +63,7 @@ def test_genome_bounds() -> None:
     _test_bounds(crossed_genome)
 
 
-@pytest.mark.parametrize("init_type", ["uniform", "ones"])
+@pytest.mark.parametrize("init_type", ["uniform", "natural"])
 @pytest.mark.parametrize("weighted_functions", [True, False])
 @pytest.mark.parametrize("weighted_inputs", [True, False])
 def test_weights_initialization(init_type, weighted_functions, weighted_inputs) -> None:
@@ -84,8 +87,8 @@ def test_weights_initialization(init_type, weighted_functions, weighted_inputs) 
     assert weights["inputs1"].shape[0] == n_lines
     assert weights["inputs2"].shape[0] == n_lines
 
-    # Check values for "ones"
-    if init_type == "ones":
+    # Check values for "natural"
+    if init_type == "natural":
         assert jnp.all(weights["functions"] == 1)
         assert jnp.all(weights["inputs1"] == 1)
         assert jnp.all(weights["inputs2"] == 1)
@@ -220,11 +223,7 @@ def test_descriptors() -> None:
             "inputs2": jnp.asarray([3, 3, 1, 1]),
             "functions": jnp.asarray([2, 2, 0, 2]),
         },
-        "weights": {
-            "functions": jnp.ones((lgp.n_program_lines,)),
-            "inputs1": jnp.ones((lgp.n_program_lines,)),
-            "inputs2": jnp.ones((lgp.n_program_lines,)),
-        }
+        "weights": lgp.init_weights(key=jax.random.key(42))
     }
     complexity = lgp.compute_complexity(lgp_genome)
     arities = lgp.compute_function_arities(lgp_genome)
@@ -250,11 +249,7 @@ def test_active_lines() -> None:
             "inputs2": jnp.asarray([3, 3, 1, 1, 10]),
             "functions": jnp.asarray([2, 2, 0, 2, 1]),
         },
-        "weights": {
-            "inputs1": jnp.ones((lgp.n_program_lines,)),
-            "inputs2": jnp.ones((lgp.n_program_lines,)),
-            "functions": jnp.ones((lgp.n_program_lines,)),
-        }
+        "weights": lgp.init_weights(key=jax.random.key(42))
     }
     expected_active_lines = jnp.asarray([1, 1, 1, 1, 0])
     active_lines = lgp.compute_active_mask(lgp_genome)
@@ -274,11 +269,7 @@ def test_active_lines() -> None:
             "inputs2": jnp.asarray([1, 5]),
             "functions": jnp.asarray([2, 5]),
         },
-        "weights": {
-            "functions": jnp.ones((lgp2.n_program_lines,)),
-            "inputs1": jnp.ones((lgp2.n_program_lines,)),
-            "inputs2": jnp.ones((lgp2.n_program_lines,)),
-        }
+        "weights": lgp.init_weights(key=jax.random.key(42))
     }
     expected_active_lines2 = jnp.asarray([0, 1])
     active_lines2 = lgp2.compute_active_mask(lgp_genome2)
@@ -411,29 +402,36 @@ def test_get_weights() -> None:
     for w_fn in [True, False]:
         for w_in in [True, False]:
             for w_pr_in in [True, False]:
-                lgp = LGP(
-                    n_inputs=3,
-                    n_input_constants=0,
-                    n_outputs=2,
-                    n_program_lines=4,
-                    weighted_functions=w_fn,
-                    weighted_inputs=w_in,
-                    weighted_program_inputs=w_pr_in
-                )
+                for b_fn in [True, False]:
+                    for b_in in [True, False]:
+                        lgp = LGP(
+                            n_inputs=3,
+                            n_input_constants=0,
+                            n_outputs=2,
+                            n_program_lines=4,
+                            weighted_functions=w_fn,
+                            weighted_inputs=w_in,
+                            weighted_program_inputs=w_pr_in,
+                            biased_inputs=b_in,
+                            biased_functions=b_fn
+                        )
 
-                # Init the population of CGP genomes
-                key = jax.random.key(0)
-                key, subkey = jax.random.split(key)
-                keys = jax.random.split(subkey, num=10)
-                init_lgp_genomes = jax.vmap(lgp.init)(keys)
+                        # Init the population of CGP genomes
+                        key = jax.random.key(0)
+                        key, subkey = jax.random.split(key)
+                        keys = jax.random.split(subkey, num=10)
+                        init_lgp_genomes = jax.vmap(lgp.init)(keys)
 
-                # Get the trainable weights
-                weights = jax.vmap(jax.jit(lgp.get_weights))(init_lgp_genomes)
+                        # Get the trainable weights
+                        weights = jax.vmap(jax.jit(lgp.get_weights))(init_lgp_genomes)
 
-                assert w_fn == ("functions" in weights)
-                assert w_in == ("inputs1" in weights)
-                assert w_in == ("inputs2" in weights)
-                assert w_pr_in == ("program_inputs" in weights)
+                        assert w_fn == ("functions" in weights)
+                        assert w_in == ("inputs1" in weights)
+                        assert w_in == ("inputs2" in weights)
+                        assert w_pr_in == ("program_inputs" in weights)
+                        assert b_fn == ("functions_biases" in weights)
+                        assert b_in == ("inputs1_biases" in weights)
+                        assert b_in == ("inputs2_biases" in weights)
 
 
 def test_gradient_optimization_of_function_weights() -> None:

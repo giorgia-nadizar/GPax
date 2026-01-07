@@ -1,7 +1,7 @@
 import jax.random
 from flax import struct
 import jax.numpy as jnp
-from typing import Callable, Dict, Union, List, Tuple, Optional, Literal
+from typing import Callable, Dict, Union, List, Tuple, Optional
 
 from jax import random
 from jax.lax import fori_loop
@@ -28,8 +28,10 @@ class GGP:
             (e.g., `tanh` to bound outputs).
         weighted_program_inputs: whether the genotype will contain optimizable inputs for the program.
         weighted_functions: whether the genotype will contain weighting factors for each node/program line.
+        biased_functions: whether the genotype will contain the biases (additive) for each node/program line.
         weighted_inputs: whether the genotype will contain weighting factors for each connection.
-        weights_initialization: how to initialize the weights before their optimization (either `uniform` or `ones`).
+        biased_inputs: whether the genotype will contain the biases (additive) for each connection.
+        weights_initialization: how to initialize the weights before their optimization (either `uniform` or `natural`).
         weights_mutation: whether weights will undergo mutation or not.
         weights_mutation_type: what type of mutation is used (if weights_mutation is True) to mutate the weights.
     """
@@ -41,7 +43,9 @@ class GGP:
     outputs_wrapper: Callable = jnp.tanh
     weighted_program_inputs: bool = False
     weighted_functions: bool = False
+    biased_functions: bool = False
     weighted_inputs: bool = False
+    biased_inputs: bool = False
     weights_initialization: str = "uniform"
     weights_mutation: bool = True
     weights_mutation_type: str = "gaussian"
@@ -145,15 +149,19 @@ class GGP:
     def _mutate_weights(self, weights: Dict, key: RNGKey, weights_mut_sigma: float):
         if self.weights_mutation_type == "gaussian":
             weights_key1, weights_key2 = random.split(key)
-            weights_noise = weights_mut_sigma * random.normal(weights_key1, shape=(self.n_functions * 3,))
-            fn_w_noise, i1_w_noise, i2_w_noise = jnp.split(weights_noise, 3)
-            progr_in_noise = weights_mut_sigma * random.normal(weights_key2, shape=(self.n_input_constants,))
+            weights_noise = (weights_mut_sigma * self.weights_mutation
+                             * random.normal(weights_key1, shape=(self.n_functions * 6,)))
+            fn_w_noise, i1_w_noise, i2_w_noise, fn_b_noise, i1_b_noise, i2_b_noise = jnp.split(weights_noise, 6)
+            progr_in_noise = (weights_mut_sigma * self.weighted_program_inputs * self.weights_mutation
+                              * random.normal(weights_key2, shape=(self.n_input_constants,)))
             return {
-                "program_inputs": weights["program_inputs"]
-                                  + self.weighted_program_inputs * self.weights_mutation * progr_in_noise,
-                "inputs1": weights["inputs1"] + self.weighted_inputs * self.weights_mutation * i1_w_noise,
-                "inputs2": weights["inputs2"] + self.weighted_inputs * self.weights_mutation * i2_w_noise,
-                "functions": weights["functions"] + self.weighted_functions * self.weights_mutation * fn_w_noise,
+                "program_inputs": weights["program_inputs"] + progr_in_noise,
+                "inputs1": weights["inputs1"] + self.weighted_inputs * i1_w_noise,
+                "inputs2": weights["inputs2"] + self.weighted_inputs * i2_w_noise,
+                "functions": weights["functions"] + self.weighted_functions * fn_w_noise,
+                "inputs1_biases": weights["inputs1_biases"] + self.biased_inputs * i1_b_noise,
+                "inputs2_biases": weights["inputs2_biases"] + self.biased_inputs * i2_b_noise,
+                "functions_biases": weights["functions_biases"] + self.biased_functions * fn_b_noise,
             }
         elif self.weights_mutation_type == "automl0":
 
@@ -167,7 +175,7 @@ class GGP:
                 final_multiplier = multipliers * signs * mutate + (1 - mutate) * jnp.ones_like(weights_array)
                 return weights_array * final_multiplier
 
-            w_key1, w_key2, w_key3, w_key4 = random.split(key, 4)
+            w_key1, w_key2, w_key3, w_key4, w_key5, w_key6, w_key7 = random.split(key, 7)
             return {
                 "program_inputs": _automl0_mutation(weights["program_inputs"], w_key1,
                                                     self.weighted_program_inputs * self.weights_mutation),
@@ -175,6 +183,12 @@ class GGP:
                 "inputs2": _automl0_mutation(weights["inputs2"], w_key3, self.weighted_inputs * self.weights_mutation),
                 "functions": _automl0_mutation(weights["functions"], w_key4,
                                                self.weighted_functions * self.weights_mutation),
+                "inputs1_biases": _automl0_mutation(weights["inputs1_biases"], w_key5,
+                                                    self.biased_inputs * self.weights_mutation),
+                "inputs2_biases": _automl0_mutation(weights["inputs2_biases"], w_key6,
+                                                    self.biased_inputs * self.weights_mutation),
+                "functions_biases": _automl0_mutation(weights["functions_biases"], w_key7,
+                                                      self.biased_functions * self.weights_mutation),
             }
         else:
             raise NotImplementedError(f"Mutation not available for {self.weights_mutation_type}")
@@ -251,24 +265,36 @@ class GGP:
         y_weight = f"{genotype['weights']['inputs2'][gene_idx]:.2f}*" if self.weighted_inputs else ""
         return input_weight, x_weight, y_weight
 
+    def _biases_representations(self, genotype: Genotype, gene_idx: int) -> Tuple[str, str, str]:
+        input_bias = f"+{genotype['weights']['functions_biases'][gene_idx]:.2f}" if self.biased_functions else ""
+        x_bias = f"+{genotype['weights']['inputs1_biases'][gene_idx]:.2f}" if self.biased_inputs else ""
+        y_bias = f"+{genotype['weights']['inputs2_biases'][gene_idx]:.2f}" if self.biased_inputs else ""
+        return input_bias, x_bias, y_bias
+
     def init_weights(self, key: RNGKey) -> Dict[str, jnp.ndarray]:
         """Initialize the weights' dictionary."""
         key1, key2 = random.split(key)
         if self.weights_initialization == "uniform":
-            random_weights = random.uniform(key=key1, shape=(self.n_functions * 3,)) * 2 - 1
-        elif self.weights_initialization == "ones":
+            randoms = random.uniform(key=key1, shape=(self.n_functions * 6,)) * 2 - 1
+            random_weights, random_biases = jnp.split(randoms, 2)
+        elif self.weights_initialization == "natural":
             random_weights = jnp.ones(shape=(self.n_functions * 3,), dtype=jnp.float32)
+            random_biases = jnp.zeros(shape=(self.n_functions * 3,), dtype=jnp.float32)
         else:
             raise NotImplementedError
-        random_node_weights, random_input_weights1, random_input_weights2 = jnp.split(random_weights, 3)
+        node_weights, input_weights1, input_weights2 = jnp.split(random_weights, 3)
+        node_biases, input_biases1, input_biases2 = jnp.split(random_biases, 3)
         program_inputs = random.uniform(key=key2, shape=(self.n_input_constants,)) * 2 - 1
         if not self.weighted_program_inputs:
             program_inputs = program_inputs.at[:2].set(jnp.asarray([0.1, 1.0]))
         return {
             "program_inputs": program_inputs,
-            "functions": random_node_weights if self.weighted_functions else jnp.ones_like(random_node_weights),
-            "inputs1": random_input_weights1 if self.weighted_inputs else jnp.ones_like(random_input_weights1),
-            "inputs2": random_input_weights2 if self.weighted_inputs else jnp.ones_like(random_input_weights2),
+            "functions": node_weights if self.weighted_functions else jnp.ones_like(node_weights),
+            "inputs1": input_weights1 if self.weighted_inputs else jnp.ones_like(input_weights1),
+            "inputs2": input_weights2 if self.weighted_inputs else jnp.ones_like(input_weights2),
+            "functions_biases": node_biases if self.biased_functions else jnp.zeros_like(node_biases),
+            "inputs1_biases": input_biases1 if self.biased_inputs else jnp.zeros_like(input_biases1),
+            "inputs2_biases": input_biases2 if self.biased_inputs else jnp.zeros_like(input_biases2),
         }
 
     def get_weights(self, genotype: Genotype) -> Dict[str, jnp.ndarray]:
@@ -283,6 +309,11 @@ class GGP:
                 - "functions"
               - If `weighted_program_inputs` is True, returns the weights associated with the program inputs:
                 - "program_inputs"
+              - If `biased_inputs` is True, returns the biases associated with input connections:
+                - "inputs1_biases"
+                - "inputs2_biases"
+              - If `biased_functions` is True, returns the biases associated with function nodes:
+                - "functions_biases"
               - If neither flag is set, returns an empty dictionary.
 
             Args:
@@ -305,6 +336,16 @@ class GGP:
             return_dictionary = return_dictionary | {
                 "program_inputs": genotype["weights"]["program_inputs"],
             }
+        if self.biased_functions:
+            return_dictionary = return_dictionary | {
+                "functions_biases": genotype["weights"]["functions_biases"],
+            }
+        if self.biased_inputs:
+            return_dictionary = return_dictionary | {
+                "inputs1_biases": genotype["weights"]["inputs1_biases"],
+                "inputs2_biases": genotype["weights"]["inputs2_biases"],
+            }
+
         return return_dictionary
 
     # noinspection PyMethodMayBeStatic
@@ -312,7 +353,8 @@ class GGP:
         """ Update the weights of a genotype with the passed values.
 
             This method returns a new genotype dictionary where each weight type
-            ("inputs1", "inputs2", "functions") is replaced by the corresponding array
+            ("inputs1", "inputs2", "functions", "inputs1_biases", "inputs2_biases",
+            "functions_biases") is replaced by the corresponding array
             in the provided `weights` dictionary if present. If a weight type is not
             provided, the original value from the input genotype is retained.
 
@@ -323,6 +365,9 @@ class GGP:
                     - "inputs2"
                     - "functions"
                     - "program_inputs"
+                    - "inputs1_biases"
+                    - "inputs2_biases"
+                    - "functions_biases"
 
             Returns:
                 Genotype: A new genotype dictionary with updated weights.
@@ -334,6 +379,9 @@ class GGP:
                 "inputs2": weights.get("inputs2", genotype["weights"]["inputs2"]),
                 "functions": weights.get("functions", genotype["weights"]["functions"]),
                 "program_inputs": weights.get("program_inputs", genotype["weights"]["program_inputs"]),
+                "inputs1_biases": weights.get("inputs1_biases", genotype["weights"]["inputs1_biases"]),
+                "inputs2_biases": weights.get("inputs2_biases", genotype["weights"]["inputs2_biases"]),
+                "functions_biases": weights.get("functions_biases", genotype["weights"]["functions_biases"]),
             }
         }
 
@@ -345,9 +393,15 @@ class GGP:
                        memory_idx: Union[int, jnp.ndarray]) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """Updates the memory at a given index computing the function at the genotype index."""
         f_idx = genotype["genes"]["functions"].at[gene_idx].get()
-        x_arg = memory.at[genotype["genes"]["inputs1"].at[gene_idx].get()].get() * weights["inputs1"].at[gene_idx].get()
-        y_arg = memory.at[genotype["genes"]["inputs2"].at[gene_idx].get()].get() * weights["inputs2"].at[gene_idx].get()
-        f_computed = self.function_set.apply(f_idx, x_arg, y_arg) * weights["functions"].at[gene_idx].get()
+        x_w = weights["inputs1"].at[gene_idx].get()
+        y_w = weights["inputs2"].at[gene_idx].get()
+        f_w = weights["functions"].at[gene_idx].get()
+        x_b = weights["inputs1_biases"].at[gene_idx].get()
+        y_b = weights["inputs2_biases"].at[gene_idx].get()
+        f_b = weights["functions_biases"].at[gene_idx].get()
+        x_arg = memory.at[genotype["genes"]["inputs1"].at[gene_idx].get()].get() * x_w + x_b
+        y_arg = memory.at[genotype["genes"]["inputs2"].at[gene_idx].get()].get() * y_w + y_b
+        f_computed = self.function_set.apply(f_idx, x_arg, y_arg) * f_w + f_b
         memory = memory.at[memory_idx].set(f_computed)
         return genotype, memory
 
