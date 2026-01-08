@@ -169,6 +169,7 @@ def run_sym_reg_ga(config: Dict):
 
 
 if __name__ == '__main__':
+    n_gens = 1_500
     conf = {
         "solver": {
             "n_nodes": 100,
@@ -178,7 +179,6 @@ if __name__ == '__main__':
         "n_offspring": 90,
         "n_pop": 100,
         "seed": 0,
-        "n_gens": 1_500,
         "tournament_size": 3,
         "problem": "feynman_I_6_2",
         "scale_x": False,
@@ -210,6 +210,7 @@ if __name__ == '__main__':
             conf["solver"]["weighted_program_inputs"] = False
             conf["solver"]["biased_inputs"] = b_in
             conf["solver"]["biased_functions"] = b_f
+            conf["n_gens"] = n_gens
             extra = conf["constants_optimization"]
             extra += f"_win" if w_in else ""
             extra += f"_wfn" if w_f else ""
