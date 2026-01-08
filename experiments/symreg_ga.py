@@ -41,7 +41,7 @@ def run_sym_reg_ga(config: Dict):
 
     # adjust gens if constants optimization
     if const_optimizer == "adam":
-        config["n_gens"] = int(config["n_gens"] * min(2048, len(X_train))) / (min(2048, len(X_train)) + 3200)
+        config["n_gens"] = int((config["n_gens"] * min(2048, len(X_train))) / (min(2048, len(X_train)) + 3200))
 
     if rescoring:
         downsample_fn = functools.partial(downsample_dataset, size=config.get("dataset_size", 1024))
