@@ -133,7 +133,7 @@ def run_classification_ga(config: Dict):
 
         start_time = time.time()
         repertoire, emitter_state, current_metrics = ga.update(repertoire=repertoire, emitter_state=emitter_state,
-                                                               key=subkey, rescore_repertoire=True)
+                                                               key=subkey, rescore_repertoire=(len(X_train) > 2048))
         timelapse = time.time() - start_time
 
         # Metrics

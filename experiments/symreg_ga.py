@@ -37,8 +37,13 @@ def run_sym_reg_ga(config: Dict):
                                                     )
     key = jax.random.key(config["seed"])
     sample_key, key = jax.random.split(key)
+    rescoring = (len(X_train) > 2048)
 
-    if len(X_train) > 2048:
+    # adjust gens if constants optimization
+    if const_optimizer == "adam":
+        config["n_gens"] = (config["n_gens"] * min(2048, len(X_train))) / (min(2048, len(X_train)) + 3200)
+
+    if rescoring:
         downsample_fn = functools.partial(downsample_dataset, size=config.get("dataset_size", 1024))
         X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
     else:
@@ -127,7 +132,7 @@ def run_sym_reg_ga(config: Dict):
     for iteration in range(1, config["n_gens"]):
         key, subkey, sample_key = jax.random.split(key, 3)
 
-        if len(X_train) > 2048:
+        if rescoring:
             # change batch of the dataset to evaluate upon
             X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
             scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure,
@@ -137,7 +142,7 @@ def run_sym_reg_ga(config: Dict):
 
         start_time = time.time()
         repertoire, emitter_state, current_metrics = ga.update(repertoire=repertoire, emitter_state=emitter_state,
-                                                               key=subkey, rescore_repertoire=True)
+                                                               key=subkey, rescore_repertoire=rescoring)
         timelapse = time.time() - start_time
 
         # Metrics
@@ -164,10 +169,6 @@ def run_sym_reg_ga(config: Dict):
 
 
 if __name__ == '__main__':
-    gaussian_gens = 1_500
-    adam_gens = gaussian_gens  # int(gaussian_gens / 4.2)
-    cmaes_gens = adam_gens
-    # cmaes_gens = int(gaussian_gens / 7.4)
     conf = {
         "solver": {
             "n_nodes": 100,
@@ -177,6 +178,7 @@ if __name__ == '__main__':
         "n_offspring": 90,
         "n_pop": 100,
         "seed": 0,
+        "n_gens": 1_500,
         "tournament_size": 3,
         "problem": "feynman_I_6_2",
         "scale_x": False,
@@ -215,12 +217,6 @@ if __name__ == '__main__':
             extra += f"_bfn" if b_f else ""
             # extra += f"_wpgs" if w_pgs else ""
             extra += "_n" if conf["solver"].get("weights_initialization") == "natural" else ""
-            if conf["constants_optimization"] == "adam":
-                conf["n_gens"] = adam_gens
-            elif conf["constants_optimization"] == "cmaes":
-                conf["n_gens"] = cmaes_gens
-            else:
-                conf["n_gens"] = gaussian_gens
             conf["run_name"] = "ga2_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
             print(conf["run_name"])
             run_sym_reg_ga(conf)
