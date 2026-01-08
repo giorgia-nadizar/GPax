@@ -38,8 +38,11 @@ def run_sym_reg_ga(config: Dict):
     key = jax.random.key(config["seed"])
     sample_key, key = jax.random.split(key)
 
-    downsample_fn = functools.partial(downsample_dataset, size=config.get("dataset_size", 1024))
-    X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
+    if len(X_train) > 2048:
+        downsample_fn = functools.partial(downsample_dataset, size=config.get("dataset_size", 1024))
+        X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
+    else:
+        X_train_sub, y_train_sub = X_train, y_train
 
     # Init the CGP policy graph with default values
     graph_structure = CGP(
@@ -124,12 +127,13 @@ def run_sym_reg_ga(config: Dict):
     for iteration in range(1, config["n_gens"]):
         key, subkey, sample_key = jax.random.split(key, 3)
 
-        # change batch of the dataset to evaluate upon
-        X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
-        scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure, const_optimizer,
-                                            task=task)
-        rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure, task=task)
-        ga = ga.replace_scoring_fns(scoring_fn_cgp, rescoring_fn_cgp)
+        if len(X_train) > 2048:
+            # change batch of the dataset to evaluate upon
+            X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
+            scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, graph_structure,
+                                                const_optimizer, task=task)
+            rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, graph_structure, task=task)
+            ga = ga.replace_scoring_fns(scoring_fn_cgp, rescoring_fn_cgp)
 
         start_time = time.time()
         repertoire, emitter_state, current_metrics = ga.update(repertoire=repertoire, emitter_state=emitter_state,
@@ -189,9 +193,8 @@ if __name__ == '__main__':
         elif key == "constants_optimization":
             conf["constants_optimization"] = value
 
-    for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
-                    "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min", "nikuradse_1",
-                    "nikuradse_2"]:
+    for problem in ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot", "nasa_battery_1_10min",
+                    "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower", "flow_stress_phip0.1", ]:
         # for problem in ["mtr/rf1", "mtr/scm20d", "mtr/edm", "mtr/jura", "mtr/wq", "mtr/enb", "mtr/slump", "mtr/andro", ]:
         conf["problem"] = problem
         for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
