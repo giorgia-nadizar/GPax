@@ -210,7 +210,7 @@ if __name__ == '__main__':
             extra += f"_bin" if b_in else ""
             extra += f"_bfn" if b_f else ""
             # extra += f"_wpgs" if w_pgs else ""
-            extra += "_1" if conf["solver"].get("weights_initialization") == "natural" else ""
+            extra += "_n" if conf["solver"].get("weights_initialization") == "natural" else ""
             if conf["constants_optimization"] == "adam":
                 conf["n_gens"] = adam_gens
             elif conf["constants_optimization"] == "cmaes":
