@@ -199,7 +199,8 @@ if __name__ == '__main__':
         conf["problem"] = problem
         for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
                                      (True, False, True, False), (False, True, True, False),
-                                     (True, False, False, True), (False, True, False, True), ]:
+                                     (True, False, False, True), (False, True, False, True),
+                                     (False, False, False, False)]:
             if not (w_f or w_in) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
                 continue
             conf["solver"]["weighted_inputs"] = w_in
