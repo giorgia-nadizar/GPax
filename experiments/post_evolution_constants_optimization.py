@@ -103,8 +103,8 @@ def _constants_optimization_post_evolution(conf):
 if __name__ == '__main__':
     config = {
         "solver": {
-            "n_nodes": 50,
-            "n_input_constants": 5,
+            "n_nodes": 100,
+            "n_input_constants": 2,
             "weights_initialization": "uniform"
         },
         "n_offspring": 90,
@@ -113,7 +113,7 @@ if __name__ == '__main__':
         "tournament_size": 3,
         "problem": "feynman_I_6_2",
         "scale_x": False,
-        "scale_y": True,
+        "scale_y": False,
         "constants_optimization": "gaussian",
         "constants_reoptimization": "adam",
     }
@@ -127,24 +127,32 @@ if __name__ == '__main__':
         elif key == "constants_optimization":
             config["constants_optimization"] = value
 
-    for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True), (False, False, False)]:
-        for constants_reoptimization in ["adam", "cmaes"]:
-            if (config["constants_optimization"] != "gaussian" and
-                    constants_reoptimization != config["constants_optimization"]):
-                continue
-            for problem in ["chemical_1_tower", "chemical_2_competition", "flow_stress_phip0.1", "friction_dyn_one-hot",
-                            "friction_stat_one-hot", "nasa_battery_1_10min", "nasa_battery_2_20min"]:
+    for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
+                                 (True, False, True, False), (False, True, True, False),
+                                 (True, False, False, True), (False, True, False, True),
+                                 (False, False, False, False)]:
+        for constants_reoptimization in ["adam"]:
+            # if (config["constants_optimization"] != "gaussian" and
+            #         constants_reoptimization != config["constants_optimization"]):
+            #     continue
+            for problem in ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot",
+                            "nasa_battery_1_10min",
+                            "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower",
+                            "flow_stress_phip0.1", ]:
                 config["problem"] = problem
                 config["constants_reoptimization"] = constants_reoptimization
                 config["solver"]["weighted_inputs"] = w_in
                 config["solver"]["weighted_functions"] = w_f
-                config["solver"]["weighted_program_inputs"] = w_pgs
+                config["solver"]["weighted_program_inputs"] = False
+                config["solver"]["biased_inputs"] = b_in
+                config["solver"]["biased_functions"] = b_f
                 extra = config["constants_optimization"]
-                extra += "_win" if w_in else ""
-                extra += "_wfn" if w_f else ""
-                extra += "_wpgs" if w_pgs else ""
-                extra += "_1" if config["solver"].get("weights_initialization") == "ones" else ""
-                config["run_name"] = ("ga_" + config["problem"] + "_" + extra
+                extra += f"_win" if w_in else ""
+                extra += f"_wfn" if w_f else ""
+                extra += f"_bin" if b_in else ""
+                extra += f"_bfn" if b_f else ""
+                extra += "_n" if config["solver"].get("weights_initialization") == "ones" else ""
+                config["run_name"] = ("ga2_" + config["problem"] + "_" + extra
                                       + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
-                config["repertoire_path"] = "ga_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
+                config["repertoire_path"] = "ga2_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
                 constants_optimization_post_evolution(config)
