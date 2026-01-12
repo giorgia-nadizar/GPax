@@ -152,7 +152,7 @@ if __name__ == '__main__':
                 extra += f"_bin" if b_in else ""
                 extra += f"_bfn" if b_f else ""
                 extra += "_n" if config["solver"].get("weights_initialization") == "ones" else ""
-                config["run_name"] = ("ga2_" + config["problem"] + "_" + extra
+                config["run_name"] = ("ga3_" + config["problem"] + "_" + extra
                                       + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
-                config["repertoire_path"] = "ga3_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
+                config["repertoire_path"] = "ga2_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
                 constants_optimization_post_evolution(config)
