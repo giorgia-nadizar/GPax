@@ -11,18 +11,21 @@ from gpax.supervised_learning.dataset_utils import load_dataset
 
 
 def constants_optimization_post_evolution(conf):
-    if not conf["solver"]["weighted_inputs"] and not conf["solver"]["weighted_functions"] and not conf["solver"][
-        "weighted_program_inputs"]:
+    if not conf["solver"]["weighted_inputs"] and not conf["solver"]["weighted_functions"]:
         if conf["constants_optimization"] != "gaussian":
             return
-        for w_f, w_in, w_pgs in [(True, False, False), (False, True, False), (False, False, True)]:
+        for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
+                                     (True, False, True, False), (False, True, True, False),
+                                     (True, False, False, True), (False, True, False, True)]:
             config["solver"]["weighted_inputs"] = w_in
             config["solver"]["weighted_functions"] = w_f
-            config["solver"]["weighted_program_inputs"] = w_pgs
+            config["solver"]["biased_inputs"] = b_in
+            config["solver"]["biased_functions"] = b_f
             extra = "none"
-            extra += "_win" if w_in else ""
-            extra += "_wfn" if w_f else ""
-            extra += "_wpgs" if w_pgs else ""
+            extra += f"_win" if w_in else ""
+            extra += f"_wfn" if w_f else ""
+            extra += f"_bin" if b_in else ""
+            extra += f"_bfn" if b_f else ""
             config["run_name"] = ("ga3_" + config["problem"] + "_" + extra
                                   + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
             _constants_optimization_post_evolution(conf)
