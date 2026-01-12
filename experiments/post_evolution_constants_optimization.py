@@ -23,7 +23,7 @@ def constants_optimization_post_evolution(conf):
             extra += "_win" if w_in else ""
             extra += "_wfn" if w_f else ""
             extra += "_wpgs" if w_pgs else ""
-            config["run_name"] = ("ga_" + config["problem"] + "_" + extra
+            config["run_name"] = ("ga3_" + config["problem"] + "_" + extra
                                   + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
             _constants_optimization_post_evolution(conf)
     else:
