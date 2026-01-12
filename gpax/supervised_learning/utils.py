@@ -100,7 +100,7 @@ def prepare_train_test_evaluation_fns(
     test_accuracy_fn = test_accuracy_fns[task]
     loss_fn = loss_fns[task]
 
-    multiplier = 100 if long_const_optimization else 1
+    multiplier = 10 if long_const_optimization else 1
     if const_optimizer == "adam":
         constants_optimizer = functools.partial(optimize_constants_with_sgd, batch_size=32,
                                                 n_gradient_steps=100 * multiplier, loss_fn=loss_fn)
