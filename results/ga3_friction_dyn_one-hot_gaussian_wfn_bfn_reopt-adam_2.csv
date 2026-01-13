@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,175.44458174705505,0.4990127,-0.005861163,0.46456903,-0.21397221,o0 = <lambda>(-0.09*(-0.61*sin(-0.42*abs(i0))-1.61*sqrt(0.70*exp(-0.23*id(0.68*sqrt(1.0))))))

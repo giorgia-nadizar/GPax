@@ -1,0 +1,2 @@
+iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
+0,174.8059298992157,0.47815162,0.33884186,0.47498095,0.33750612,o0 = <lambda>(0.10*cos(-0.24*log(0.34*abs(1.09*(-0.99*(i11+i12)-i1)))))
