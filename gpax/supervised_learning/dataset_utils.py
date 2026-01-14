@@ -89,10 +89,8 @@ def load_dataset(dataset_name: str,
 
     Returns
     -------
-    X_train, X_test : np.ndarray
-        Training and testing features.
-    y_train, y_test : np.ndarray
-        Training and testing targets, reshaped to (-1, 1).
+    X_train, X_test,  y_train, y_test : Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        Training and testing features, and training and testing targets, reshaped to (-1, 1).
     """
     uci_classification_datasets = {
         "breast_cancer": 17,
