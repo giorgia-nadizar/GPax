@@ -166,6 +166,10 @@ class LGP(GGP):
             Mask: a binary mask (1 = active, 0 = inactive) of length `n_program_lines`,
             indicating which lines are used in producing the final outputs.
         """
+        genotype = {
+            "weights": genotype["weights"],
+            "genes": jax.tree.map(lambda x: x.astype(int), genotype["genes"])
+        }
 
         active_lines = jnp.zeros(self.n_program_lines)
         registers_mask = jnp.where(jnp.arange(self.n_registers) >= (self.n_registers - self.n_outputs), 1, 0)
