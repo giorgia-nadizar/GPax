@@ -429,7 +429,7 @@ class LGP(GGP):
                                 f"{_replace_lgp_expression(lgp_genes, int(lgp_genes['genes']['inputs1'][row_idx]), row_idx)}"
                                 f"{x_bias}{i_p2}{function.symbol}{i_p1}{y_weight}"
                                 f"{_replace_lgp_expression(lgp_genes, int(lgp_genes['genes']['inputs2'][row_idx]), row_idx)}"
-                                f"{y_bias}{i_p2}){node_bias}{n_p2}")
+                                f"{y_bias}{i_p2}){line_bias}{n_p2}")
             if reg_idx < self.n_inputs:
                 return inputs_mapping_fn(int(reg_idx))
             elif reg_idx < n_in:
