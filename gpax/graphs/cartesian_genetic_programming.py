@@ -159,6 +159,10 @@ class CGP(GGP):
             Mask: a binary mask (1 = active, 0 = inactive) of length `n_nodes`,
             indicating which nodes are used in producing the final outputs.
         """
+        genotype = {
+            "weights": genotype["weights"],
+            "genes": jax.tree.map(lambda x: x.astype(int), genotype["genes"])
+        }
 
         active_buffer = jnp.zeros(self.buffer_size)
         active_buffer = active_buffer.at[genotype["genes"]["outputs"]].set(1)
@@ -171,8 +175,8 @@ class CGP(GGP):
             cgp_genes, active = carry
             n_in = len(active) - len(cgp_genes["genes"]["inputs1"])
             idx = len(active) - opposite_idx - 1
-            x_idx = cgp_genes["genes"]["inputs1"].at[idx - n_in].get().astype(int)
-            y_idx = cgp_genes["genes"]["inputs2"].at[idx - n_in].get().astype(int)
+            x_idx = cgp_genes["genes"]["inputs1"].at[idx - n_in].get()
+            y_idx = cgp_genes["genes"]["inputs2"].at[idx - n_in].get()
             arity = self.function_set.arities.at[cgp_genes["genes"]["functions"][idx - n_in]].get()
             active = active.at[x_idx].set(jnp.logical_or(active.at[x_idx].get(), active.at[idx].get()))
             active = active.at[y_idx].set(jnp.logical_or(
