@@ -203,6 +203,7 @@ if __name__ == '__main__':
             conf["constants_optimization"] = value
 
     for seed in range(30):
+        conf["seed"] = seed
         for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
                                      (True, False, True, False), (False, True, True, False),
                                      (True, False, False, True), (False, True, False, True),
