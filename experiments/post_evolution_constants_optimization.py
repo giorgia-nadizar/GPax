@@ -124,6 +124,11 @@ if __name__ == '__main__':
         "constants_optimization": "gaussian",
         "constants_reoptimization": "adam",
     }
+    problems = ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot",
+     "nasa_battery_1_10min",
+     "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower",
+     "flow_stress_phip0.1", ]
+
     args = sys.argv[1:]
     for arg in args:
         key, value = arg.split('=')
@@ -133,6 +138,8 @@ if __name__ == '__main__':
             config["seed"] = int(value)
         elif key == "constants_optimization":
             config["constants_optimization"] = value
+        elif key == "problem_id":
+            config["problem"] = problems[int(value)]
 
     for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
                                  (True, False, True, False), (False, True, True, False),
@@ -142,11 +149,8 @@ if __name__ == '__main__':
             # if (config["constants_optimization"] != "gaussian" and
             #         constants_reoptimization != config["constants_optimization"]):
             #     continue
-            for problem in ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot",
-                            "nasa_battery_1_10min",
-                            "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower",
-                            "flow_stress_phip0.1", ]:
-                config["problem"] = problem
+            for seed in range(30):
+                config["seed"] = seed
                 config["constants_reoptimization"] = constants_reoptimization
                 config["solver"]["weighted_inputs"] = w_in
                 config["solver"]["weighted_functions"] = w_f
