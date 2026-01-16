@@ -1,4 +1,5 @@
 import functools
+import os.path
 import pickle
 import sys
 import time
@@ -220,4 +221,8 @@ if __name__ == '__main__':
             extra += "_n" if conf["solver"].get("weights_initialization") == "natural" else ""
             conf["run_name"] = "ga2_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
             print(conf["run_name"])
-            run_sym_reg_ga(conf)
+            if os.path.exists(f"../results/{conf['run_name']}.pickle"):
+                print("run already done!")
+            else:
+                print("running")
+                run_sym_reg_ga(conf)
