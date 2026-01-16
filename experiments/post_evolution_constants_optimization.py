@@ -1,3 +1,4 @@
+import os.path
 import pickle
 import sys
 import time
@@ -35,6 +36,9 @@ def constants_optimization_post_evolution(conf):
 
 def _constants_optimization_post_evolution(conf):
     print(conf["run_name"])
+    if os.path.exists(f'../results/{conf["run_name"]}.csv'):
+        print("already done")
+        return
     const_optimizer = conf.get("constants_reoptimization", None)
 
     try:
