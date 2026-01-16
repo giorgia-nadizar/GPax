@@ -186,6 +186,10 @@ if __name__ == '__main__':
         "scale_y": False,
         "constants_optimization": "adam",
     }
+
+    problems = ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot", "nasa_battery_1_10min",
+                "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower", "flow_stress_phip0.1", ]
+
     args = sys.argv[1:]
     for arg in args:
         key, value = arg.split('=')
@@ -193,13 +197,12 @@ if __name__ == '__main__':
             conf["problem"] = value
         elif key == "seed":
             conf["seed"] = int(value)
+        elif key == "problem_id":
+            conf["problem"] = problems[int(value)]
         elif key == "constants_optimization":
             conf["constants_optimization"] = value
 
-    for problem in ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot", "nasa_battery_1_10min",
-                    "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower", "flow_stress_phip0.1", ]:
-        # for problem in ["mtr/rf1", "mtr/scm20d", "mtr/edm", "mtr/jura", "mtr/wq", "mtr/enb", "mtr/slump", "mtr/andro", ]:
-        conf["problem"] = problem
+    for seed in range(30):
         for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
                                      (True, False, True, False), (False, True, True, False),
                                      (True, False, False, True), (False, True, False, True),
