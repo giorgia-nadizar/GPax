@@ -11,6 +11,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from ucimlrepo import fetch_ucirepo
 
+from datasets.regression import dcgp
+
 
 def downsample_dataset(
         X: jnp.ndarray,
@@ -130,6 +132,8 @@ def load_dataset(dataset_name: str,
         X = df.iloc[:, :-n_targets].to_numpy()
         y = df.iloc[:, -n_targets:].to_numpy()
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_split, random_state=random_state)
+    elif "dcgp" in dataset_name:
+        X_train, X_test, y_train, y_test = getattr(dcgp, dataset_name)(seed=random_state)
     else:
         df_train = pd.read_csv(f"../datasets/regression/{dataset_name}_train.csv")
         df_test = pd.read_csv(f"../datasets/regression/{dataset_name}_test.csv")
