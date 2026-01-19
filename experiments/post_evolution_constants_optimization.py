@@ -129,9 +129,13 @@ if __name__ == '__main__':
         "constants_reoptimization": "adam",
     }
     problems = ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot",
-     "nasa_battery_1_10min",
-     "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower",
-     "flow_stress_phip0.1", ]
+                "nasa_battery_1_10min",
+                "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower",
+                "flow_stress_phip0.1", ]
+    weights_configurations = [(True, False, False, False), (False, True, False, False),
+                              (True, False, True, False), (False, True, True, False),
+                              (True, False, False, True), (False, True, False, True),
+                              (False, False, False, False)]
 
     args = sys.argv[1:]
     for arg in args:
@@ -144,30 +148,28 @@ if __name__ == '__main__':
             config["constants_optimization"] = value
         elif key == "problem_id":
             config["problem"] = problems[int(value)]
+        elif key == "w_id":
+            w_f, w_in, b_f, b_in = weights_configurations[int(value)]
 
-    for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
-                                 (True, False, True, False), (False, True, True, False),
-                                 (True, False, False, True), (False, True, False, True),
-                                 (False, False, False, False)]:
-        for constants_reoptimization in ["adam"]:
-            # if (config["constants_optimization"] != "gaussian" and
-            #         constants_reoptimization != config["constants_optimization"]):
-            #     continue
-            for seed in range(30):
-                config["seed"] = seed
-                config["constants_reoptimization"] = constants_reoptimization
-                config["solver"]["weighted_inputs"] = w_in
-                config["solver"]["weighted_functions"] = w_f
-                config["solver"]["weighted_program_inputs"] = False
-                config["solver"]["biased_inputs"] = b_in
-                config["solver"]["biased_functions"] = b_f
-                extra = config["constants_optimization"]
-                extra += f"_win" if w_in else ""
-                extra += f"_wfn" if w_f else ""
-                extra += f"_bin" if b_in else ""
-                extra += f"_bfn" if b_f else ""
-                extra += "_n" if config["solver"].get("weights_initialization") == "ones" else ""
-                config["run_name"] = ("ga4_" + config["problem"] + "_" + extra
-                                      + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
-                config["repertoire_path"] = "ga2_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
-                constants_optimization_post_evolution(config)
+    for constants_reoptimization in ["adam"]:
+        # if (config["constants_optimization"] != "gaussian" and
+        #         constants_reoptimization != config["constants_optimization"]):
+        #     continue
+        for seed in range(30):
+            config["seed"] = seed
+            config["constants_reoptimization"] = constants_reoptimization
+            config["solver"]["weighted_inputs"] = w_in
+            config["solver"]["weighted_functions"] = w_f
+            config["solver"]["weighted_program_inputs"] = False
+            config["solver"]["biased_inputs"] = b_in
+            config["solver"]["biased_functions"] = b_f
+            extra = config["constants_optimization"]
+            extra += f"_win" if w_in else ""
+            extra += f"_wfn" if w_f else ""
+            extra += f"_bin" if b_in else ""
+            extra += f"_bfn" if b_f else ""
+            extra += "_n" if config["solver"].get("weights_initialization") == "ones" else ""
+            config["run_name"] = ("ga4_" + config["problem"] + "_" + extra
+                                  + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
+            config["repertoire_path"] = "ga2_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
+            constants_optimization_post_evolution(config)
