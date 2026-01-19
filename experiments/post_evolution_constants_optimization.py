@@ -27,7 +27,7 @@ def constants_optimization_post_evolution(conf):
             extra += f"_wfn" if w_f else ""
             extra += f"_bin" if b_in else ""
             extra += f"_bfn" if b_f else ""
-            config["run_name"] = ("ga3_" + config["problem"] + "_" + extra
+            config["run_name"] = ("ga4_" + config["problem"] + "_" + extra
                                   + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
             _constants_optimization_post_evolution(conf)
     else:
@@ -105,6 +105,10 @@ def _constants_optimization_post_evolution(conf):
     )
     print(best_accuracy[0], best_test_accuracy[0], previous_best_accuracy[0], previous_best_test_accuracy[0],
           equation)
+    with open(f"../results/{conf['run_name']}_train_accuracies.pickle", 'wb') as file:
+        pickle.dump(train_accuracies, file)
+    with open(f"../results/{conf['run_name']}_extra_scores.pickle", 'wb') as file:
+        pickle.dump(extra_scores, file)
 
 
 if __name__ == '__main__':
@@ -163,7 +167,7 @@ if __name__ == '__main__':
                 extra += f"_bin" if b_in else ""
                 extra += f"_bfn" if b_f else ""
                 extra += "_n" if config["solver"].get("weights_initialization") == "ones" else ""
-                config["run_name"] = ("ga3_" + config["problem"] + "_" + extra
+                config["run_name"] = ("ga4_" + config["problem"] + "_" + extra
                                       + f"_reopt-{config['constants_reoptimization']}_" + str(config["seed"]))
                 config["repertoire_path"] = "ga2_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
                 constants_optimization_post_evolution(config)
