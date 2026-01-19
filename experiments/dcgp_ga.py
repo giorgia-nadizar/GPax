@@ -25,14 +25,14 @@ function_set_small = {
     "plus": JaxFunction(lambda x, y: x + y, 2, "+"),
     "minus": JaxFunction(lambda x, y: x - y, 2, "-"),
     "times": JaxFunction(lambda x, y: x * y, 2, "*"),
-    "prot_div": JaxFunction(lambda x, y: jnp.where(jnp.abs(y) < eps, eps, y), 2, "/"),
+    "div": JaxFunction(lambda x, y: x / y, 2, "/"),
 }
 
 function_set_trig = {
     "plus": JaxFunction(lambda x, y: x + y, 2, "+"),
     "minus": JaxFunction(lambda x, y: x - y, 2, "-"),
     "times": JaxFunction(lambda x, y: x * y, 2, "*"),
-    "prot_div": JaxFunction(lambda x, y: jnp.where(jnp.abs(y) < eps, eps, y), 2, "/"),
+    "div": JaxFunction(lambda x, y: x / y, 2, "/"),
     "sin": JaxFunction(lambda x, y: jnp.sin(x), 1, "sin"),
     "cos": JaxFunction(lambda x, y: jnp.cos(x), 1, "cos"),
 }
