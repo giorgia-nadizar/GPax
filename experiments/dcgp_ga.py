@@ -16,8 +16,26 @@ from gpax.evolution.tournament_selector import TournamentSelector
 from gpax.graphs.cartesian_genetic_programming import CGP
 from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
 from gpax.evolution.evolution_metrics import custom_ga_metrics
+from gpax.graphs.functions import JaxFunction, FunctionSet
 from gpax.supervised_learning.dataset_utils import downsample_dataset, load_dataset
 from gpax.supervised_learning.utils import prepare_scoring_fn, prepare_rescoring_fn
+
+eps = 1e-6
+function_set_small = {
+    "plus": JaxFunction(lambda x, y: x + y, 2, "+"),
+    "minus": JaxFunction(lambda x, y: x - y, 2, "-"),
+    "times": JaxFunction(lambda x, y: x * y, 2, "*"),
+    "prot_div": JaxFunction(lambda x, y: jnp.where(jnp.abs(y) < eps, eps, y), 2, "/"),
+}
+
+function_set_trig = {
+    "plus": JaxFunction(lambda x, y: x + y, 2, "+"),
+    "minus": JaxFunction(lambda x, y: x - y, 2, "-"),
+    "times": JaxFunction(lambda x, y: x * y, 2, "*"),
+    "prot_div": JaxFunction(lambda x, y: jnp.where(jnp.abs(y) < eps, eps, y), 2, "/"),
+    "sin": JaxFunction(lambda x, y: jnp.sin(x), 1, "sin"),
+    "cos": JaxFunction(lambda x, y: jnp.cos(x), 1, "cos"),
+}
 
 
 def process_metrics_mtr(metrics: Dict, headers: List) -> Dict:
@@ -50,10 +68,14 @@ def run_sym_reg_ga(config: Dict):
     else:
         X_train_sub, y_train_sub = X_train, y_train
 
+    functions_dict = function_set_trig if ("4" in config["problem"] or "7" in config["problem"]) else function_set_small
+    function_set = FunctionSet(functions_dict=functions_dict)
+
     # Init the CGP policy graph with default values
     graph_structure = CGP(
         n_inputs=X_train.shape[1],
         n_outputs=1,
+        function_set=function_set,
         n_nodes=config["solver"]["n_nodes"],
         n_input_constants=config["solver"]["n_input_constants"],
         outputs_wrapper=lambda x: x,
@@ -170,25 +192,24 @@ def run_sym_reg_ga(config: Dict):
 
 
 if __name__ == '__main__':
-    n_gens = 1_500
+    n_gens = 100
     conf = {
         "solver": {
-            "n_nodes": 100,
-            "n_input_constants": 2,
+            "n_nodes": 15,
+            "n_input_constants": 0,
             "weights_initialization": "uniform"
         },
-        "n_offspring": 90,
-        "n_pop": 100,
+        "n_offspring": 8,
+        "n_pop": 10,
         "seed": 0,
         "tournament_size": 3,
-        "problem": "feynman_I_6_2",
+        "problem": "dcgp_1",
         "scale_x": False,
         "scale_y": False,
         "constants_optimization": "adam",
     }
 
-    problems = ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot", "nasa_battery_1_10min",
-                "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower", "flow_stress_phip0.1", ]
+    problems = [f"dcgp_{i + 1}" for i in range(7)]
 
     args = sys.argv[1:]
     for arg in args:
