@@ -71,5 +71,5 @@ def dcgp_6(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarra
 def dcgp_7(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
     x = np.random.uniform(-1, 1, size=(20,)).reshape(-1, 1)
-    y = np.cos(np.pi * x) * np.sin(np.e * x)
+    y = np.cos(np.pi * x) + np.sin(np.e * x)
     return x[:10], x[10:], y[:10], y[10:]
