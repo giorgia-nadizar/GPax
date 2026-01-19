@@ -1,4 +1,5 @@
 import functools
+import os.path
 import pickle
 import sys
 import time
@@ -169,7 +170,7 @@ def run_sym_reg_ga(config: Dict):
 
 
 if __name__ == '__main__':
-    n_gens = 1000
+    n_gens = 1_500
     conf = {
         "solver": {
             "n_nodes": 100,
@@ -180,11 +181,15 @@ if __name__ == '__main__':
         "n_pop": 100,
         "seed": 0,
         "tournament_size": 3,
-        "problem": "korns_12",
+        "problem": "feynman_I_6_2",
         "scale_x": False,
         "scale_y": False,
         "constants_optimization": "adam",
     }
+
+    problems = ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot", "nasa_battery_1_10min",
+                "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower", "flow_stress_phip0.1", ]
+
     args = sys.argv[1:]
     for arg in args:
         key, value = arg.split('=')
@@ -192,28 +197,36 @@ if __name__ == '__main__':
             conf["problem"] = value
         elif key == "seed":
             conf["seed"] = int(value)
+        elif key == "problem_id":
+            conf["problem"] = problems[int(value)]
         elif key == "constants_optimization":
             conf["constants_optimization"] = value
 
-    for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
-                                 (True, False, True, False), (False, True, True, False),
-                                 (True, False, False, True), (False, True, False, True),
-                                 (False, False, False, False)]:
-        if not (w_f or w_in) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
-            continue
-        conf["solver"]["weighted_inputs"] = w_in
-        conf["solver"]["weighted_functions"] = w_f
-        conf["solver"]["weighted_program_inputs"] = False
-        conf["solver"]["biased_inputs"] = b_in
-        conf["solver"]["biased_functions"] = b_f
-        conf["n_gens"] = n_gens
-        extra = conf["constants_optimization"]
-        extra += f"_win" if w_in else ""
-        extra += f"_wfn" if w_f else ""
-        extra += f"_bin" if b_in else ""
-        extra += f"_bfn" if b_f else ""
-        # extra += f"_wpgs" if w_pgs else ""
-        extra += "_n" if conf["solver"].get("weights_initialization") == "natural" else ""
-        conf["run_name"] = "ga2_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
-        print(conf["run_name"])
-        run_sym_reg_ga(conf)
+    for seed in range(30):
+        conf["seed"] = seed
+        for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
+                                     (True, False, True, False), (False, True, True, False),
+                                     (True, False, False, True), (False, True, False, True),
+                                     (False, False, False, False)]:
+            if not (w_f or w_in) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
+                continue
+            conf["solver"]["weighted_inputs"] = w_in
+            conf["solver"]["weighted_functions"] = w_f
+            conf["solver"]["weighted_program_inputs"] = False
+            conf["solver"]["biased_inputs"] = b_in
+            conf["solver"]["biased_functions"] = b_f
+            conf["n_gens"] = n_gens
+            extra = conf["constants_optimization"]
+            extra += f"_win" if w_in else ""
+            extra += f"_wfn" if w_f else ""
+            extra += f"_bin" if b_in else ""
+            extra += f"_bfn" if b_f else ""
+            # extra += f"_wpgs" if w_pgs else ""
+            extra += "_n" if conf["solver"].get("weights_initialization") == "natural" else ""
+            conf["run_name"] = "ga2_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
+            print(conf["run_name"])
+            if os.path.exists(f"../results/{conf['run_name']}.pickle"):
+                print("run already done!")
+            else:
+                print("running")
+                run_sym_reg_ga(conf)
