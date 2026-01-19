@@ -192,7 +192,7 @@ def run_sym_reg_ga(config: Dict):
 
 
 if __name__ == '__main__':
-    n_gens = 100
+    n_gens = 10000
     conf = {
         "solver": {
             "n_nodes": 15,
@@ -206,7 +206,7 @@ if __name__ == '__main__':
         "problem": "dcgp_1",
         "scale_x": False,
         "scale_y": False,
-        "constants_optimization": "adam",
+        "constants_optimization": "gaussian",
     }
 
     problems = [f"dcgp_{i + 1}" for i in range(7)]
