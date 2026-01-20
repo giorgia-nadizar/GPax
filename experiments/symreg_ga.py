@@ -208,27 +208,25 @@ if __name__ == '__main__':
         elif key == "w_id":
             w_f, w_in, b_f, b_in = weights_configurations[int(value)]
 
-    for seed in range(30):
-        conf["seed"] = seed
-        if not (w_f or w_in) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
-            continue
-        conf["solver"]["weighted_inputs"] = w_in
-        conf["solver"]["weighted_functions"] = w_f
-        conf["solver"]["weighted_program_inputs"] = False
-        conf["solver"]["biased_inputs"] = b_in
-        conf["solver"]["biased_functions"] = b_f
-        conf["n_gens"] = n_gens
-        extra = conf["constants_optimization"]
-        extra += f"_win" if w_in else ""
-        extra += f"_wfn" if w_f else ""
-        extra += f"_bin" if b_in else ""
-        extra += f"_bfn" if b_f else ""
-        # extra += f"_wpgs" if w_pgs else ""
-        extra += "_n" if conf["solver"].get("weights_initialization") == "natural" else ""
-        conf["run_name"] = "ga2_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
-        print(conf["run_name"])
-        if os.path.exists(f"../results/{conf['run_name']}.pickle"):
-            print("run already done!")
-        else:
-            print("running")
-            run_sym_reg_ga(conf)
+    if not (w_f or w_in) and conf["constants_optimization"] not in ["mutation", "automl0", "gaussian"]:
+        exit()
+    conf["solver"]["weighted_inputs"] = w_in
+    conf["solver"]["weighted_functions"] = w_f
+    conf["solver"]["weighted_program_inputs"] = False
+    conf["solver"]["biased_inputs"] = b_in
+    conf["solver"]["biased_functions"] = b_f
+    conf["n_gens"] = n_gens
+    extra = conf["constants_optimization"]
+    extra += f"_win" if w_in else ""
+    extra += f"_wfn" if w_f else ""
+    extra += f"_bin" if b_in else ""
+    extra += f"_bfn" if b_f else ""
+    # extra += f"_wpgs" if w_pgs else ""
+    extra += "_n" if conf["solver"].get("weights_initialization") == "natural" else ""
+    conf["run_name"] = "ga2_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
+    print(conf["run_name"])
+    if os.path.exists(f"../results/{conf['run_name']}.pickle"):
+        print("run already done!")
+    else:
+        print("running")
+        run_sym_reg_ga(conf)
