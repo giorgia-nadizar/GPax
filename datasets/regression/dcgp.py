@@ -28,48 +28,48 @@ y_test : np.ndarray
 
 def dcgp_1(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
-    x = np.random.uniform(1, 3, size=(20,)).reshape(-1, 1)
+    x = np.random.uniform(1, 3, size=(120,)).reshape(-1, 1)
     y = x ** 5 - np.pi * x ** 3 + x
-    return x[:10], x[10:], y[:10], y[10:]
+    return x[:100], x[100:], y[:100], y[100:]
 
 
 def dcgp_2(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
-    x = np.random.uniform(.1, 5, size=(20,)).reshape(-1, 1)
+    x = np.random.uniform(.1, 5, size=(120,)).reshape(-1, 1)
     y = x ** 5 - np.pi * x ** 3 + 2 * np.pi / x
-    return x[:10], x[10:], y[:10], y[10:]
+    return x[:100], x[100:], y[:100], y[100:]
 
 
 def dcgp_3(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
-    x = np.random.uniform(-.9, 1, size=(20,)).reshape(-1, 1)
+    x = np.random.uniform(-.9, 1, size=(120,)).reshape(-1, 1)
     y = (np.e * x ** 5 + x ** 3) / (x + 1)
-    return x[:10], x[10:], y[:10], y[10:]
+    return x[:100], x[100:], y[:100], y[100:]
 
 
 def dcgp_4(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
-    x = np.random.uniform(-1, 1, size=(20,)).reshape(-1, 1)
+    x = np.random.uniform(-1, 1, size=(120,)).reshape(-1, 1)
     y = np.sin(np.pi * x) + 1 / x
-    return x[:10], x[10:], y[:10], y[10:]
+    return x[:100], x[100:], y[:100], y[100:]
 
 
 def dcgp_5(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
-    x = np.random.uniform(1, 3, size=(20,)).reshape(-1, 1)
+    x = np.random.uniform(1, 3, size=(120,)).reshape(-1, 1)
     y = np.e * x ** 5 - np.pi * x ** 3 + x
-    return x[:10], x[10:], y[:10], y[10:]
+    return x[:100], x[100:], y[:100], y[100:]
 
 
 def dcgp_6(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
-    x = np.random.uniform(-2.1, 1, size=(20,)).reshape(-1, 1)
+    x = np.random.uniform(-2.1, 1, size=(120,)).reshape(-1, 1)
     y = (np.e * x ** 2 - 1) / (np.pi * (x + 2))
-    return x[:10], x[10:], y[:10], y[10:]
+    return x[:100], x[100:], y[:100], y[100:]
 
 
 def dcgp_7(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
-    x = np.random.uniform(-1, 1, size=(20,)).reshape(-1, 1)
+    x = np.random.uniform(-1, 1, size=(120,)).reshape(-1, 1)
     y = np.cos(np.pi * x) + np.sin(np.e * x)
-    return x[:10], x[10:], y[:10], y[10:]
+    return x[:100], x[100:], y[:100], y[100:]
