@@ -125,7 +125,7 @@ if __name__ == '__main__':
         "problem": "feynman_I_6_2",
         "scale_x": False,
         "scale_y": False,
-        "constants_optimization": "gaussian",
+        "constants_optimization": "adam",
         "constants_reoptimization": "adam",
     }
     problems = ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot",
