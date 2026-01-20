@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
     optimize_constants_with_lbfgs
 from gpax.supervised_learning.metrics import r2_score, rrmse_per_target, classification_accuracy, rmse, \
-    categorical_cross_entropy
+    categorical_cross_entropy, negative_mse
 from gpax.supervised_learning.scoring_functions import supervised_learning_accuracy_evaluation, \
     supervised_learning_accuracy_evaluation_with_constants_optimization, supervised_learning_scoring_fn
 
@@ -82,7 +82,7 @@ def prepare_train_test_evaluation_fns(
 
     # Accuracy fns per task
     train_accuracy_fns = {
-        "regression": r2_score,
+        "regression": negative_mse,
         "classification": classification_accuracy,
         "multiregression": r2_score,
     }

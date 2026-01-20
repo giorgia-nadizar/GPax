@@ -32,6 +32,14 @@ def mse(y_true: jnp.ndarray, y_pred: jnp.ndarray) -> jnp.ndarray:
     return jnp.nan_to_num(mse_val, nan=1e6, posinf=1e6, neginf=1e6)
 
 
+def negative_mse(y_true: jnp.ndarray, y_pred: jnp.ndarray) -> jnp.ndarray:
+    """
+    Mean Squared Error (MSE).
+    """
+    mse_val = jnp.mean((y_true - y_pred) ** 2)
+    return -jnp.nan_to_num(mse_val, nan=1e6, posinf=1e6, neginf=1e6)
+
+
 def rmse(y_true: jnp.ndarray, y_pred: jnp.ndarray) -> jnp.ndarray:
     """
     Root Mean Squared Error (RMSE).

@@ -14,6 +14,7 @@ def analyze_genome(conf: Dict) -> Dict:
     try:
         file = open(f"../results/{conf['repertoire_path']}.pickle", 'rb')
     except FileNotFoundError:
+        print(f"../results/{conf['repertoire_path']}.pickle")
         return {}
     repertoire = pickle.load(file)
 
@@ -89,18 +90,20 @@ if __name__ == '__main__':
         "constants_reoptimization": "adam",
     }
 
-    info_dicts = []
-
-    for seed in range(5):
-        for constants_optimization in ["adam", "gaussian"]:
-            for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
-                                         (True, False, True, False), (False, True, True, False),
-                                         (True, False, False, True), (False, True, False, True),
-                                         (False, False, False, False)]:
-                for problem in ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot",
-                                "nasa_battery_1_10min",
-                                "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower",
-                                "flow_stress_phip0.1", ]:
+    # for problem in ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot", "nasa_battery_1_10min",
+    #                 "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower", "flow_stress_phip0.1", ]:
+    for problem in ["chemical_1_tower", "flow_stress_phip0.1", ]:
+        print(problem)
+        info_dicts = []
+        for seed in range(30):
+            print(seed)
+            for constants_optimization in ["adam", "gaussian"]:
+                for w_f, w_in, b_f, b_in in [(True, False, False, False), (False, True, False, False),
+                                             (True, False, True, False), (False, True, True, False),
+                                             (True, False, False, True), (False, True, False, True),
+                                             (False, False, False, False)]:
+                    if not (w_f or w_in) and constants_optimization == "adam":
+                        continue
                     config["problem"] = problem
                     config["constants_optimization"] = constants_optimization
                     config["seed"] = seed
@@ -122,7 +125,7 @@ if __name__ == '__main__':
                     info_dict["opt"] = constants_optimization
                     info_dict["problem"] = problem
                     info_dicts.append(info_dict)
-                    print(config["repertoire_path"])
+                    # print(config["repertoire_path"])
 
-    info_df = pd.DataFrame(info_dicts)
-    info_df.to_csv("../results/genomes_analysis.csv", index=False)
+        info_df = pd.DataFrame(info_dicts)
+        info_df.to_csv(f"../results/genomes_analysis_{problem}.csv", index=False)
