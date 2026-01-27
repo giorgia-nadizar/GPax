@@ -68,7 +68,7 @@ function_set_numeric = {
     "plus": JaxFunction(lambda x, y: x + y, 2, "+"),
     "minus": JaxFunction(lambda x, y: x - y, 2, "-"),
     "times": JaxFunction(lambda x, y: x * y, 2, "*"),
-    "prot_div": JaxFunction(lambda x, y: jnp.where(jnp.abs(y) < eps, eps, y), 2, "/"),
+    "prot_div": JaxFunction(lambda x, y: jnp.where(jnp.abs(y) < eps, 0.0, x / y), 2, "/"),
     "abs": JaxFunction(lambda x, y: jnp.sqrt(x * x + eps), 1, "abs"),
     "safe_exp": JaxFunction(lambda x, y: jnp.exp(jnp.clip(x, -50, 50)), 1, "exp"),
     "sin": JaxFunction(lambda x, y: jnp.sin(x), 1, "sin"),
