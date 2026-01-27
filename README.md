@@ -9,3 +9,5 @@ git clone https://github.com/giorgia-nadizar/GPax.git
 cd GPax
 conda env create -f environment.yml
 ```
+## Branches
+- `feat/constants` contains results of experiments on symbolic regression with constants optimization
