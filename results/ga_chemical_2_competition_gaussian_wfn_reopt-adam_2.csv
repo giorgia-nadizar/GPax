@@ -1,2 +1,2 @@
 iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
-0,641.8889367580414,0.0,-0.016588211,-8.737956,-6.476068,o0 = <lambda>(nan*(nan*abs(i45)*0.035421133))
+0,238.79475378990173,0.056928635,0.026355028,0.0571236,0.024203181,o0 = <lambda>(0.52*log(i43))
