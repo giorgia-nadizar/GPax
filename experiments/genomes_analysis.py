@@ -115,7 +115,7 @@ if __name__ == '__main__':
                     extra += f"_bin" if b_in else ""
                     extra += f"_bfn" if b_f else ""
                     extra += "_n" if config["solver"].get("weights_initialization") == "ones" else ""
-                    config["repertoire_path"] = "ga2_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
+                    config["repertoire_path"] = "ga_" + config["problem"] + "_" + extra + "_" + str(config["seed"])
                     info_dict = analyze_genome(config)
                     info_dict["seed"] = seed
                     info_dict["w"] = extra.replace(constants_optimization, "")

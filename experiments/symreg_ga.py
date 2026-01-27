@@ -223,7 +223,7 @@ if __name__ == '__main__':
     extra += f"_bfn" if b_f else ""
     # extra += f"_wpgs" if w_pgs else ""
     extra += "_n" if conf["solver"].get("weights_initialization") == "natural" else ""
-    conf["run_name"] = "ga2_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
+    conf["run_name"] = "ga_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
     print(conf["run_name"])
     if os.path.exists(f"../results/{conf['run_name']}.pickle"):
         print("run already done!")
