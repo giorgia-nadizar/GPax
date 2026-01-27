@@ -7,7 +7,25 @@ import jax.numpy as jnp
 import pandas as pd
 
 from gpax.graphs.cartesian_genetic_programming import CGP
+from gpax.graphs.functions import FunctionSet, JaxFunction
 from gpax.supervised_learning.dataset_utils import load_dataset
+
+eps = 1e-6
+function_set_small = {
+    "plus": JaxFunction(lambda x, y: x + y, 2, "+"),
+    "minus": JaxFunction(lambda x, y: x - y, 2, "-"),
+    "times": JaxFunction(lambda x, y: x * y, 2, "*"),
+    "div": JaxFunction(lambda x, y: x / y, 2, "/"),
+}
+
+function_set_trig = {
+    "plus": JaxFunction(lambda x, y: x + y, 2, "+"),
+    "minus": JaxFunction(lambda x, y: x - y, 2, "-"),
+    "times": JaxFunction(lambda x, y: x * y, 2, "*"),
+    "div": JaxFunction(lambda x, y: x / y, 2, "/"),
+    "sin": JaxFunction(lambda x, y: jnp.sin(x), 1, "sin"),
+    "cos": JaxFunction(lambda x, y: jnp.cos(x), 1, "cos"),
+}
 
 
 def analyze_genome(conf: Dict) -> Dict:
@@ -24,9 +42,14 @@ def analyze_genome(conf: Dict) -> Dict:
                                                     random_state=conf["seed"]
                                                     )
 
+    functions_dict = function_set_trig if ("4" in conf["problem"] or "7" in conf["problem"]) else function_set_small
+    function_set = FunctionSet(functions_dict=functions_dict)
+
+    # Init the CGP policy graph with default values
     graph_structure = CGP(
         n_inputs=X_train.shape[1],
         n_outputs=1,
+        function_set=function_set,
         n_nodes=conf["solver"]["n_nodes"],
         n_input_constants=conf["solver"]["n_input_constants"],
         outputs_wrapper=lambda x: x,
@@ -34,39 +57,16 @@ def analyze_genome(conf: Dict) -> Dict:
         weighted_inputs=conf["solver"].get("weighted_inputs", False),
         weighted_program_inputs=conf["solver"].get("weighted_program_inputs", False),
         weights_mutation=False,
+        weights_mutation_type="gaussian",
+        weights_initialization=conf["solver"].get("weights_initialization", "uniform"),
     )
 
     best_idx = jnp.argmax(repertoire.fitnesses, axis=0)
-    best_genotype = jax.tree.map(lambda x: x[best_idx], repertoire.genotypes)
+    best_genotype = jax.tree.map(lambda x: x[best_idx][0], repertoire.genotypes)
 
-    active_mask = graph_structure.compute_active_mask(best_genotype)
-    functions = best_genotype["genes"]["functions"].astype(int)[0][active_mask == 1]
-    connections_1 = best_genotype["genes"]["inputs1"].astype(int)[0][active_mask == 1]
-    connections_2 = best_genotype["genes"]["inputs2"].astype(int)[0][active_mask == 1]
-
-    # find which inputs are used
-    n_used_inputs = 0
-    for i in range(graph_structure.n_inputs):
-        if i in connections_1 or i in connections_2:
-            n_used_inputs += 1
-
-    # functions
-    function_set = graph_structure.function_set
-    counts = Counter(functions.tolist())
-    info_dict = {f"n_fn_{i}": counts.get(i, 0) for i in range(len(function_set))}
-    info_dict["used_inputs_fraction"] = n_used_inputs / graph_structure.n_inputs
-    info_dict["active_fraction"] = jnp.sum(active_mask) / len(active_mask)
-
-    n_one_arity = 0
-    n_two_arity = 0
-    for fn in functions.tolist():
-        if function_set.arities[fn] == 1:
-            n_one_arity += 1
-        else:
-            n_two_arity += 1
-
-    info_dict["n_one_arity"] = n_one_arity
-    info_dict["n_two_arity"] = n_two_arity
+    info_dict = {}
+    info_dict["best_expression"] = graph_structure.get_readable_expression(best_genotype, inputs_mapping={0: "x"},
+                                                                           outputs_mapping={0: "y"})
     info_dict["run_name"] = conf['repertoire_path']
 
     return info_dict
@@ -75,24 +75,21 @@ def analyze_genome(conf: Dict) -> Dict:
 if __name__ == '__main__':
     config = {
         "solver": {
-            "n_nodes": 100,
-            "n_input_constants": 2,
+            "n_nodes": 15,
+            "n_input_constants": 0,
             "weights_initialization": "uniform"
         },
-        "n_offspring": 90,
-        "n_pop": 100,
+        "n_offspring": 8,
+        "n_pop": 10,
         "seed": 0,
         "tournament_size": 3,
-        "problem": "feynman_I_6_2",
+        "problem": "dcgp_1",
         "scale_x": False,
         "scale_y": False,
-        "constants_optimization": "gaussian",
-        "constants_reoptimization": "adam",
+        "constants_optimization": "adam",
     }
 
-    # for problem in ["chemical_2_competition", "friction_dyn_one-hot", "friction_stat_one-hot", "nasa_battery_1_10min",
-    #                 "nasa_battery_2_20min", "nikuradse_1", "nikuradse_2", "chemical_1_tower", "flow_stress_phip0.1", ]:
-    for problem in ["chemical_1_tower", "flow_stress_phip0.1", ]:
+    for problem in [f"dcgp_{i}" for i in range(1, 8)]:
         print(problem)
         info_dicts = []
         for seed in range(30):
