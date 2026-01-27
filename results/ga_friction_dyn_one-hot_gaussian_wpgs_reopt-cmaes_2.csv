@@ -1,2 +1,0 @@
-iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
-0,114.45007538795471,0.0,-0.0055463314,-0.0076977015,-0.0007894039,o0 = <lambda>(((abs(nan)*abs(nan))/(abs(nan)*abs(nan))))

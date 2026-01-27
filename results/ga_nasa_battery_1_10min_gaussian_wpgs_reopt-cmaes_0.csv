@@ -1,2 +1,0 @@
-iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
-0,101.7036497592926,0.0,-0.050080776,-2808343.5,-5037645.0,o0 = <lambda>(exp((nan*((abs(nan)*i4)*i4))))

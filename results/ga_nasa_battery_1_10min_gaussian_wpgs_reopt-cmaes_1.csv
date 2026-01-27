@@ -1,2 +1,0 @@
-iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
-0,100.69942092895508,0.0,-0.050080776,-2811188.8,-4189979.5,o0 = <lambda>(exp(((sin(i4)-sqrt(i1))*(abs(nan)-i2))))

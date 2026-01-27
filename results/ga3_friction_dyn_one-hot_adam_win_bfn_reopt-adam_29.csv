@@ -1,2 +1,0 @@
-iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
-0,114.47437405586243,0.6071565,0.3737986,0.60674065,0.371211,o0 = <lambda>(pow(0.02*cos(0.49*i0)))

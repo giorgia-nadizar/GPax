@@ -1,2 +1,0 @@
-iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
-0,279.7692131996155,0.0,-0.0063900948,-5107.618,-7315.447,o0 = <lambda>(exp((abs(exp(nan))+(sin(cos(i0))-nan))))

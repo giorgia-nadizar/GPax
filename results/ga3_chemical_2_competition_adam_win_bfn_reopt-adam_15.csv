@@ -1,2 +1,0 @@
-iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
-0,135.61569690704346,0.31270587,0.03362578,0.29658782,0.04933858,o0 = <lambda>(exp(0.72*(0.01*i45-0.56*log(0.91*i38))))

@@ -1,2 +1,0 @@
-iteration,time,max_fitness,test_accuracy,previous_max_fitness,previous_test_accuracy,equation
-0,249.31268882751465,0.0,-0.003540039,-116049.0,-145213.77,o0 = <lambda>(((((i5+(nan+nan))+i7)+((i5+(nan+nan))+i7))+(((i5+(nan+nan))+i7)+((i5+(nan+nan))+i7))))
