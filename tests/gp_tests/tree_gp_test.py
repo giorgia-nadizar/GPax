@@ -7,7 +7,7 @@ from gpax.gp.tree_genetic_programming import TreeGP
 
 @pytest.fixture
 def simple_tree_gp():
-    return TreeGP(n_inputs=3, max_depth=3, max_arity=2)
+    return TreeGP(n_inputs=3, max_depth=5, max_arity=2)
 
 
 def test_tree_init(simple_tree_gp):
@@ -104,6 +104,15 @@ def test_constants_mutation(simple_tree_gp):
 
     # Check shape is preserved
     assert mutated["genes"]["constants"].shape == g["genes"]["constants"].shape
+
+
+def test_mutation(simple_tree_gp):
+    key = jax.random.PRNGKey(7)
+    g = simple_tree_gp.init(key, target_depth=2, full=True)
+    mutated = simple_tree_gp.mutate(g, key)
+
+    for k in ["functions", "terminals", "constants", "tree"]:
+        assert mutated["genes"][k].shape == g["genes"][k].shape
 
 
 def test_syntactic_equality(simple_tree_gp):

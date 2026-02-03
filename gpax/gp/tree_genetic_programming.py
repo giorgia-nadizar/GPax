@@ -503,13 +503,47 @@ class TreeGP:
         height_mask2 = depths <= (depths[xover_point2] + subtree_height)
         mask2 = jnp.logical_and(subtree_mask2, height_mask2)
 
+        idx1 = jnp.where(mask1, size=mask1.shape[0], fill_value=self.n_nodes)[0]
+        idx2 = jnp.where(mask2, size=mask2.shape[0], fill_value=self.n_nodes)[0]
         offspring = jax.tree_map(
-            lambda x1, x2: x1.at[mask1].set(x2[mask2]),
+            lambda x1, x2: x1.at[idx1].set(x2[idx2]),
             genotype1,
             genotype2,
         )
 
         return self._clean_genotype(offspring)
+
+    def mutate(self,
+               genotype: Genotype,
+               rnd_key: RNGKey,
+               p_subtree: float = 0.6,
+               p_point: float = 0.2,
+               p_constants: float = 0.2,
+               ) -> Genotype:
+        """
+        Apply exactly one mutation operator to a genotype, chosen stochastically
+        among subtree mutation, point mutation, and constants mutation.
+
+        Args:
+            genotype: Parent genotype to mutate.
+            rnd_key: JAX PRNG key.
+            p_subtree: Probability of applying subtree mutation.
+            p_point: Probability of applying point mutation.
+            p_constants: Probability of applying constants mutation.
+
+        Returns:
+            Mutated genotype.
+        """
+        probs = jnp.array([p_subtree, p_point, p_constants], dtype=jnp.float32)
+        probs = probs / jnp.sum(probs)
+        choice_key, mut_key = jax.random.split(rnd_key)
+        mutation_id = jax.random.choice(choice_key, a=3, p=probs)
+
+        return jax.lax.switch(
+            mutation_id,
+            (self.subtree_mutation, self.point_mutation, self.constants_mutation),
+            genotype, mut_key,
+        )
 
     def subtree_mutation(self, genotype: Genotype, rnd_key: RNGKey) -> Genotype:
         """Perform subtree mutation.
