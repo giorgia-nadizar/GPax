@@ -8,14 +8,12 @@ from typing import Dict, List
 import jax
 import jax.numpy as jnp
 from qdax.core.containers.ga_repertoire import GARepertoire
-
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.utils.metrics import CSVLogger
 
-from gpax.evolution.tournament_selector import TournamentSelector
-from gpax.gp.cartesian_genetic_programming import CGP
-from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
 from gpax.evolution.evolution_metrics import custom_ga_metrics
+from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
+from gpax.evolution.tournament_selector import TournamentSelector
 from gpax.gp.tree_genetic_programming import TreeGP
 from gpax.supervised_learning.dataset_utils import downsample_dataset, load_dataset
 from gpax.supervised_learning.utils import prepare_scoring_fn, prepare_rescoring_fn
