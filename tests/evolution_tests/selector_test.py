@@ -4,7 +4,7 @@ from qdax.core.containers.ga_repertoire import GARepertoire
 
 from gpax.evolution.elite_selector import EliteSelector
 from gpax.evolution.tournament_selector import TournamentSelector
-from gpax.graphs.cartesian_genetic_programming import CGP
+from gpax.gp.cartesian_genetic_programming import CGP
 
 
 def test_tournament_with_cgp() -> None:

@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from gpax.graphs.cartesian_genetic_programming import CGP
+from gpax.gp.cartesian_genetic_programming import CGP
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, \
     optimize_constants_with_lbfgs, optimize_constants_with_cmaes
 from gpax.supervised_learning.regularization import sticky_pm_target_regularizer, snap_to_pm_target

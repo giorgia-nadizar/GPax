@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import optax
 from sklearn.model_selection import train_test_split
 
-from gpax.graphs.cartesian_genetic_programming import CGP
+from gpax.gp.cartesian_genetic_programming import CGP
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, \
     optimize_constants_with_lbfgs, optimize_constants_with_cmaes
 from gpax.supervised_learning.scoring_functions import compute_model_predictions, \

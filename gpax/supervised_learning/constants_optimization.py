@@ -140,7 +140,7 @@ def optimize_constants_with_lbfgs(
         tol: float = 1e-3
 ) -> Dict:
     """
-        Optimize the constant parameters (weights) of a batch of computational graphs
+        Optimize the constant parameters (weights) of a batch of computational gp
         using the L-BFGS quasi-Newton optimizer from Optax.
 
         Parameters
@@ -238,7 +238,7 @@ def optimize_constants_with_sgd(
         regularization_strength: float = 1e-2,
 ) -> Dict:
     """
-    Optimize the constant parameters (weights) of a batch of computational graphs
+    Optimize the constant parameters (weights) of a batch of computational gp
     using mini-batch stochastic gradient descent with an Optax optimizer
     (default Adam), gradient clipping, and optional regularization.
 

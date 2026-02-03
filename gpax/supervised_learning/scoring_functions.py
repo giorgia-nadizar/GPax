@@ -15,7 +15,7 @@ from qdax.custom_types import (
     RNGKey,
 )
 
-from gpax.graphs.graph_genetic_programming import GGP
+from gpax.gp.graph_genetic_programming import GGP
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd
 from gpax.supervised_learning.metrics import r2_score, rmse
 

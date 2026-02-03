@@ -13,7 +13,7 @@ from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.utils.metrics import CSVLogger
 
 from gpax.evolution.tournament_selector import TournamentSelector
-from gpax.graphs.cartesian_genetic_programming import CGP
+from gpax.gp.cartesian_genetic_programming import CGP
 from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
 from gpax.evolution.evolution_metrics import custom_ga_metrics
 from gpax.supervised_learning.dataset_utils import downsample_dataset, load_dataset

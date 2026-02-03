@@ -3,7 +3,7 @@ from typing import Callable, Tuple
 
 import optax
 
-from gpax.graphs.graph_genetic_programming import GGP
+from gpax.gp.graph_genetic_programming import GGP
 import jax.numpy as jnp
 
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, optimize_constants_with_cmaes, \
