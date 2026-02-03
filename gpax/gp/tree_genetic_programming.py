@@ -151,6 +151,18 @@ class TreeGP:
         depths = jnp.concatenate([first_half_depths, second_half_depths])
         return jax.jit(jax.vmap(self.init, in_axes=(0, 0, 0)))(keys, depths, full_mask)
 
+    @staticmethod
+    def _safe_int_cast(genotype) -> Genotype:
+        """ Casts the int part of the genome for safety."""
+        return {
+            "genes": {
+                "constants": genotype["genes"]["constants"],
+                "tree": genotype["genes"]["tree"].astype(int),
+                "terminals": genotype["genes"]["terminals"].astype(int),
+                "functions": genotype["genes"]["functions"].astype(int),
+            },
+        }
+
     def _clean_genotype(self, genotype: Genotype) -> Genotype:
         """Cleans a genotype to enforce valid tree structure.
 
@@ -163,7 +175,7 @@ class TreeGP:
         Returns:
             Genotype: Cleaned genotype with valid tree structure.
         """
-
+        genotype = self._safe_int_cast(genotype)
         init_arities = jnp.where(genotype["genes"]["tree"] == 1,
                                  self.function_set.arities[genotype["genes"]["functions"]], 0)
 
@@ -284,6 +296,7 @@ class TreeGP:
         """
         # initialize all heights to -1 (inactive)
         init_heights = -jnp.ones((self.n_nodes,), dtype=jnp.int32)
+        genotype = self._safe_int_cast(genotype)
 
         def _update_heights(idx: int, heights: jnp.ndarray) -> jnp.ndarray:
             node = genotype["genes"]["tree"][idx]
@@ -335,6 +348,8 @@ class TreeGP:
         Returns:
             jnp.ndarray: True if the genotypes are syntactically identical, False otherwise.
         """
+        genotype1 = self._safe_int_cast(genotype1)
+        genotype2 = self._safe_int_cast(genotype2)
 
         def _equality(idx: int, param: str) -> jnp.ndarray:
             f1 = jnp.where(genotype1["genes"]["tree"] == idx, genotype1["genes"][param], 0)
@@ -355,6 +370,8 @@ class TreeGP:
         Returns:
             jnp.ndarray: True if outputs are element-wise close, False otherwise.
         """
+        genotype1 = self._safe_int_cast(genotype1)
+        genotype2 = self._safe_int_cast(genotype2)
         data_points = self.semantic_equality_points if data_points is None else data_points
         mapped_apply = jax.jit(jax.vmap(self.apply, in_axes=(None, 0)))
         output1 = mapped_apply(genotype1, data_points)
@@ -366,6 +383,7 @@ class TreeGP:
     def apply(self,
               genotype: Genotype,
               inputs: jnp.ndarray,
+              weights: jnp.ndarray
               ) -> jnp.ndarray:
         """Evaluate a tree genotype on input data in a JAX-friendly way.
 
@@ -379,6 +397,7 @@ class TreeGP:
         Returns:
             jnp.ndarray: Output value computed by the tree.
         """
+        genotype = self._safe_int_cast(genotype)
         buffer = jnp.zeros((self.n_nodes,), dtype=jnp.float32)
 
         # noinspection PyUnusedLocal
@@ -424,6 +443,7 @@ class TreeGP:
         Returns:
             str: Expression string, recursively representing the tree.
         """
+        genotype = self._safe_int_cast(genotype)
         return self._get_readable_expression(genotype)
 
     def _get_readable_expression(self, genotype: Genotype, node_idx: int = 0) -> str:
@@ -479,6 +499,8 @@ class TreeGP:
         Returns:
             Genotype: Offspring genotype after crossover.
         """
+        genotype1 = self._safe_int_cast(genotype1)
+        genotype2 = self._safe_int_cast(genotype2)
         point_key_1, point_key_2 = jax.random.split(rnd_key, 2)
         admissible_xover_point1 = genotype1["genes"]["tree"] > 0
         sampling_probs1 = admissible_xover_point1 / jnp.sum(admissible_xover_point1)
@@ -534,6 +556,7 @@ class TreeGP:
         Returns:
             Mutated genotype.
         """
+        genotype = self._safe_int_cast(genotype)
         probs = jnp.array([p_subtree, p_point, p_constants], dtype=jnp.float32)
         probs = probs / jnp.sum(probs)
         choice_key, mut_key = jax.random.split(rnd_key)
@@ -557,6 +580,7 @@ class TreeGP:
         Returns:
             Genotype: Mutated genotype.
         """
+        genotype = self._safe_int_cast(genotype)
         xover_key, depth_key, donor_key = jax.random.split(rnd_key, 3)
         depth = jax.random.randint(depth_key, shape=(), minval=1, maxval=self.max_depth + 1)
         donor = self.init(donor_key, depth, full=False)
@@ -584,6 +608,7 @@ class TreeGP:
         Returns:
             Genotype: Genotype with mutated constants.
         """
+        genotype = self._safe_int_cast(genotype)
         points_noise_key, noise_key, points_reinit_key, reinit_key = jax.random.split(rnd_key, 4)
         constants_noise = gaussian_sigma * jax.random.normal(noise_key, shape=genotype["genes"]["constants"].shape)
         noisy_constant = genotype["genes"]["constants"] + constants_noise
@@ -624,9 +649,10 @@ class TreeGP:
         Returns:
             Genotype: Mutated genotype.
         """
+        genotype = self._safe_int_cast(genotype)
         points_key, loop_key = jax.random.split(rnd_key, 2)
-        mutation_mask = ((random.uniform(points_key, shape=(self.n_nodes,)) < mutation_rate) &
-                         genotype["genes"]["tree"] > 0)
+        mutation_mask = jnp.logical_and(random.uniform(points_key, shape=(self.n_nodes,)) < mutation_rate,
+                                        genotype["genes"]["tree"] > 0)
         mutations_target = genotype["genes"]["tree"] * mutation_mask
 
         # noinspection PyUnusedLocal
