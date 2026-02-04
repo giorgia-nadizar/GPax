@@ -22,11 +22,12 @@ class TournamentSelector(Selector):
     ) -> GARepertoireT:
         def _tournament(sample_key: RNGKey, fitness_values: Fitness, ) -> jnp.ndarray:
             indexes = jax.random.choice(sample_key,
-                                        jnp.arange(start=0, stop=len(fitness_values)), shape=[self.tournament_size],
-                                        replace=True)
-            mask = -jnp.inf * jnp.ones_like(fitness_values)
+                                        jnp.arange(start=0, stop=len(fitness_values)), shape=(self.tournament_size,),
+                                        replace=False)
+            mask = jnp.zeros_like(fitness_values)
             mask = mask.at[indexes].set(1)
-            fitness_values_for_selection = fitness_values * mask
+            positive_fitnesses = fitness_values + jnp.abs(jnp.minimum(jnp.min(fitness_values), 0))
+            fitness_values_for_selection = positive_fitnesses * mask
             return jnp.argmax(fitness_values_for_selection)
 
         sample_keys = jax.random.split(key, num_samples)
