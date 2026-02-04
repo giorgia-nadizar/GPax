@@ -408,17 +408,17 @@ class TreeGP:
         def _eval_function(idx: int, buff: jnp.ndarray) -> jnp.ndarray:
             fn_id = genotype["genes"]["functions"].at[idx].get()
             children_values = buff.at[self.children_ids(idx)].get()
-            return self.function_set.apply(fn_id, *children_values)
+            return self.function_set.apply(fn_id, *children_values).astype(float)
 
         # terminal node
         # noinspection PyUnusedLocal
         def _eval_terminal(idx: int, buff: jnp.ndarray) -> jnp.ndarray:
-            return inputs[genotype["genes"]["terminals"][idx]]
+            return inputs[genotype["genes"]["terminals"][idx]].astype(float)
 
         # constant node
         # noinspection PyUnusedLocal
         def _eval_constant(idx: int, buff: jnp.ndarray) -> jnp.ndarray:
-            return genotype["genes"]["constants"][idx]
+            return genotype["genes"]["constants"][idx].astype(float)
 
         def _eval_body(idx: int, values: jnp.ndarray) -> jnp.ndarray:
             node_value = jax.lax.switch(
