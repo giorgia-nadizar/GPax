@@ -161,7 +161,7 @@ if __name__ == '__main__':
     n_pop = 500
     conf = {
         "solver": {
-            "max_depth": 10,
+            "max_depth": 5,
         },
         "n_offspring": n_pop,
         "n_pop": n_pop,
