@@ -434,7 +434,7 @@ class TreeGP:
             buffer,
         )
 
-        return buffer[0]
+        return jnp.asarray([buffer[0]])
 
     def get_readable_expression(self, genotype: Genotype) -> str:
         """Return a human-readable symbolic expression of the tree.
