@@ -83,7 +83,7 @@ def run_sym_reg_ga(config: Dict):
         scoring_function=scoring_fn,
         emitter=mixing_emitter,
         metrics_function=metrics_function,
-        lamarckian=True,
+        lamarckian=False,
         rescoring_function=rescoring_fn_cgp
     )
 
