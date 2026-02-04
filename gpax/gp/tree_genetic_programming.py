@@ -383,7 +383,7 @@ class TreeGP:
     def apply(self,
               genotype: Genotype,
               inputs: jnp.ndarray,
-              weights: jnp.ndarray
+              weights: jnp.ndarray = None
               ) -> jnp.ndarray:
         """Evaluate a tree genotype on input data in a JAX-friendly way.
 
@@ -401,28 +401,30 @@ class TreeGP:
         buffer = jnp.zeros((self.n_nodes,), dtype=jnp.float32)
 
         # noinspection PyUnusedLocal
-        def _eval_empty(idx: int) -> float:
+        def _eval_empty(idx: int, buff: jnp.ndarray) -> float:
             return 0.0
 
         # function node
-        def _eval_function(idx: int) -> jnp.ndarray:
+        def _eval_function(idx: int, buff: jnp.ndarray) -> jnp.ndarray:
             fn_id = genotype["genes"]["functions"].at[idx].get()
-            children_values = buffer.at[self.children_ids(idx)].get()
+            children_values = buff.at[self.children_ids(idx)].get()
             return self.function_set.apply(fn_id, *children_values)
 
         # terminal node
-        def _eval_terminal(idx: int) -> jnp.ndarray:
+        # noinspection PyUnusedLocal
+        def _eval_terminal(idx: int, buff: jnp.ndarray) -> jnp.ndarray:
             return inputs[genotype["genes"]["terminals"][idx]]
 
         # constant node
-        def _eval_constant(idx: int) -> jnp.ndarray:
+        # noinspection PyUnusedLocal
+        def _eval_constant(idx: int, buff: jnp.ndarray) -> jnp.ndarray:
             return genotype["genes"]["constants"][idx]
 
         def _eval_body(idx: int, values: jnp.ndarray) -> jnp.ndarray:
             node_value = jax.lax.switch(
                 genotype["genes"]["tree"][idx],
                 (_eval_empty, _eval_function, _eval_terminal, _eval_constant),
-                idx
+                idx, values
             )
             return values.at[idx].set(node_value)
 

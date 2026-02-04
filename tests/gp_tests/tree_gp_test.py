@@ -56,6 +56,37 @@ def test_vmap_apply(simple_tree_gp):
     assert len(outputs) == pop_size
 
 
+def test_known_genome_execution(simple_tree_gp):
+    n_nodes = simple_tree_gp.n_nodes
+    constants = jnp.ones(n_nodes, dtype=float) * 2
+    tree = jnp.zeros(n_nodes, dtype=jnp.int32)
+    functions = jnp.zeros(n_nodes, dtype=jnp.int32)
+    terminals = jnp.zeros(n_nodes, dtype=jnp.int32)
+    tree = tree.at[jnp.asarray([0, 1, 2, 5])].set(1)
+    tree = tree.at[jnp.asarray([3, 4, 11])].set(2)
+    tree = tree.at[6].set(3)
+    functions = functions.at[0].set(2)
+    functions = functions.at[1].set(0)
+    functions = functions.at[2].set(3)
+    functions = functions.at[5].set(8)
+    terminals = terminals.at[4].set(2)
+    terminals = terminals.at[11].set(1)
+    genome = {
+        "genes": {
+            "tree": tree,
+            "functions": functions,
+            "terminals": terminals,
+            "constants": constants
+        }
+    }
+    # print(simple_tree_gp.get_readable_expression(genome))
+    random_points = jax.random.uniform(key=jax.random.PRNGKey(2), shape=(100, 3))
+    for x in random_points:
+        y = (x[0] + x[2]) * (jnp.log(x[1]) / 2)
+        res = simple_tree_gp.apply(genome, x)
+        assert jnp.isclose(y, res, 0.001)
+
+
 def test_readable_expression(simple_tree_gp):
     key = jax.random.PRNGKey(3)
     genotype = simple_tree_gp.init(key, target_depth=2, full=True)
