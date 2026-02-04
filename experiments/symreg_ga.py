@@ -8,9 +8,9 @@ from typing import Dict, List
 import jax
 import jax.numpy as jnp
 from qdax.core.containers.ga_repertoire import GARepertoire
-from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.utils.metrics import CSVLogger
 
+from gpax.evolution.custom_emitters import CustomMixingEmitter
 from gpax.evolution.evolution_metrics import custom_ga_metrics
 from gpax.evolution.genetic_algorithm_extra_scores import GeneticAlgorithmWithExtraScores
 from gpax.evolution.tournament_selector import TournamentSelector
@@ -51,7 +51,7 @@ def run_sym_reg_ga(config: Dict):
         outputs_wrapper=lambda x: x,
     )
 
-    print(tree_structure)
+    # print(tree_structure)
 
     # Init the population of trees
     key, subkey = jax.random.split(key)
@@ -64,10 +64,10 @@ def run_sym_reg_ga(config: Dict):
     )
 
     # Define emitter
-    mutation_fn = jax.jit(jax.vmap(tree_structure.mutate, in_axes=(0, None)))
-    variation_fn = jax.jit(jax.vmap(tree_structure.crossover, in_axes=(0, 0, None)))
+    mutation_fn = jax.jit(jax.vmap(tree_structure.mutate, in_axes=(0, 0)))
+    variation_fn = jax.jit(jax.vmap(tree_structure.crossover, in_axes=(0, 0, 0)))
     tournament_selector = TournamentSelector(tournament_size=config["tournament_size"])
-    mixing_emitter = MixingEmitter(
+    mixing_emitter = CustomMixingEmitter(
         mutation_fn=mutation_fn,
         variation_fn=variation_fn,
         variation_percentage=0.8,
