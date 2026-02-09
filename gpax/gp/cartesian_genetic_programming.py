@@ -139,9 +139,10 @@ class CGP(GGP):
             body_fun=_update_buffer,
             init_val=(genotype, buffer))
         outputs = jnp.take(buffer, genotype["genes"]["outputs"])
+        sanitized_outputs = jnp.nan_to_num(outputs)
 
         # apply wrapper to constraint the outputs in the correct domain
-        return self.outputs_wrapper(outputs)
+        return self.outputs_wrapper(sanitized_outputs)
 
     def compute_active_mask(
             self,
