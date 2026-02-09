@@ -2,22 +2,25 @@ from functools import partial
 from typing import Any, Tuple
 
 import jax
-import pytest
+import jax.numpy as jnp
 from brax.envs import State as EnvState
 
 import qdax.tasks.brax.v1 as environments
-from qdax.baselines.td3 import TD3, TD3Config, TD3TrainingState
+from qdax.baselines.td3 import TD3TrainingState
 from qdax.core.neuroevolution.buffers.buffer import ReplayBuffer, Transition
 from qdax.core.neuroevolution.sac_td3_utils import do_iteration_fn, warmstart_buffer
 
+from gpax.gp.cartesian_genetic_programming import CGP
+from gpax.rl.graph_td3 import GraphTD3Config, GraphTD3
 
-def run_td3() -> None:
+
+def run_graph_td3() -> None:
     env_name = "hopper"
     seed = 0
-    env_batch_size = 4
-    num_steps = 500_000
+    env_batch_size = 16
+    num_steps = 16_000
     warmup_steps = 10_000
-    buffer_size = 1_000_000
+    buffer_size = 10_000
 
     episode_length = 1000
     grad_updates_per_step = 1
@@ -64,7 +67,13 @@ def run_td3() -> None:
         buffer_size=buffer_size, transition=dummy_transition
     )
 
-    td3_config = TD3Config(
+    policy_graph_structure = CGP(n_inputs=env.observation_size, n_outputs=env.action_size, weighted_functions=True, outputs_wrapper=jnp.tanh)
+    key, genome_key = jax.random.split(key)
+    graph_genome = policy_graph_structure.init(rnd_key=genome_key)
+
+    print(policy_graph_structure.get_readable_expression(graph_genome))
+
+    graph_td3_config = GraphTD3Config(
         episode_length=episode_length,
         batch_size=batch_size,
         policy_delay=policy_delay,
@@ -74,6 +83,8 @@ def run_td3() -> None:
         policy_hidden_layer_size=policy_hidden_layer_size,
         critic_learning_rate=critic_learning_rate,
         policy_learning_rate=policy_learning_rate,
+        policy_graph_structure=policy_graph_structure,
+        policy_graph_genome=graph_genome,
         discount=discount,
         noise_clip=noise_clip,
         policy_noise=policy_noise,
@@ -81,7 +92,7 @@ def run_td3() -> None:
     )
 
     # Initialize TD3 algorithm
-    td3 = TD3(config=td3_config, action_size=env.action_size)
+    td3 = GraphTD3(config=graph_td3_config, action_size=env.action_size)
 
     key, subkey = jax.random.split(key)
     training_state = td3.init(
@@ -115,8 +126,8 @@ def run_td3() -> None:
     )
 
     def _scan_do_iteration(
-        carry: Tuple[TD3TrainingState, EnvState, ReplayBuffer],
-        unused_arg: Any,
+            carry: Tuple[TD3TrainingState, EnvState, ReplayBuffer],
+            unused_arg: Any,
     ) -> Tuple[Tuple[TD3TrainingState, EnvState, ReplayBuffer], Any]:
         (
             training_state,
@@ -141,6 +152,7 @@ def run_td3() -> None:
     print(true_return)
 
     total_num_iterations = num_steps // env_batch_size
+    # print(training_state)
 
     # Main training loop: update agent, evaluate and log metrics
     (training_state, env_state, replay_buffer), metrics = jax.lax.scan(
@@ -157,4 +169,4 @@ def run_td3() -> None:
 
 
 if __name__ == "__main__":
-    run_td3()
+    run_graph_td3()
