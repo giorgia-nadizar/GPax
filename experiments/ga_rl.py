@@ -32,7 +32,6 @@ def run_rl_ga(config: Dict):
     policy_graph = CGP(
         n_inputs=env.observation_size,
         n_outputs=env.action_size,
-        weighted_functions=True,
         n_nodes=config["solver"]["n_nodes"],
         outputs_wrapper=jnp.tanh
     )
