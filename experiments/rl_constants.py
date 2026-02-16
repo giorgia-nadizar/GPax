@@ -73,7 +73,8 @@ def reopt_single_genome(genome: Genotype, config: Dict) -> Tuple[Genotype, jnp.n
     policy_graph_structure = CGP(
         n_inputs=env.observation_size,
         n_outputs=env.action_size,
-        weighted_functions=True,
+        weighted_functions=False,
+        weighted_inputs=True,
         n_nodes=config["solver"]["n_nodes"],
         outputs_wrapper=jnp.tanh
     )
@@ -103,16 +104,16 @@ def reopt_single_genome(genome: Genotype, config: Dict) -> Tuple[Genotype, jnp.n
     training_state = td3.init(
         subkey, action_size=env.action_size, observation_size=env.observation_size
     )
-    # training_state = TD3TrainingState(
-    #     policy_optimizer_state=training_state.policy_optimizer_state,
-    #     policy_params=policy_graph_structure.get_weights(genome),
-    #     critic_optimizer_state=training_state.critic_optimizer_state,
-    #     critic_params=training_state.critic_params,
-    #     target_policy_params=training_state.target_policy_params,
-    #     target_critic_params=training_state.target_critic_params,
-    #     key=training_state.key,
-    #     steps=training_state.steps,
-    # )
+    training_state = TD3TrainingState(
+        policy_optimizer_state=training_state.policy_optimizer_state,
+        policy_params=policy_graph_structure.get_weights(genome),
+        critic_optimizer_state=training_state.critic_optimizer_state,
+        critic_params=training_state.critic_params,
+        target_policy_params=training_state.target_policy_params,
+        target_critic_params=training_state.target_critic_params,
+        key=training_state.key,
+        steps=training_state.steps,
+    )
 
     # Wrap and jit play step function
     play_step = partial(
@@ -209,7 +210,7 @@ if __name__ == '__main__':
             "n_nodes": 50,
         },
         "seed": 0,
-        "problem": "hopper",
+        "problem": "walker2d",
     }
 
     tasks = ["reacher", "swimmer", "hopper", "walker2d", "halfcheetah"]
