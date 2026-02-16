@@ -34,7 +34,11 @@ def run_rl_ga(config: Dict):
         n_inputs=env.observation_size,
         n_outputs=env.action_size,
         n_nodes=config["solver"]["n_nodes"],
-        outputs_wrapper=jnp.tanh
+        outputs_wrapper=jnp.tanh,
+        weighted_functions=conf["solver"]["w_fn"],
+        weighted_inputs=conf["solver"]["w_in"],
+        weights_initialization="natural",
+        weights_mutation=False
     )
 
     def cgp_play_step_fn(
@@ -218,13 +222,17 @@ if __name__ == '__main__':
         if key == "problem_id":
             conf["problem"] = tasks[int(value)]
 
-    for seed in range(10):
-        conf["seed"] = seed
-        conf["n_gens"] = n_gens
-        conf["run_name"] = "CGP_wann_" + conf["problem"].replace("/", "_") + "_" + str(conf["seed"])
-        print(conf["run_name"])
-        if os.path.exists(f"../results/{conf['run_name']}.pickle"):
-            print("run already done!")
-        else:
-            print("running")
-            run_rl_ga(conf)
+    for w in [True, False]:
+        for seed in range(10):
+            conf["solver"]["w_fn"] = w
+            conf["solver"]["w_in"] = not w
+            w_txt = "w_fn" if w else "w_in"
+            conf["seed"] = seed
+            conf["n_gens"] = n_gens
+            conf["run_name"] = f"CGP_wann_{w_txt}_" + conf["problem"].replace("/", "_") + "_" + str(conf["seed"])
+            print(conf["run_name"])
+            if os.path.exists(f"../results/{conf['run_name']}.pickle"):
+                print("run already done!")
+            else:
+                print("running")
+                run_rl_ga(conf)
