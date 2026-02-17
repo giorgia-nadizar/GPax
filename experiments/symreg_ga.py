@@ -3,11 +3,12 @@ import os.path
 import pickle
 import sys
 import time
-from typing import Dict, List
+from typing import Dict, List, Callable, Tuple
 
 import jax
 import jax.numpy as jnp
 from qdax.core.containers.ga_repertoire import GARepertoire
+from qdax.custom_types import Genotype, RNGKey, Fitness, ExtraScores
 from qdax.utils.metrics import CSVLogger
 
 from gpax.evolution.custom_emitters import CustomMixingEmitter
@@ -53,6 +54,31 @@ def run_sym_reg_ga(config: Dict):
 
     # print(tree_structure)
 
+    def get_scoring_fn_wrapper(
+            original_scoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]]
+    ) -> Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]]:
+
+        def _wrapped(geno: Genotype, the_k: RNGKey) -> Tuple[Fitness, ExtraScores]:
+            fit, extras = original_scoring_fn(geno, the_k)
+            tree_sizes = jax.jit(jax.vmap(tree_structure.size))(geno)
+            mask = (tree_sizes <= config["solver"]["max_size"]).reshape(-1, 1)
+            wrapped_fits = jnp.where(mask, fit, -jnp.inf)
+            return wrapped_fits, extras
+
+        return _wrapped
+
+    def get_rescoring_fn_wrapper(
+            original_rescoring_fn: Callable[[Genotype, RNGKey], Fitness]
+    ) -> Callable[[Genotype, RNGKey], Fitness]:
+
+        def _rewrapped(geno: Genotype, the_k: RNGKey) -> Fitness:
+            fit = original_rescoring_fn(geno, the_k)
+            tree_sizes = jax.jit(jax.vmap(tree_structure.size))(geno)
+            mask = (tree_sizes <= config["solver"]["max_size"]).reshape(-1, 1)
+            return jnp.where(mask, fit, -jnp.inf)
+
+        return _rewrapped
+
     # Init the population of trees
     key, subkey = jax.random.split(key)
     init_population = tree_structure.init_ramped_half_and_half(subkey, config["n_pop"])
@@ -77,14 +103,14 @@ def run_sym_reg_ga(config: Dict):
 
     # Prepare the scoring function
     scoring_fn = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, tree_structure, task=task)
-    rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, tree_structure, task=task)
+    rescoring_fn_gp = prepare_rescoring_fn(X_train_sub, y_train_sub, tree_structure, task=task)
     # Instantiate GA
     ga = GeneticAlgorithmWithExtraScores(
-        scoring_function=scoring_fn,
+        scoring_function=get_scoring_fn_wrapper(scoring_fn),
         emitter=mixing_emitter,
         metrics_function=metrics_function,
         lamarckian=False,
-        rescoring_function=rescoring_fn_cgp
+        rescoring_function=get_rescoring_fn_wrapper(rescoring_fn_gp)
     )
 
     # Evaluate the initial population
@@ -122,10 +148,10 @@ def run_sym_reg_ga(config: Dict):
         if rescoring:
             # change batch of the dataset to evaluate upon
             X_train_sub, y_train_sub = downsample_fn(X_train, y_train, sample_key)
-            scoring_fn_cgp = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, tree_structure,
-                                                task=task)
-            rescoring_fn_cgp = prepare_rescoring_fn(X_train_sub, y_train_sub, tree_structure, task=task)
-            ga = ga.replace_scoring_fns(scoring_fn_cgp, rescoring_fn_cgp)
+            scoring_fn = prepare_scoring_fn(X_train_sub, y_train_sub, X_test, y_test, tree_structure,
+                                            task=task)
+            rescoring_fn = prepare_rescoring_fn(X_train_sub, y_train_sub, tree_structure, task=task)
+            ga = ga.replace_scoring_fns(get_scoring_fn_wrapper(scoring_fn), get_rescoring_fn_wrapper(rescoring_fn))
 
         start_time = time.time()
 
@@ -161,7 +187,8 @@ if __name__ == '__main__':
     n_pop = 500
     conf = {
         "solver": {
-            "max_depth": 5,
+            "max_depth": 10,
+            "max_size": 50
         },
         "n_offspring": n_pop,
         "n_pop": n_pop,
@@ -189,7 +216,7 @@ if __name__ == '__main__':
         conf["seed"] = seed
         conf["n_gens"] = n_gens
         # extra += f"_wpgs" if w_pgs else ""
-        conf["run_name"] = "GP_" + conf["problem"].replace("/", "_") + "_" + str(conf["seed"])
+        conf["run_name"] = "GP_deep_" + conf["problem"].replace("/", "_") + "_" + str(conf["seed"])
         print(conf["run_name"])
         if os.path.exists(f"../results/{conf['run_name']}.pickle"):
             print("run already done!")
