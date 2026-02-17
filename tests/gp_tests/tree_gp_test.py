@@ -36,6 +36,18 @@ def test_ramped_half_and_half(simple_tree_gp):
         assert population["genes"][k].shape[0] == pop_size
 
 
+def test_tree_size(simple_tree_gp):
+    genotype = {
+        "genes": {
+            "tree": jnp.array([1, 2, 0, -1, 3, 0])
+        }
+    }
+
+    size = simple_tree_gp.size(genotype)
+
+    assert int(size) == 3
+
+
 def test_apply_returns_scalar(simple_tree_gp):
     key = jax.random.PRNGKey(2)
     genotype = simple_tree_gp.init(key, target_depth=2, full=True)

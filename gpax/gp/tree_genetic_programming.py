@@ -124,6 +124,18 @@ class TreeGP:
         }
         return self._clean_genotype(genotype)
 
+    # noinspection PyMethodMayBeStatic
+    def size(self, genotype: Genotype) -> jnp.ndarray:
+        """ Compute the actual size of a tree.
+
+        Args:
+            genotype: the tree
+
+        Returns:
+            jnp.ndarray: the size of the tree
+        """
+        return jnp.sum(genotype["genes"]["tree"] > 0)
+
     def init_ramped_half_and_half(
             self,
             rnd_key: RNGKey,
