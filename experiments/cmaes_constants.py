@@ -22,7 +22,7 @@ from gpax.gp.cartesian_genetic_programming import CGP
 def reopt_single_genome_cmaes(genome: Genotype, config: Dict) -> Tuple[Genotype, jnp.ndarray]:
     env_name = config["problem"]
 
-    num_iterations = 1000
+    num_iterations = 100
 
     # Create training environment
     env = environments.create(
@@ -155,8 +155,7 @@ def run_cmaes_constants_reopt(config: Dict):
         keys_extra_scores=None
     )
 
-    addition = "wfn" if config["solver"]["w_fn"] else "win"
-    target_file = conf["run_name"].replace("CGP", f"CGP-reopt-{addition}")
+    target_file = conf["run_name"].replace("CGP_wann", f"CGP_wann-reopt")
     path = f"../results/{target_file}.pickle"
     with open(path, 'wb') as file:
         pickle.dump(repertoire_to_store, file)
@@ -192,12 +191,12 @@ if __name__ == '__main__':
         if k == "problem_id":
             conf["problem"] = tasks[int(value)]
 
-    for a in [True, False]:
+    for w in [True, False]:
         for seed in range(10):
             conf["seed"] = seed
-            conf["solver"]["w_fn"] = a
-            conf["solver"]["w_in"] = not a
-            conf["run_name"] = "CGP_" + conf["problem"].replace("/", "_") + "_" + str(conf["seed"])
+            conf["solver"]["w_fn"] = w
+            conf["solver"]["w_in"] = not w
+            w_txt = "w_fn" if w else "w_in"
+            conf["run_name"] = f"CGP_wann_{w_txt}_" + conf["problem"].replace("/", "_") + "_" + str(conf["seed"])
             print(conf["run_name"])
-            print("w fn") if a else print("w in")
             run_cmaes_constants_reopt(conf)
