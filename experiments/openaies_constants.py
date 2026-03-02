@@ -116,7 +116,8 @@ def reopt_single_genome_openai_es(genome: Genotype, config: Dict) -> Tuple[Genot
         scores = fitness_fn(samples)
         solver.tell(fitness=scores)
 
-    max_id = jnp.argmax(scores)
+    # max_id = jnp.argmax(scores)
+    max_id = jnp.argmin(scores)
     best_score = scores[max_id]
     best_params_array = samples[max_id]
     best_params_pytree = weights_tree_def(best_params_array)
