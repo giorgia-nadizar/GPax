@@ -51,7 +51,7 @@ def reopt_single_genome_openai_es(genome: Genotype, config: Dict) -> Tuple[Genot
         Strategies["OpenES"],
         param_size=weights_array_sample.shape[0],
         pop_size=population_size,
-        es_config={"maximize": True,
+        es_config={"maximize": False,
                    "centered_rank": True,
                    "lrate_init": 0.01,
                    "lrate_decay": 0.999,
@@ -107,7 +107,7 @@ def reopt_single_genome_openai_es(genome: Genotype, config: Dict) -> Tuple[Genot
         # Evaluate
         fitnesses = jnp.sum(transitions.rewards * (1.0 - mask), axis=1)
 
-        return fitnesses
+        return -fitnesses
 
     for _ in range(num_iterations):
         # sample
@@ -153,7 +153,7 @@ def run_openai_es_constants_reopt(config: Dict):
         keys_extra_scores=None
     )
 
-    target_file = conf["run_name"].replace("CGP_wann", f"CGP_wann-reopt2")
+    target_file = conf["run_name"].replace("CGP_wann", f"CGP_wann-reopt3")
     path = f"../results/{target_file}.pickle"
     with open(path, 'wb') as file:
         pickle.dump(repertoire_to_store, file)
