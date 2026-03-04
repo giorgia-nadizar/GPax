@@ -61,6 +61,8 @@ def reopt_single_genome_openai_es(genome: Genotype, config: Dict) -> Tuple[Genot
                    "sigma_limit": 0.01},
         seed=0,
     )
+    evolutionary_strategy = solver.es
+    es_state = solver.es_state
 
     reset_key, key = jax.random.split(key)
     env_init_state = env.reset(reset_key)
@@ -109,16 +111,23 @@ def reopt_single_genome_openai_es(genome: Genotype, config: Dict) -> Tuple[Genot
 
         return fitnesses
 
-    for _ in range(num_iterations):
-        # sample
-        key, subkey = jax.random.split(key)
-        samples = solver.ask()
+    def opt_loop(carry, x):
+        inner_es_state, inner_key = carry
+        inner_key, ask_key = jax.random.split(inner_key)
+        samples, inner_es_state = evolutionary_strategy.ask(ask_key, inner_es_state)
         scores = fitness_fn(samples)
-        solver.tell(fitness=scores)
+        inner_es_state = evolutionary_strategy.tell(samples, scores, inner_es_state)
+        return (inner_es_state, inner_key), x
 
-    max_id = jnp.argmax(scores)
-    best_score = scores[max_id]
-    best_params_array = samples[max_id]
+    (es_state, _), _ = jax.lax.scan(
+        opt_loop,
+        (es_state, key),
+        (),
+        length=num_iterations,
+    )
+    best_score = es_state.best_fitness
+    best_params_array = es_state.best_member
+
     best_params_pytree = weights_tree_def(best_params_array)
     return policy_graph_structure.update_weights(genome, best_params_pytree), best_score
 
@@ -131,24 +140,13 @@ def run_openai_es_constants_reopt(config: Dict):
     repertoire = pickle.load(file)
     reopt_fn = partial(reopt_single_genome_openai_es, config=config)
 
-    updated_genomes = []
-    updated_fitnesses = []
-
     start_time = time.time()
-    for idx in range(len(repertoire.fitnesses)):
-        genome = jax.tree.map(lambda x: x[idx], repertoire.genotypes)
-        updated_genome, new_fitness = reopt_fn(genome)
-        updated_genomes.append(updated_genome)
-        updated_fitnesses.append(new_fitness)
-        print(idx, new_fitness)
+    updated_genomes, new_fitnesses = jax.jit(jax.vmap(reopt_fn))(repertoire.genotypes)
     timelapse = time.time() - start_time
 
-    stacked_genomes = jax.tree_util.tree_map(lambda *xs: jnp.stack(xs), *updated_genomes)
-    fitnesses_array = jnp.asarray(updated_fitnesses)
-
     repertoire_to_store = GARepertoire(
-        genotypes=stacked_genomes,
-        fitnesses=fitnesses_array,
+        genotypes=updated_genomes,
+        fitnesses=new_fitnesses,
         extra_scores={},
         keys_extra_scores=None
     )
@@ -164,7 +162,7 @@ def run_openai_es_constants_reopt(config: Dict):
     )
     metrics = {
         "iteration": 0,
-        "max_fitness": jnp.max(fitnesses_array),
+        "max_fitness": jnp.max(new_fitnesses),
         "time": timelapse
     }
 
