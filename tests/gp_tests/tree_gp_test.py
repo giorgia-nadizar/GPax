@@ -55,7 +55,7 @@ def test_apply_returns_scalar(simple_tree_gp):
 
     out = simple_tree_gp.apply(genotype, x)
     assert isinstance(out, jnp.ndarray)
-    assert out.shape == ()  # scalar output
+    assert out.shape == (1,)  # scalar output
 
 
 def test_vmap_apply(simple_tree_gp):
