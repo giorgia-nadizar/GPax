@@ -1,7 +1,7 @@
 import jax.random
 from flax import struct
 import jax.numpy as jnp
-from typing import Callable, Tuple, Optional
+from typing import Callable, Tuple, Optional, Dict, Union
 
 from jax import random
 from jax.lax import fori_loop
@@ -123,6 +123,18 @@ class TreeGP:
             },
         }
         return self._clean_genotype(genotype)
+
+    # noinspection PyMethodMayBeStatic
+    def size(self, genotype: Genotype) -> jnp.ndarray:
+        """ Compute the actual size of a tree.
+
+        Args:
+            genotype: the tree
+
+        Returns:
+            jnp.ndarray: the size of the tree
+        """
+        return jnp.sum(genotype["genes"]["tree"] > 0)
 
     def init_ramped_half_and_half(
             self,
@@ -436,19 +448,34 @@ class TreeGP:
 
         return jnp.asarray([buffer[0]])
 
-    def get_readable_expression(self, genotype: Genotype) -> str:
+    def get_readable_expression(self, genotype: Genotype,
+                                inputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None,
+                                ) -> str:
         """Return a human-readable symbolic expression of the tree.
 
         Args:
             genotype (Genotype): Tree genotype.
+            inputs_mapping: inputs_mapping (dict[int,str] | callable[[int], str], optional):
+                Mapping from input indices to custom names.
+                - If a dict, keys are input indices
+                - If a callable, it is called with the input index and must
+                  return the desired string
+                Defaults to "x0", "x1", ...
 
         Returns:
             str: Expression string, recursively representing the tree.
         """
         genotype = self._safe_int_cast(genotype)
-        return self._get_readable_expression(genotype)
+        inputs_mapping = inputs_mapping or {}
+        if isinstance(inputs_mapping, dict):
+            inputs_mapping_fn = lambda idx: inputs_mapping.get(idx, f"x{idx}")
+        else:
+            inputs_mapping_fn = inputs_mapping
+        return "y = " + self._get_readable_expression(genotype, inputs_mapping_fn)
 
-    def _get_readable_expression(self, genotype: Genotype, node_idx: int = 0) -> str:
+    def _get_readable_expression(self, genotype: Genotype,
+                                 inputs_mapping_fn: Callable[[int], str],
+                                 node_idx: int = 0, ) -> str:
         """Recursive worker for get_readable_expression.
 
         Args:
@@ -463,7 +490,7 @@ class TreeGP:
         if node_type == 0:  # inactive node
             return ""
         if node_type == 2:  # terminal feature
-            return f"x{int(genotype['genes']['terminals'][node_idx])}"
+            return inputs_mapping_fn(int(genotype["genes"]["terminals"][node_idx]))
         if node_type == 3:  # terminal constant
             return f"{float(genotype['genes']['constants'][node_idx]):.3f}"
         if node_type == 1:  # function
@@ -475,7 +502,7 @@ class TreeGP:
             args = []
             for k in range(arity):
                 child_idx = int(children[k])
-                arg = self._get_readable_expression(genotype, child_idx)
+                arg = self._get_readable_expression(genotype, inputs_mapping_fn, child_idx)
                 args.append(arg)
 
             return f"{fn_name}(" + ", ".join(args) + ")"
@@ -543,6 +570,7 @@ class TreeGP:
                p_subtree: float = 0.6,
                p_point: float = 0.2,
                p_constants: float = 0.2,
+               mutation_probabilities: Optional[Dict[str, float]] = None
                ) -> Genotype:
         """
         Apply exactly one mutation operator to a genotype, chosen stochastically
@@ -554,10 +582,17 @@ class TreeGP:
             p_subtree: Probability of applying subtree mutation.
             p_point: Probability of applying point mutation.
             p_constants: Probability of applying constants mutation.
+            mutation_probabilities: optional dictionary mapping genotype parts
+                 to their mutation probabilities.
 
         Returns:
             Mutated genotype.
         """
+        mutation_probabilities = mutation_probabilities or {}
+        p_subtree = mutation_probabilities.get("subtree", p_subtree)
+        p_point = mutation_probabilities.get("point", p_point)
+        p_constants = mutation_probabilities.get("constants", p_constants)
+
         genotype = self._safe_int_cast(genotype)
         probs = jnp.array([p_subtree, p_point, p_constants], dtype=jnp.float32)
         probs = probs / jnp.sum(probs)
