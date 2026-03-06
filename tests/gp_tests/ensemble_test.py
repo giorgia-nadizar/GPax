@@ -23,7 +23,7 @@ def test_init_cgp() -> None:
 
     key = jax.random.key(42)
     single_key, multi_key = jax.random.split(key)
-    init_single_genome = ensemble_gp.init(key)
+    init_single_genome = ensemble_gp.init(single_key)
     pytest.assume(init_single_genome["genes"]["functions"].shape == (n_outputs, n_nodes))
 
     multi_keys = jax.random.split(multi_key, n_pop)
@@ -44,7 +44,7 @@ def test_init_tree() -> None:
 
     key = jax.random.key(42)
     single_key, multi_key = jax.random.split(key)
-    init_single_genome = ensemble_gp.init(key, target_depth=2)
+    init_single_genome = ensemble_gp.init(single_key, target_depth=2)
     pytest.assume(init_single_genome["genes"]["tree"].shape == (n_outputs, tree_gp.n_nodes))
 
     multi_keys = jax.random.split(multi_key, n_pop)
@@ -67,7 +67,7 @@ def test_mutation_cgp() -> None:
 
     key = jax.random.key(42)
     single_key, multi_key, mutate_key, multi_mutate_key = jax.random.split(key, 4)
-    init_single_genome = ensemble_gp.init(key)
+    init_single_genome = ensemble_gp.init(single_key)
     mutated_single_genome = ensemble_gp.mutate(init_single_genome, mutate_key)
     pytest.assume(mutated_single_genome["genes"]["functions"].shape == (n_outputs, n_nodes))
 
@@ -91,7 +91,7 @@ def test_mutation_tree() -> None:
 
     key = jax.random.key(42)
     single_key, multi_key, mutate_key, multi_mutate_key = jax.random.split(key, 4)
-    init_single_genome = ensemble_gp.init(key, target_depth=2)
+    init_single_genome = ensemble_gp.init(single_key, target_depth=2)
     mutated_single_genome = ensemble_gp.mutate(init_single_genome, mutate_key)
     pytest.assume(mutated_single_genome["genes"]["tree"].shape == (n_outputs, tree_gp.n_nodes))
 
@@ -175,7 +175,6 @@ def test_readable_expression_cgp():
 
 def test_readable_expression_tree():
     n_outputs = 4
-    n_pop = 3
     max_depth = 5
     tree_gp = TreeGP(
         n_inputs=2,
