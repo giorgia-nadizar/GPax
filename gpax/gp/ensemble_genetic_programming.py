@@ -7,6 +7,7 @@ from typing import Dict, Optional, Union, Callable
 
 from qdax.custom_types import RNGKey, Genotype
 
+from gpax.gp.tree_genetic_programming import TreeGP
 from gpax.gp.graph_genetic_programming import GGP
 
 
@@ -25,9 +26,9 @@ class EnsembleGP:
             program in the ensemble.
     """
     n_outputs: int
-    base_gp_model: GGP
+    base_gp_model: Union[TreeGP, GGP]
 
-    def init(self, rnd_key: RNGKey, *args):
+    def init(self, rnd_key: RNGKey, **kwargs):
         """Initialize an ensemble of random genotypes.
 
         Each output dimension corresponds to an independent GP program, thus
@@ -35,14 +36,15 @@ class EnsembleGP:
 
         Args:
             rnd_key: JAX PRNG key used to seed genotype initialization.
-            *args: Additional arguments (unused, kept for API compatibility).
+            **kwargs: Additional arguments.
 
         Returns:
             Genotype: A stacked ensemble genotype where each element corresponds
             to a GP program for one output dimension.
         """
         init_keys = jax.random.split(rnd_key, self.n_outputs)
-        return jax.jit(jax.vmap(self.base_gp_model.init, in_axes=(0,)))(init_keys)
+        partial_init = functools.partial(self.base_gp_model.init, **kwargs)
+        return jax.jit(jax.vmap(partial_init, in_axes=(0,)))(init_keys)
 
     def apply(self,
               genotype: Genotype,
@@ -136,6 +138,9 @@ class EnsembleGP:
             outputs_mapping_fn = lambda idx: outputs_mapping.get(idx, f"o{idx}")
         else:
             outputs_mapping_fn = outputs_mapping
-        processed_expression = [exp.replace("o0", outputs_mapping_fn(i)) for i, exp in enumerate(expressions)]
+        processed_expressions = []
+        for i, expr in enumerate(expressions):
+            _, content = expr.split("=")
+            processed_expressions.append(f"{outputs_mapping_fn(i)} = {content.strip()}")
 
-        return "\n".join(processed_expression)
+        return "\n".join(processed_expressions)

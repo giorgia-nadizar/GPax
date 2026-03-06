@@ -1,12 +1,15 @@
+import functools
+
 import jax
 import jax.numpy as jnp
 import pytest
 
 from gpax.gp.cartesian_genetic_programming import CGP
 from gpax.gp.ensemble_genetic_programming import EnsembleGP
+from gpax.gp.tree_genetic_programming import TreeGP
 
 
-def test_init() -> None:
+def test_init_cgp() -> None:
     # define genome structure
     n_outputs = 4
     n_pop = 3
@@ -28,7 +31,29 @@ def test_init() -> None:
     pytest.assume(init_genomes["genes"]["functions"].shape == (n_pop, n_outputs, n_nodes))
 
 
-def test_mutation() -> None:
+def test_init_tree() -> None:
+    # define genome structure
+    n_outputs = 4
+    n_pop = 3
+    max_depth = 5
+    tree_gp = TreeGP(
+        n_inputs=2,
+        max_depth=max_depth
+    )
+    ensemble_gp = EnsembleGP(n_outputs, tree_gp)
+
+    key = jax.random.key(42)
+    single_key, multi_key = jax.random.split(key)
+    init_single_genome = ensemble_gp.init(key, target_depth=2)
+    pytest.assume(init_single_genome["genes"]["tree"].shape == (n_outputs, tree_gp.n_nodes))
+
+    multi_keys = jax.random.split(multi_key, n_pop)
+    partial_init = functools.partial(ensemble_gp.init, target_depth=2)
+    init_genomes = jax.jit(jax.vmap(partial_init))(multi_keys)
+    pytest.assume(init_genomes["genes"]["tree"].shape == (n_pop, n_outputs, tree_gp.n_nodes))
+
+
+def test_mutation_cgp() -> None:
     # define genome structure
     n_outputs = 4
     n_pop = 3
@@ -51,6 +76,31 @@ def test_mutation() -> None:
     multi_mutate_keys = jax.random.split(multi_mutate_key, n_pop)
     mutated_genomes = jax.jit(jax.vmap(ensemble_gp.mutate))(init_genomes, multi_mutate_keys)
     pytest.assume(mutated_genomes["genes"]["functions"].shape == (n_pop, n_outputs, n_nodes))
+
+
+def test_mutation_tree() -> None:
+    # define genome structure
+    n_outputs = 4
+    n_pop = 3
+    max_depth = 5
+    tree_gp = TreeGP(
+        n_inputs=2,
+        max_depth=max_depth
+    )
+    ensemble_gp = EnsembleGP(n_outputs, tree_gp)
+
+    key = jax.random.key(42)
+    single_key, multi_key, mutate_key, multi_mutate_key = jax.random.split(key, 4)
+    init_single_genome = ensemble_gp.init(key, target_depth=2)
+    mutated_single_genome = ensemble_gp.mutate(init_single_genome, mutate_key)
+    pytest.assume(mutated_single_genome["genes"]["tree"].shape == (n_outputs, tree_gp.n_nodes))
+
+    multi_keys = jax.random.split(multi_key, n_pop)
+    partial_init = functools.partial(ensemble_gp.init, target_depth=2)
+    init_genomes = jax.jit(jax.vmap(partial_init))(multi_keys)
+    multi_mutate_keys = jax.random.split(multi_mutate_key, n_pop)
+    mutated_genomes = jax.jit(jax.vmap(ensemble_gp.mutate))(init_genomes, multi_mutate_keys)
+    pytest.assume(mutated_genomes["genes"]["tree"].shape == (n_pop, n_outputs, tree_gp.n_nodes))
 
 
 def test_known_genome_execution() -> None:
@@ -97,7 +147,7 @@ def test_known_genome_execution() -> None:
             pytest.assume(jnp.allclose(outputs, expected_outputs, rtol=1e-5, atol=1e-8))
 
 
-def test_readable_expression():
+def test_readable_expression_cgp():
     n_outputs = 4
     # define genome structure
     cgp = CGP(
@@ -119,5 +169,22 @@ def test_readable_expression():
         },
         "weights": fake_genome["weights"]
     }
+    readable_expression = ensemble_gp.get_readable_expression(ensemble_genome)
+    print(readable_expression)
+
+
+def test_readable_expression_tree():
+    n_outputs = 4
+    n_pop = 3
+    max_depth = 5
+    tree_gp = TreeGP(
+        n_inputs=2,
+        max_depth=max_depth
+    )
+    ensemble_gp = EnsembleGP(n_outputs, tree_gp)
+
+    key = jax.random.key(42)
+    ensemble_genome = ensemble_gp.init(key, target_depth=2)
+
     readable_expression = ensemble_gp.get_readable_expression(ensemble_genome)
     print(readable_expression)
