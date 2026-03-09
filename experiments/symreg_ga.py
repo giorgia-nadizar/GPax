@@ -217,11 +217,11 @@ if __name__ == '__main__':
     conf["solver"]["biased_functions"] = b_f
     conf["n_gens"] = n_gens
     extra = conf["constants_optimization"]
-    extra += f"_win" if w_in else ""
-    extra += f"_wfn" if w_f else ""
-    extra += f"_bin" if b_in else ""
-    extra += f"_bfn" if b_f else ""
-    # extra += f"_wpgs" if w_pgs else ""
+    extra += "_win" if w_in else ""
+    extra += "_wfn" if w_f else ""
+    extra += "_bin" if b_in else ""
+    extra += "_bfn" if b_f else ""
+    # extra += "_wpgs" if w_pgs else ""
     extra += "_n" if conf["solver"].get("weights_initialization") == "natural" else ""
     conf["run_name"] = "ga2_" + conf["problem"].replace("/", "_") + "_" + extra + "_" + str(conf["seed"])
     print(conf["run_name"])
