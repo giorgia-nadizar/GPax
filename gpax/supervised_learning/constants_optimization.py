@@ -1,4 +1,4 @@
-from typing import Dict, Callable, Any
+from typing import Dict, Callable, Any, Tuple, Union
 import jax
 import jax.numpy as jnp
 import optax
@@ -22,7 +22,7 @@ def optimize_constants_with_cmaes(
         loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
         max_iter: int = 10,
         mini_batch_size: int = 32
-) -> Dict:
+) -> Union[Dict, Any]:
     """
     Optimize the constants (weights) of a set of genotypes using CMA-ES.
 
@@ -81,13 +81,15 @@ def optimize_constants_with_cmaes(
         mean_init=weights_array_sample
     )
 
-    def _single_genome_cmaes(single_genotype: Genotype, cmaes_state: CMAESState, single_key: RNGKey) -> Dict:
-        def _single_weights_fitness_function(s_weights: jnp.ndarray, X_batch, y_batch) -> jnp.ndarray:
+    def _single_genome_cmaes(single_genotype: Genotype, cmaes_state: CMAESState,
+                             single_key: RNGKey) -> Union[Dict, Any]:
+        def _single_weights_fitness_function(s_weights: jnp.ndarray, X_batch: jnp.ndarray,
+                                             y_batch: jnp.ndarray) -> jnp.ndarray:
             single_pytree_weights = weights_tree_def(s_weights)
             y_pred = prediction_fn(X_batch, single_genotype, graph_weights=single_pytree_weights)
             return loss_fn(y_batch, y_pred)
 
-        def _weights_ranking_function(candidate_array_weights: jnp.ndarray, random_key: RNGKey):
+        def _weights_ranking_function(candidate_array_weights: jnp.ndarray, random_key: RNGKey) -> jnp.ndarray:
             X_batch, y_batch = downsample_dataset(X, y, random_key=random_key, size=mini_batch_size)
             vmap_weights_fitness_fn = jax.vmap(_single_weights_fitness_function, in_axes=(0, None, None))
             fitness_values = vmap_weights_fitness_fn(candidate_array_weights, X_batch, y_batch)
@@ -95,7 +97,7 @@ def optimize_constants_with_cmaes(
             sorted_candidates = candidate_array_weights[idx_sorted[: global_cmaes._num_best]]
             return sorted_candidates
 
-        def _cmaes_body(i, carry):
+        def _cmaes_body(i: int, carry: Tuple[RNGKey, CMAESState]) -> Tuple[RNGKey, CMAESState]:
             thekey, state = carry
             key1, key2, thekey = jax.random.split(thekey, 3)
             current_genotypes = global_cmaes.sample(state, key1)
@@ -138,7 +140,7 @@ def optimize_constants_with_lbfgs(
         loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
         max_iter: int = 100,
         tol: float = 1e-3
-) -> Dict:
+) -> Union[Dict, Any]:
     """
         Optimize the constant parameters (weights) of a batch of computational graphs
         using the L-BFGS quasi-Newton optimizer from Optax.
@@ -183,17 +185,17 @@ def optimize_constants_with_lbfgs(
           SGD/Adam-based optimization functions.
         """
 
-    def _single_genome_lbfgs(single_weights: Dict, single_genotype: Genotype):
+    def _single_genome_lbfgs(single_weights: Dict, single_genotype: Genotype) -> Union[Dict, Any]:
         init_flat_weights, weights_tree_def = ravel_pytree(single_weights)
 
-        def _loss_fn(array_weights: jnp.ndarray):
+        def _loss_fn(array_weights: jnp.ndarray) -> jnp.ndarray:
             pytree_weights = weights_tree_def(array_weights)
             y_pred = prediction_fn(X, single_genotype, graph_weights=pytree_weights)
             return loss_fn(y, y_pred)
 
         value_and_grad_fun = optax.value_and_grad_from_state(_loss_fn)
 
-        def _step(carry):
+        def _step(carry: Tuple[Any, Any]) -> Tuple[Any, Any]:
             params, state = carry
             value, grad = value_and_grad_fun(params, state=state)
             updates, state = opt.update(
@@ -202,7 +204,7 @@ def optimize_constants_with_lbfgs(
             params = optax.apply_updates(params, updates)
             return params, state
 
-        def _continuing_criterion(carry):
+        def _continuing_criterion(carry: Tuple[Any, Any]) -> Any:
             _, state = carry
             iter_num = optax.tree.get(state, 'count')
             grad = optax.tree.get(state, 'grad')
@@ -321,7 +323,7 @@ def optimize_constants_with_sgd(
 
     @jax.jit
     def _single_genome_gradient_step(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, opt_st: Any,
-                                     X_batch: jnp.ndarray, y_batch: jnp.ndarray):
+                                     X_batch: jnp.ndarray, y_batch: jnp.ndarray) -> Tuple[Any, Any, jnp.ndarray]:
         loss, grads = jax.value_and_grad(_single_genome_loss)(single_weights, single_genotype, X_batch, y_batch)
         # clamp loss
         loss = jnp.where(jnp.isfinite(loss), loss, jnp.inf)
