@@ -67,6 +67,10 @@ class GGP:
         """Compute the mask of active (expressed) elements in a genotype (subclass-specific)."""
         raise NotImplementedError
 
+    def size(self, genotype: Genotype) -> jnp.ndarray:
+        """Compute the number of active (expressed) elements in a genotype."""
+        return jnp.sum(self.compute_active_mask(genotype))
+
     def mutate(self,
                genotype: Genotype,
                rnd_key: RNGKey,
