@@ -18,9 +18,9 @@ def downsample_dataset(
         X: jnp.ndarray,
         y: jnp.ndarray,
         random_key: RNGKey,
-        ratio: float = None,
-        size: int = None
-):
+        ratio: float | None = None,
+        size: int | None = None,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     Randomly downsample a dataset to a given size or ratio.
 

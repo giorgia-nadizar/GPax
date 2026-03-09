@@ -1,6 +1,6 @@
 import jax
 import jax.numpy as jnp
-from typing import Dict
+from typing import Dict, Union, Any
 
 
 def no_regularizer(weights: Dict[str, jnp.ndarray]) -> jnp.ndarray:
@@ -60,7 +60,7 @@ def snap_to_pm_target(
         weights: Dict[str, jnp.ndarray],
         target: int = 1,
         eps: float = 1e-2,
-) -> Dict[str, jnp.ndarray]:
+) -> Union[Dict[str, jnp.ndarray], Any]:
     """
     Project weights exactly to ±target if they are sufficiently close.
 
@@ -80,7 +80,7 @@ def snap_to_pm_target(
     """
     target = float(target)
 
-    def _snap(w):
+    def _snap(w: jnp.ndarray) -> jnp.ndarray:
         return jnp.where(
             jnp.abs(jnp.abs(w) - target) < eps,
             jnp.sign(w) * target,
