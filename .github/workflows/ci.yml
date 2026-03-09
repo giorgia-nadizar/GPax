@@ -27,9 +27,6 @@ jobs:
         run: |
           uv pip install --system .[dev]
 
-      - name: Install requirements
-        run: pip install -r requirements.txt
-
       - name: Run pre-commit
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
@@ -57,6 +54,9 @@ jobs:
       - name: Install project (dev + examples)
         run: |
           uv pip install --system .[dev,examples]
+
+      - name: Install requirements
+        run: pip install -r requirements.txt
 
       - name: Run tests (coverage)
         run: |
