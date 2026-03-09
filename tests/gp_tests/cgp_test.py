@@ -205,7 +205,9 @@ def test_active_graph() -> None:
     }
     expected_active_nodes = jnp.asarray([1, 0, 1, 0, 0])
     active_nodes = cgp.compute_active_mask(cgp_genome)
+    active_size = cgp.size(cgp_genome)
     pytest.assume(jnp.array_equal(active_nodes, expected_active_nodes))
+    pytest.assume(jnp.array_equal(active_size, jnp.sum(expected_active_nodes)))
 
 
 def test_active_graph_jit() -> None:

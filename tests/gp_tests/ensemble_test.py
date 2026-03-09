@@ -187,3 +187,30 @@ def test_readable_expression_tree():
 
     readable_expression = ensemble_gp.get_readable_expression(ensemble_genome)
     print(readable_expression)
+
+
+def test_active_size():
+    n_outputs = 4
+    cgp = CGP(
+        n_inputs=2,
+        n_outputs=1,
+        n_nodes=5
+    )
+    ensemble_gp = EnsembleGP(n_outputs, cgp)
+
+    key = jax.random.key(42)
+    fake_genome = ensemble_gp.init(key)
+
+    ensemble_genome = {
+        "genes": {
+            "inputs1": jnp.asarray([[0, 0, 4, 0, 0] for _ in range(n_outputs)]),
+            "inputs2": jnp.ones((n_outputs, cgp.n_nodes), dtype=jnp.int32),
+            "functions": jnp.asarray([[0, 0, 2, 0, 0] for _ in range(n_outputs)]),
+            "outputs": jnp.asarray([[0], [2], [4], [6]]),
+        },
+        "weights": fake_genome["weights"]
+    }
+    readable_expression = ensemble_gp.get_readable_expression(ensemble_genome)
+    print(readable_expression)
+    size = ensemble_gp.size(ensemble_genome)
+    print(size)

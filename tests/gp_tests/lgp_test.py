@@ -253,7 +253,9 @@ def test_active_lines() -> None:
     }
     expected_active_lines = jnp.asarray([1, 1, 1, 1, 0])
     active_lines = lgp.compute_active_mask(lgp_genome)
+    active_size = lgp.size(lgp_genome)
     pytest.assume(jnp.array_equal(active_lines, expected_active_lines))
+    pytest.assume(jnp.array_equal(active_size, jnp.sum(expected_active_lines)))
 
     # define genome structure
     lgp2 = LGP(
@@ -273,7 +275,9 @@ def test_active_lines() -> None:
     }
     expected_active_lines2 = jnp.asarray([0, 1])
     active_lines2 = lgp2.compute_active_mask(lgp_genome2)
+    active_size2 = lgp2.size(lgp_genome2)
     pytest.assume(jnp.array_equal(active_lines2, expected_active_lines2))
+    pytest.assume(jnp.array_equal(active_size2, jnp.sum(expected_active_lines2)))
 
 
 def test_active_lines_jit() -> None:

@@ -144,3 +144,8 @@ class EnsembleGP:
             processed_expressions.append(f"{outputs_mapping_fn(i)} = {content.strip()}")
 
         return "\n".join(processed_expressions)
+
+    def size(self, genotype: Genotype) -> jnp.ndarray:
+        """Compute the average number of active (expressed) elements in a genotype."""
+        sizes = jax.jit(jax.vmap(self.base_gp_model.size, in_axes=0))(genotype)
+        return jnp.mean(sizes)
