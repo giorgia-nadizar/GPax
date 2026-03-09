@@ -61,8 +61,7 @@ jobs:
           coverage run -m pytest -vv tests
           coverage xml
 
-      - name: Generate HTML coverage report
-        run: coverage html
-
-      - name: Upload coverage to Codecov
+      - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
