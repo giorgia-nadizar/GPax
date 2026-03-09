@@ -111,7 +111,7 @@ def optimize_constants_with_cmaes(
 
     cmaes_states = []
     for i in range(n_genotypes):
-        current_weights = jax.tree_map(lambda x: x[i], graph_weights)
+        current_weights = jax.tree_map(lambda x: x[i], graph_weights)  # noqa: B023
         current_state = CMAES(
             population_size=pop_size,
             search_dim=search_dim,
@@ -229,7 +229,7 @@ def optimize_constants_with_sgd(
         X: jnp.ndarray,
         y: jnp.ndarray,
         prediction_fn: Callable,
-        optimizer: GradientTransformation = optax.adam(1e-3),
+        optimizer: GradientTransformation = optax.adam(1e-3),  # noqa: B008
         loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
         regularization_loss_fn: Callable[[Dict], jnp.ndarray] = no_regularizer,
         regularization_update_fn: Callable[[Dict], Dict] = no_snap,
@@ -341,7 +341,7 @@ def optimize_constants_with_sgd(
 
     step_fn = jax.vmap(jax.jit(_single_genome_gradient_step), in_axes=(0, 0, 0, None, None))
 
-    for i in range(n_gradient_steps):
+    for _ in range(n_gradient_steps):
         key, subkey = jax.random.split(key)
         # sample a mini-batch
         X_batch, y_batch = downsample_dataset(X, y, random_key=subkey, size=batch_size)

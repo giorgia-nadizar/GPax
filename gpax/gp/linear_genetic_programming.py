@@ -321,14 +321,14 @@ class LGP(GGP):
                                        genotype1["weights"]["functions"],
                                        genotype2["weights"]["functions"]),
                 "inputs1_biases": jnp.where(mask,
-                                     genotype1["weights"]["inputs1_biases"],
-                                     genotype2["weights"]["inputs1_biases"]),
+                                            genotype1["weights"]["inputs1_biases"],
+                                            genotype2["weights"]["inputs1_biases"]),
                 "inputs2_biases": jnp.where(mask,
-                                     genotype1["weights"]["inputs2_biases"],
-                                     genotype2["weights"]["inputs2_biases"]),
+                                            genotype1["weights"]["inputs2_biases"],
+                                            genotype2["weights"]["inputs2_biases"]),
                 "functions_biases": jnp.where(mask,
-                                       genotype1["weights"]["functions_biases"],
-                                       genotype2["weights"]["functions_biases"]),
+                                              genotype1["weights"]["functions_biases"],
+                                              genotype2["weights"]["functions_biases"]),
 
             }
         }
@@ -370,7 +370,7 @@ class LGP(GGP):
             """
         # header and inputs copy into registers
         input_constants = genotype["weights"]["program_inputs"]
-        program_lines = [f"def program(inputs):",
+        program_lines = ["def program(inputs):",
                          f"r[{list(range(self.n_inputs))}] = inputs",
                          f"r[{list(range(self.n_inputs, self.n_inputs + self.n_input_constants))}] = {input_constants}"]
 
@@ -422,7 +422,8 @@ class LGP(GGP):
                     i_p1, i_p2 = ("(", ")") if self.biased_inputs else ("", "")
                     if function.arity == 1:
                         return (f"{n_p1}{line_weight}{function.symbol}({x_weight}"
-                                f"{_replace_lgp_expression(lgp_genes, int(lgp_genes['genes']['inputs1'][row_idx]), row_idx)}{x_bias})"
+                                f"{_replace_lgp_expression(lgp_genes, int(lgp_genes['genes']['inputs1'][row_idx]), row_idx)}"
+                                f"{x_bias})"
                                 f"{line_bias}{n_p2}")
                     else:
                         return (f"{n_p1}{line_weight}({i_p1}{x_weight}"

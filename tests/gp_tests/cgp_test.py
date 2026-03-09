@@ -438,10 +438,8 @@ def test_gradient_optimization_of_function_weights() -> None:
     opt_state = optimizer.init(cgp_weights)
 
     # Training loop
-    for i in range(50_000):
+    for _ in range(50_000):
         cgp_weights, opt_state, train_loss = step(cgp_genome, cgp_weights, opt_state, observations, target_outputs)
-        # if i % 1_000 == 0:
-        # print(f"Step {i}, Loss {train_loss}, Params {cgp_weights}")
     print(cgp_weights * active)
 
     pytest.assume(jnp.all(jnp.abs(target_weights * active - cgp_weights * active) < .05))
@@ -512,11 +510,9 @@ def test_gradient_optimization_of_input_weights() -> None:
 
     # Training loop
     train_loss = jnp.inf
-    for i in range(50_000):
+    for _ in range(50_000):
         optimizable_weights, opt_state, train_loss = step(cgp_genome, optimizable_weights, opt_state, observations,
                                                           target_outputs)
-        # if i % 1_000 == 0:
-        # print(f"Step {i}, Loss {train_loss}, Params {cgp_weights}")
     print(train_loss)
     print(cgp.get_readable_expression(cgp_genome))
     print(optimizable_weights["inputs1"] * active, target_weights1 * active)

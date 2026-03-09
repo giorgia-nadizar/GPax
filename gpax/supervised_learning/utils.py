@@ -233,7 +233,7 @@ def prepare_rescoring_fn(
           to the supplied datasets and graph structure.
         """
     train_fn, _ = prepare_train_test_evaluation_fns(X_train, y_train, None, None, graph_structure, task=task)
-    test_fn = lambda x, y: (None, None)
+    test_fn = lambda x, y: (None, None)  # noqa: E731
     rescoring_fn = functools.partial(
         supervised_learning_scoring_fn,
         train_set_evaluation_fn=train_fn,
