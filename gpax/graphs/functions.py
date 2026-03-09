@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Dict, Optional, Union
+from typing import Callable, Dict, Optional, Union, Tuple, Any
 
 import jax.numpy as jnp
 from jax import jit, Array
@@ -39,7 +39,7 @@ class JaxFunction:
     def __init__(self,
                  op: Callable[[Union[Array, float], Union[Array, float]], Union[Array, float]],
                  arity: int,
-                 symbol: str = None
+                 symbol: str = ""
                  ) -> None:
         self.operator = jit(op)
         self.arity = arity
@@ -47,19 +47,19 @@ class JaxFunction:
         pass
 
     @partial(jit, static_argnums=0)
-    def apply(self, x, y):
+    def apply(self, x: jnp.ndarray, y: jnp.ndarray) -> jnp.ndarray:
         return self.operator(x, y)
 
-    def __call__(self, x, y):
+    def __call__(self, x: jnp.ndarray, y: jnp.ndarray) -> jnp.ndarray:
         return self.apply(x, y)
 
-    def tree_flatten(self):
+    def tree_flatten(self) -> Tuple[Tuple[Any, ...], Any]:
         children = ()
         aux_data = {"operator": self.operator, "arity": self.arity, "symbol": self.symbol}
         return children, aux_data
 
     @classmethod
-    def tree_unflatten(cls, aux_data, children):
+    def tree_unflatten(cls, aux_data: Dict[str, Any], children: Tuple[Any, ...], ) -> "JaxFunction":
         return cls(aux_data["operator"], aux_data["arity"], aux_data["symbol"])
 
 
@@ -75,8 +75,8 @@ function_set_numeric = {
     "cos": JaxFunction(lambda x, y: jnp.cos(x), 1, "cos"),
     "prot_log": JaxFunction(lambda x, y: jnp.log(jnp.abs(x) + eps), 1, "log"),
     "sqrt": JaxFunction(lambda x, y: jnp.sqrt(jnp.sqrt(x * x + eps) + eps), 1, "sqrt"),
-    "pow" : JaxFunction(lambda x, y: jnp.power(x, y), 1, "pow"),
-    "identity" : JaxFunction(lambda x, y: x, 1, "id"),
+    "pow": JaxFunction(lambda x, y: jnp.power(x, y), 1, "pow"),
+    "identity": JaxFunction(lambda x, y: x, 1, "id"),
     # "lower": JaxFunction(lambda x, y: jnp.add(0.0, x < y), 2, "<"),
     # "greater": JaxFunction(lambda x, y: jnp.add(0.0, x > y), 2, ">"),
 }
@@ -122,19 +122,19 @@ class FunctionSet:
         self.arities = jnp.asarray([f.arity for f in self.function_set.values()])
 
         @jit
-        def function_switch(idx: int, *operands):
+        def function_switch(idx: int, *operands: Any) -> jnp.ndarray:
             return switch(idx, list(self.function_set.values()), *operands)
 
         self.apply = function_switch
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.function_set)
 
-    def tree_flatten(self):
+    def tree_flatten(self) -> Tuple[Tuple[Any, ...], Any]:
         children = ()
         aux_data = {"function_set": self.function_set}
         return children, aux_data
 
     @classmethod
-    def tree_unflatten(cls, aux_data, children):
+    def tree_unflatten(cls, aux_data: Dict[str, Any], children: Tuple[Any, ...], ) -> "FunctionSet":
         return cls(aux_data["function_set"])
