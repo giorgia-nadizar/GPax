@@ -39,7 +39,9 @@ def test_genome_bounds() -> None:
         pytest.assume(jnp.all(genome["weights"]["functions_biases"] == 0))
         pytest.assume(jnp.all(genome["weights"]["inputs1_biases"] == 0))
         pytest.assume(jnp.all(genome["weights"]["inputs2_biases"] == 0))
-        pytest.assume(jnp.allclose(genome["weights"]["program_inputs"], jnp.asarray([.1, 1])))
+        pytest.assume(
+            jnp.allclose(genome["weights"]["program_inputs"], jnp.asarray([0.1, 1]))
+        )
 
     _test_bounds(initial_lgp_genome)
 
@@ -104,8 +106,7 @@ def test_weights_initialization(init_type, weighted_functions, weighted_inputs) 
 
 
 def test_weights_changes_after_mutation() -> None:
-    """Test that the weights of a LGP genome change (or not) correctly given the set flag.
-    """
+    """Test that the weights of a LGP genome change (or not) correctly given the set flag."""
     for mut in [True, False]:
         # define genome structure
         lgp = LGP(
@@ -114,7 +115,7 @@ def test_weights_changes_after_mutation() -> None:
             weighted_inputs=True,
             weighted_functions=True,
             weighted_program_inputs=True,
-            weights_mutation=mut
+            weights_mutation=mut,
         )
         key = jax.random.key(42)
 
@@ -129,8 +130,15 @@ def test_weights_changes_after_mutation() -> None:
             rnd_key=mut_key,
         )
 
-        assert not mut * all(jax.tree_leaves(jax.tree_map(
-            lambda x, y: jnp.allclose(x, y), initial_lgp_genome["weights"], mutated_lgp_genome["weights"])))
+        assert not mut * all(
+            jax.tree_leaves(
+                jax.tree_map(
+                    lambda x, y: jnp.allclose(x, y),
+                    initial_lgp_genome["weights"],
+                    mutated_lgp_genome["weights"],
+                )
+            )
+        )
 
     for mut_type in ["gaussian", "automl0", "other"]:
         # define genome structure
@@ -141,7 +149,7 @@ def test_weights_changes_after_mutation() -> None:
             weighted_functions=True,
             weighted_program_inputs=True,
             weights_mutation=True,
-            weights_mutation_type=mut_type
+            weights_mutation_type=mut_type,
         )
         key = jax.random.key(42)
 
@@ -158,8 +166,15 @@ def test_weights_changes_after_mutation() -> None:
                 rnd_key=mut_key,
             )
 
-            assert not mut * all(jax.tree_leaves(jax.tree_map(
-                lambda x, y: jnp.allclose(x, y), initial_lgp_genome["weights"], mutated_lgp_genome["weights"])))
+            assert not mut * all(
+                jax.tree_leaves(
+                    jax.tree_map(
+                        lambda x, y: jnp.allclose(x, y),
+                        initial_lgp_genome["weights"],
+                        mutated_lgp_genome["weights"],
+                    )
+                )
+            )
         else:
             with pytest.raises(NotImplementedError):
                 lgp.mutate(
@@ -176,14 +191,9 @@ def test_known_genome_execution() -> None:
     - input 0 + input 1
     - (input 0 + input 1) * input 1
     All outputs are wrapped by the tanh function.
-        """
+    """
     # define genome structure
-    lgp = LGP(
-        n_inputs=2,
-        n_outputs=4,
-        n_program_lines=4,
-        n_computation_registers=4
-    )
+    lgp = LGP(n_inputs=2, n_outputs=4, n_program_lines=4, n_computation_registers=4)
     lgp_genome = {
         "genes": {
             "targets": jnp.asarray([8, 9, 10, 11]),
@@ -191,10 +201,10 @@ def test_known_genome_execution() -> None:
             "inputs2": jnp.asarray([3, 3, 1, 1]),
             "functions": jnp.asarray([2, 2, 0, 2]),
         },
-        "weights": lgp.init_weights(key=jax.random.key(42))
+        "weights": lgp.init_weights(key=jax.random.key(42)),
     }
 
-    input_test_range = jnp.arange(start=-1, stop=1, step=.2)
+    input_test_range = jnp.arange(start=-1, stop=1, step=0.2)
     for x in input_test_range:
         for y in input_test_range:
             inputs = jnp.asarray([x, y])
@@ -203,19 +213,17 @@ def test_known_genome_execution() -> None:
                 inputs,
             )
             expected_outputs = jnp.tanh(
-                jnp.asarray([x, lgp_genome["weights"]["program_inputs"][0], x + y, (x + y) * y]))
+                jnp.asarray(
+                    [x, lgp_genome["weights"]["program_inputs"][0], x + y, (x + y) * y]
+                )
+            )
             pytest.assume(jnp.allclose(outputs, expected_outputs, rtol=1e-5, atol=1e-8))
 
 
 def test_descriptors() -> None:
     """Test that a LGP genome has the expected descriptors."""
     # define genome structure
-    lgp = LGP(
-        n_inputs=2,
-        n_outputs=4,
-        n_program_lines=4,
-        n_computation_registers=4
-    )
+    lgp = LGP(n_inputs=2, n_outputs=4, n_program_lines=4, n_computation_registers=4)
     lgp_genome = {
         "genes": {
             "targets": jnp.asarray([8, 9, 10, 11]),
@@ -223,7 +231,7 @@ def test_descriptors() -> None:
             "inputs2": jnp.asarray([3, 3, 1, 1]),
             "functions": jnp.asarray([2, 2, 0, 2]),
         },
-        "weights": lgp.init_weights(key=jax.random.key(42))
+        "weights": lgp.init_weights(key=jax.random.key(42)),
     }
     complexity = lgp.compute_complexity(lgp_genome)
     arities = lgp.compute_function_arities(lgp_genome)
@@ -233,15 +241,9 @@ def test_descriptors() -> None:
 
 
 def test_active_lines() -> None:
-    """Test that a LGP genomes has the correct active nodes.
-        """
+    """Test that a LGP genomes has the correct active nodes."""
     # define genome structure
-    lgp = LGP(
-        n_inputs=2,
-        n_outputs=4,
-        n_program_lines=5,
-        n_computation_registers=4
-    )
+    lgp = LGP(n_inputs=2, n_outputs=4, n_program_lines=5, n_computation_registers=4)
     lgp_genome = {
         "genes": {
             "targets": jnp.asarray([8, 9, 10, 11, 4]),
@@ -249,19 +251,14 @@ def test_active_lines() -> None:
             "inputs2": jnp.asarray([3, 3, 1, 1, 10]),
             "functions": jnp.asarray([2, 2, 0, 2, 1]),
         },
-        "weights": lgp.init_weights(key=jax.random.key(42))
+        "weights": lgp.init_weights(key=jax.random.key(42)),
     }
     expected_active_lines = jnp.asarray([1, 1, 1, 1, 0])
     active_lines = lgp.compute_active_mask(lgp_genome)
     pytest.assume(jnp.array_equal(active_lines, expected_active_lines))
 
     # define genome structure
-    lgp2 = LGP(
-        n_inputs=2,
-        n_outputs=2,
-        n_program_lines=2,
-        n_computation_registers=4
-    )
+    lgp2 = LGP(n_inputs=2, n_outputs=2, n_program_lines=2, n_computation_registers=4)
     lgp_genome2 = {
         "genes": {
             "targets": jnp.asarray([5, 9]),
@@ -269,7 +266,7 @@ def test_active_lines() -> None:
             "inputs2": jnp.asarray([1, 5]),
             "functions": jnp.asarray([2, 5]),
         },
-        "weights": lgp.init_weights(key=jax.random.key(42))
+        "weights": lgp.init_weights(key=jax.random.key(42)),
     }
     expected_active_lines2 = jnp.asarray([0, 1])
     active_lines2 = lgp2.compute_active_mask(lgp_genome2)
@@ -277,8 +274,7 @@ def test_active_lines() -> None:
 
 
 def test_active_lines_jit() -> None:
-    """Test that the computation of the active lines is jittable.
-    """
+    """Test that the computation of the active lines is jittable."""
     key = jax.random.key(42)
     lgp = LGP(
         n_inputs=3,
@@ -295,14 +291,8 @@ def test_active_lines_jit() -> None:
 
 
 def test_readable_program() -> None:
-    """Test of different ways of obtaining readable LGP programs.
-            """
-    lgp = LGP(
-        n_inputs=2,
-        n_outputs=4,
-        n_program_lines=5,
-        n_computation_registers=4
-    )
+    """Test of different ways of obtaining readable LGP programs."""
+    lgp = LGP(n_inputs=2, n_outputs=4, n_program_lines=5, n_computation_registers=4)
     lgp_genome = {
         "genes": {
             "targets": jnp.asarray([8, 9, 10, 11, 4]),
@@ -310,16 +300,11 @@ def test_readable_program() -> None:
             "inputs2": jnp.asarray([3, 3, 1, 1, 10]),
             "functions": jnp.asarray([2, 2, 0, 2, 1]),
         },
-        "weights": lgp.init_weights(key=jax.random.key(42))
+        "weights": lgp.init_weights(key=jax.random.key(42)),
     }
     print(lgp.get_readable_program(lgp_genome))
 
-    lgp2 = LGP(
-        n_inputs=2,
-        n_outputs=2,
-        n_program_lines=2,
-        n_computation_registers=4
-    )
+    lgp2 = LGP(n_inputs=2, n_outputs=2, n_program_lines=2, n_computation_registers=4)
     lgp_genome2 = {
         "genes": {
             "targets": jnp.asarray([5, 9]),
@@ -327,20 +312,14 @@ def test_readable_program() -> None:
             "inputs2": jnp.asarray([1, 5]),
             "functions": jnp.asarray([2, 5]),
         },
-        "weights": lgp.init_weights(key=jax.random.key(42))
+        "weights": lgp.init_weights(key=jax.random.key(42)),
     }
     print(lgp2.get_readable_program(lgp_genome2))
 
 
 def test_readable_expression() -> None:
-    """Test of different ways of obtaining readable LGP expressions.
-            """
-    lgp = LGP(
-        n_inputs=2,
-        n_outputs=4,
-        n_program_lines=5,
-        n_computation_registers=4
-    )
+    """Test of different ways of obtaining readable LGP expressions."""
+    lgp = LGP(n_inputs=2, n_outputs=4, n_program_lines=5, n_computation_registers=4)
     lgp_genome = {
         "genes": {
             "targets": jnp.asarray([8, 9, 10, 11, 4]),
@@ -348,35 +327,45 @@ def test_readable_expression() -> None:
             "inputs2": jnp.asarray([6, 3, 1, 1, 10]),
             "functions": jnp.asarray([2, 2, 0, 2, 1]),
         },
-        "weights": lgp.init_weights(key=jax.random.key(42))
+        "weights": lgp.init_weights(key=jax.random.key(42)),
     }
     print(lgp.get_readable_program(lgp_genome), "\n")
 
     print(lgp.get_readable_expression(lgp_genome), "\n")
 
     inputs_mapping_fn = lambda x: f"i_{{{x}}}"
-    print(lgp.get_readable_expression(lgp_genome, inputs_mapping=inputs_mapping_fn), "\n")
+    print(
+        lgp.get_readable_expression(lgp_genome, inputs_mapping=inputs_mapping_fn), "\n"
+    )
 
     inputs_mapping_dict = {0: "a", 1: "b"}
-    print(lgp.get_readable_expression(lgp_genome, inputs_mapping=inputs_mapping_dict), "\n")
+    print(
+        lgp.get_readable_expression(lgp_genome, inputs_mapping=inputs_mapping_dict),
+        "\n",
+    )
 
     outputs_mapping_fn = lambda x: f"o_{{{x}}}"
-    print(lgp.get_readable_expression(lgp_genome, outputs_mapping=outputs_mapping_fn), "\n")
+    print(
+        lgp.get_readable_expression(lgp_genome, outputs_mapping=outputs_mapping_fn),
+        "\n",
+    )
 
     outputs_mapping_dict = {0: "x", 1: "y"}
-    print(lgp.get_readable_expression(lgp_genome, outputs_mapping=outputs_mapping_dict), "\n")
+    print(
+        lgp.get_readable_expression(lgp_genome, outputs_mapping=outputs_mapping_dict),
+        "\n",
+    )
 
 
 def test_weights_update() -> None:
-    """Test that the weights update works correctly.
-            """
+    """Test that the weights update works correctly."""
     lgp = LGP(
         n_inputs=3,
         n_input_constants=0,
         n_outputs=2,
         n_program_lines=4,
         weighted_functions=True,
-        weighted_inputs=False
+        weighted_inputs=False,
     )
     # Init the population of lgp genomes
     key = jax.random.key(0)
@@ -391,14 +380,29 @@ def test_weights_update() -> None:
 
     # Get the trainable weights
     original_weights = init_lgp_genomes["weights"]
-    updated_genomes = jax.vmap(jax.jit(lgp.update_weights), in_axes=(0, 0))(init_lgp_genomes, init_weights)
-    assert all(jax.tree_leaves(jax.tree_map(lambda x, y: jnp.allclose(x, y), init_weights, updated_genomes["weights"])))
-    assert not all(jax.tree_leaves(jax.tree_map(lambda x, y: jnp.allclose(x, y), init_weights, original_weights)))
+    updated_genomes = jax.vmap(jax.jit(lgp.update_weights), in_axes=(0, 0))(
+        init_lgp_genomes, init_weights
+    )
+    assert all(
+        jax.tree_leaves(
+            jax.tree_map(
+                lambda x, y: jnp.allclose(x, y),
+                init_weights,
+                updated_genomes["weights"],
+            )
+        )
+    )
+    assert not all(
+        jax.tree_leaves(
+            jax.tree_map(
+                lambda x, y: jnp.allclose(x, y), init_weights, original_weights
+            )
+        )
+    )
 
 
 def test_get_weights() -> None:
-    """Test that the get weights function returns only the weights that count.
-                """
+    """Test that the get weights function returns only the weights that count."""
     for w_fn in [True, False]:
         for w_in in [True, False]:
             for w_pr_in in [True, False]:
@@ -413,7 +417,7 @@ def test_get_weights() -> None:
                             weighted_inputs=w_in,
                             weighted_program_inputs=w_pr_in,
                             biased_inputs=b_in,
-                            biased_functions=b_fn
+                            biased_functions=b_fn,
                         )
 
                         # Init the population of CGP genomes
@@ -443,9 +447,9 @@ def test_gradient_optimization_of_function_weights() -> None:
         n_computation_registers=2,
         n_program_lines=4,
         weighted_functions=True,
-        weighted_inputs=False
+        weighted_inputs=False,
     )
-    target_weights = jnp.asarray([.2, -.5, .4, -.3])
+    target_weights = jnp.asarray([0.2, -0.5, 0.4, -0.3])
     lgp_genome = {
         "genes": {
             "targets": jax.lax.stop_gradient(jnp.asarray([4, 5, 3, 6])),
@@ -453,7 +457,7 @@ def test_gradient_optimization_of_function_weights() -> None:
             "inputs2": jax.lax.stop_gradient(jnp.asarray([2, 3, 4, 5])),
             "functions": jax.lax.stop_gradient(jnp.asarray([2, 6, 3, 0])),
         },
-        "weights": lgp.init_weights(key=jax.random.key(42))
+        "weights": lgp.init_weights(key=jax.random.key(42)),
     }
     active = lgp.compute_active_mask(lgp_genome)
     print(lgp.get_readable_expression(lgp_genome), "\n")
@@ -468,15 +472,23 @@ def test_gradient_optimization_of_function_weights() -> None:
     z = jax.random.normal(z_key, (n_samples,))
     observations = jnp.vstack((x, y, z)).T
     noise = 0.01 * jax.random.normal(noise_key, (n_samples, lgp.n_outputs))
-    target_outputs = (jax.vmap(jax.jit(lgp.apply), (None, 0, None))
-                      (lgp_genome, observations, {"functions": target_weights}) + noise)
+    target_outputs = (
+        jax.vmap(jax.jit(lgp.apply), (None, 0, None))(
+            lgp_genome, observations, {"functions": target_weights}
+        )
+        + noise
+    )
 
     # Initialize weights to random values
-    lgp_weights = jax.random.uniform(key=weights_key, shape=(lgp.n_program_lines,)) * 2 - 1
+    lgp_weights = (
+        jax.random.uniform(key=weights_key, shape=(lgp.n_program_lines,)) * 2 - 1
+    )
 
     # Loss = mean squared error
     def loss_fn(weights, genome, inputs, target_y):
-        pred_y = jax.vmap(jax.jit(lgp.apply), (None, 0, None))(genome, inputs, {"functions": weights})
+        pred_y = jax.vmap(jax.jit(lgp.apply), (None, 0, None))(
+            genome, inputs, {"functions": weights}
+        )
         return jnp.mean((pred_y - target_y) ** 2)
 
     @jax.jit
@@ -492,10 +504,14 @@ def test_gradient_optimization_of_function_weights() -> None:
 
     # Training loop
     for _ in range(50_000):
-        lgp_weights, opt_state, train_loss = step(lgp_genome, lgp_weights, opt_state, observations, target_outputs)
+        lgp_weights, opt_state, train_loss = step(
+            lgp_genome, lgp_weights, opt_state, observations, target_outputs
+        )
     print(lgp_weights * active)
 
-    pytest.assume(jnp.all(jnp.abs(target_weights * active - lgp_weights * active) < .05))
+    pytest.assume(
+        jnp.all(jnp.abs(target_weights * active - lgp_weights * active) < 0.05)
+    )
 
 
 def test_gradient_optimization_of_input_weights() -> None:
@@ -507,10 +523,10 @@ def test_gradient_optimization_of_input_weights() -> None:
         n_computation_registers=2,
         n_program_lines=4,
         weighted_functions=False,
-        weighted_inputs=True
+        weighted_inputs=True,
     )
-    target_weights1 = jnp.asarray([.2, -.5, .4, -.3])
-    target_weights2 = jnp.asarray([-.7, .6, .1, -1.])
+    target_weights1 = jnp.asarray([0.2, -0.5, 0.4, -0.3])
+    target_weights2 = jnp.asarray([-0.7, 0.6, 0.1, -1.0])
     lgp_genome = {
         "genes": {
             "targets": jax.lax.stop_gradient(jnp.asarray([4, 5, 3, 6])),
@@ -518,7 +534,7 @@ def test_gradient_optimization_of_input_weights() -> None:
             "inputs2": jax.lax.stop_gradient(jnp.asarray([2, 3, 4, 5])),
             "functions": jax.lax.stop_gradient(jnp.asarray([2, 6, 3, 0])),
         },
-        "weights": lgp.init_weights(key=jax.random.key(42))
+        "weights": lgp.init_weights(key=jax.random.key(42)),
     }
     active = lgp.compute_active_mask(lgp_genome)
 
@@ -530,18 +546,24 @@ def test_gradient_optimization_of_input_weights() -> None:
     y = jax.random.normal(y_key, (n_samples,))
     z = jax.random.normal(z_key, (n_samples,))
     observations = jnp.vstack((x, y, z)).T
-    target_outputs = (jax.vmap(jax.jit(lgp.apply), (None, 0, None))
-                      (lgp_genome, observations,
-                       {"inputs1": target_weights1, "inputs2": target_weights2}))
+    target_outputs = jax.vmap(jax.jit(lgp.apply), (None, 0, None))(
+        lgp_genome,
+        observations,
+        {"inputs1": target_weights1, "inputs2": target_weights2},
+    )
 
     # Initialize weights to random values
-    lgp_weights = jax.random.uniform(key=weights_key, shape=(lgp.n_program_lines * 2,)) * 2 - 1
+    lgp_weights = (
+        jax.random.uniform(key=weights_key, shape=(lgp.n_program_lines * 2,)) * 2 - 1
+    )
     weights1, weights2 = jnp.split(lgp_weights, 2)
     optimizable_weights = {"inputs1": weights1, "inputs2": weights2}
 
     # Loss = mean squared error
     def loss_fn(weights_dict, genome, inputs, target_y):
-        pred_y = jax.vmap(jax.jit(lgp.apply), (None, 0, None))(genome, inputs, weights_dict)
+        pred_y = jax.vmap(jax.jit(lgp.apply), (None, 0, None))(
+            genome, inputs, weights_dict
+        )
         return jnp.mean((pred_y - target_y) ** 2)
 
     @jax.jit
@@ -558,8 +580,9 @@ def test_gradient_optimization_of_input_weights() -> None:
     # Training loop
     train_loss = jnp.inf
     for _ in range(50_000):
-        optimizable_weights, opt_state, train_loss = step(lgp_genome, optimizable_weights, opt_state, observations,
-                                                          target_outputs)
+        optimizable_weights, opt_state, train_loss = step(
+            lgp_genome, optimizable_weights, opt_state, observations, target_outputs
+        )
     print(train_loss)
     print(lgp.get_readable_expression(lgp_genome))
     print(optimizable_weights["inputs1"] * active, target_weights1 * active)

@@ -1,32 +1,32 @@
 import functools
 
 import jax
+import jax.numpy as jnp
 import pytest
-
 import qdax.tasks.brax.v1 as environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-import jax.numpy as jnp
-from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs as scoring_function
+from qdax.tasks.brax.v1.env_creators import (
+    scoring_function_brax_envs as scoring_function,
+)
 from qdax.utils.metrics import default_qd_metrics
 
 from gpax.graphs.linear_genetic_programming import LGP
 
 
 def test_lgp_with_me() -> None:
-    """Test that LGP can be used with ME and is jit safe.
-        """
+    """Test that LGP can be used with ME and is jit safe."""
 
     batch_size = 10
-    env_name = 'walker2d_uni'
+    env_name = "walker2d_uni"
     episode_length = 100
     num_iterations = 20
     seed = 42
     num_init_cvt_samples = 5_000
     num_centroids = 1024
-    min_descriptor = 0.
+    min_descriptor = 0.0
     max_descriptor = 1.0
 
     # Init environment
@@ -49,9 +49,9 @@ def test_lgp_with_me() -> None:
 
     # Define the play step fn for LGP to interact with the env
     def lgp_play_step_fn(
-            env_state,
-            policy_params,
-            key,
+        env_state,
+        policy_params,
+        key,
     ):
         """
         Play an environment step and return the updated state and the transition.
@@ -95,17 +95,13 @@ def test_lgp_with_me() -> None:
     )
 
     # Define emitter
-    lgp_mutation_fn = functools.partial(
-        policy_graph.mutate
-    )
-    lgp_crossover_fn = functools.partial(
-        policy_graph.crossover
-    )
+    lgp_mutation_fn = functools.partial(policy_graph.mutate)
+    lgp_crossover_fn = functools.partial(policy_graph.crossover)
     mixing_emitter = MixingEmitter(
         mutation_fn=lgp_mutation_fn,
         variation_fn=lgp_crossover_fn,
         variation_percentage=0.5,
-        batch_size=batch_size
+        batch_size=batch_size,
     )
 
     # Instantiate MAP-Elites
@@ -128,7 +124,9 @@ def test_lgp_with_me() -> None:
 
     # Compute initial repertoire and emitter state
     key, subkey = jax.random.split(key)
-    repertoire, emitter_state, init_metrics = map_elites.init(init_lgp_genomes, centroids, subkey)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        init_lgp_genomes, centroids, subkey
+    )
 
     # Check repertoire is not empty
     pytest.assume(jnp.any(repertoire.fitnesses > -jnp.inf))
@@ -161,17 +159,16 @@ def test_lgp_with_me() -> None:
 
 
 def test_lgp_with_me_ask_tell() -> None:
-    """Test that LGP can be used with ME in its ask-tell way and is jit safe.
-        """
+    """Test that LGP can be used with ME in its ask-tell way and is jit safe."""
 
     batch_size = 10
-    env_name = 'walker2d_uni'
+    env_name = "walker2d_uni"
     episode_length = 100
     num_iterations = 20
     seed = 42
     num_init_cvt_samples = 5_000
     num_centroids = 1024
-    min_descriptor = 0.
+    min_descriptor = 0.0
     max_descriptor = 1.0
 
     # Init environment
@@ -194,9 +191,9 @@ def test_lgp_with_me_ask_tell() -> None:
 
     # Define the play step fn for LGP to interact with the env
     def lgp_play_step_fn(
-            env_state,
-            policy_params,
-            key,
+        env_state,
+        policy_params,
+        key,
     ):
         """
         Play an environment step and return the updated state and the transition.
@@ -240,17 +237,13 @@ def test_lgp_with_me_ask_tell() -> None:
     )
 
     # Define emitter
-    lgp_mutation_fn = functools.partial(
-        policy_graph.mutate
-    )
-    lgp_crossover_fn = functools.partial(
-        policy_graph.crossover
-    )
+    lgp_mutation_fn = functools.partial(policy_graph.mutate)
+    lgp_crossover_fn = functools.partial(policy_graph.crossover)
     mixing_emitter = MixingEmitter(
         mutation_fn=lgp_mutation_fn,
         variation_fn=lgp_crossover_fn,
         variation_percentage=0.5,
-        batch_size=batch_size
+        batch_size=batch_size,
     )
 
     # Instantiate MAP-Elites

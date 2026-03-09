@@ -20,7 +20,7 @@
 % sifra( 55800, 'TRICHOPTERA', 'Hydropsyche', 'sp.', 'b-a', 3, 2.5).
 % sifra( 57500, 'TRICHOPTERA', 'Rhyacophila', 'sp.', 'o-b', 2, 1.7).
 % sifra( 59300, 'DIPTERA', 'Simulium', 'sp.', 'b', 2, 2).
-% sifra( 37880, 'OLIGOCHAETA', 'Tubifex', 'sp.', 'p', 3, 3.6).  
+% sifra( 37880, 'OLIGOCHAETA', 'Tubifex', 'sp.', 'p', 3, 3.6).
 @RELATION 'waterqual.arff'
 
 @ATTRIBUTE std_temp            numeric

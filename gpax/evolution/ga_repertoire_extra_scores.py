@@ -7,7 +7,6 @@ from typing import Optional
 import jax
 import jax.numpy as jnp
 from qdax.core.containers.ga_repertoire import GARepertoire
-
 from qdax.custom_types import ExtraScores, Fitness, Genotype
 
 
@@ -29,10 +28,10 @@ class GARepertoireExtraScores(GARepertoire):
     """
 
     def add(  # type: ignore
-            self,
-            batch_of_genotypes: Genotype,
-            batch_of_fitnesses: Fitness,
-            batch_of_extra_scores: Optional[ExtraScores] = None,
+        self,
+        batch_of_genotypes: Genotype,
+        batch_of_fitnesses: Fitness,
+        batch_of_extra_scores: Optional[ExtraScores] = None,
     ) -> GARepertoire:
         """Implements the repertoire addition rules.
 

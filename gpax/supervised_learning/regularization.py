@@ -1,6 +1,7 @@
+from typing import Any, Dict, Union
+
 import jax
 import jax.numpy as jnp
-from typing import Dict, Union, Any
 
 
 def no_regularizer(weights: Dict[str, jnp.ndarray]) -> jnp.ndarray:
@@ -22,8 +23,8 @@ def no_snap(weights: Dict[str, jnp.ndarray]) -> Dict[str, jnp.ndarray]:
 
 
 def sticky_pm_target_regularizer(
-        weights: Dict[str, jnp.ndarray],
-        target: int = 1,
+    weights: Dict[str, jnp.ndarray],
+    target: int = 1,
 ) -> jnp.ndarray:
     """
     Quadratic well around ±target.
@@ -52,14 +53,16 @@ def sticky_pm_target_regularizer(
         )
         return jnp.sum(dist_sq)
 
-    return jax.tree_util.tree_reduce(lambda x, y: x + y,
-                                     jax.tree_map(_penalty, weights), )
+    return jax.tree_util.tree_reduce(
+        lambda x, y: x + y,
+        jax.tree_map(_penalty, weights),
+    )
 
 
 def snap_to_pm_target(
-        weights: Dict[str, jnp.ndarray],
-        target: int = 1,
-        eps: float = 1e-2,
+    weights: Dict[str, jnp.ndarray],
+    target: int = 1,
+    eps: float = 1e-2,
 ) -> Union[Dict[str, jnp.ndarray], Any]:
     """
     Project weights exactly to ±target if they are sufficiently close.

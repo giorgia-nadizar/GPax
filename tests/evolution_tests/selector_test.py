@@ -8,8 +8,7 @@ from gpax.graphs.cartesian_genetic_programming import CGP
 
 
 def test_tournament_with_cgp() -> None:
-    """Test that tournament selection works with CGP.
-        """
+    """Test that tournament selection works with CGP."""
 
     # Init a random key
     key = jax.random.key(seed=0)
@@ -26,7 +25,13 @@ def test_tournament_with_cgp() -> None:
     key, subkey = jax.random.split(key)
     keys = jax.random.split(subkey, num=pop_size)
     init_cgp_genomes = jax.vmap(policy_graph.init)(keys)
-    ga_repertoire = GARepertoire.init(init_cgp_genomes, jnp.ones((pop_size, 1), ), population_size=pop_size)
+    ga_repertoire = GARepertoire.init(
+        init_cgp_genomes,
+        jnp.ones(
+            (pop_size, 1),
+        ),
+        population_size=pop_size,
+    )
 
     # Create selector
     selector = TournamentSelector(tournament_size=3)
@@ -52,7 +57,9 @@ def test_elitism_with_cgp() -> None:
     keys = jax.random.split(subkey, num=pop_size)
     init_cgp_genomes = jax.vmap(policy_graph.init)(keys)
     fitnesses = jnp.expand_dims(jnp.arange(pop_size), axis=1)
-    ga_repertoire = GARepertoire.init(init_cgp_genomes, fitnesses, population_size=pop_size)
+    ga_repertoire = GARepertoire.init(
+        init_cgp_genomes, fitnesses, population_size=pop_size
+    )
 
     # Create selector
     selector = EliteSelector()
@@ -69,7 +76,9 @@ def test_elite_selector_selects_top_k():
     fitnesses = jnp.array([[1.0], [5.0], [3.0], [7.0], [2.0]])  # shape (5, 1)
     genotypes = jnp.arange(5)  # easy to verify indices
 
-    ga_repertoire = GARepertoire.init(genotypes, fitnesses, population_size=len(genotypes))
+    ga_repertoire = GARepertoire.init(
+        genotypes, fitnesses, population_size=len(genotypes)
+    )
 
     selected = selector.select(ga_repertoire, key, num_samples=2)
 
@@ -85,7 +94,9 @@ def test_elite_selector_single_sample():
     fitnesses = jnp.array([[1.0], [9.0], [3.0]])
     genotypes = jnp.array([10, 20, 30])
 
-    repertoire = GARepertoire.init(genotypes=genotypes, fitnesses=fitnesses, population_size=len(genotypes))
+    repertoire = GARepertoire.init(
+        genotypes=genotypes, fitnesses=fitnesses, population_size=len(genotypes)
+    )
 
     selected = selector.select(repertoire, key, num_samples=1)
 
@@ -100,7 +111,9 @@ def test_elite_selector_selects_all():
     fitnesses = jnp.array([[3.0], [1.0], [2.0]])
     genotypes = jnp.array([100, 200, 300])
 
-    repertoire = GARepertoire.init(genotypes=genotypes, fitnesses=fitnesses, population_size=len(genotypes))
+    repertoire = GARepertoire.init(
+        genotypes=genotypes, fitnesses=fitnesses, population_size=len(genotypes)
+    )
 
     selected = selector.select(repertoire, key, num_samples=3)
 
@@ -118,7 +131,7 @@ def test_elite_selector_arbitrary_pytree_genotypes():
         "biases": (jnp.array([10, 20, 30, 40]),),
         "metadata": [
             {"id": jnp.array([100, 200, 300, 400])},
-            jnp.array([5., 6., 7., 8.])
+            jnp.array([5.0, 6.0, 7.0, 8.0]),
         ],
     }
 
@@ -138,9 +151,16 @@ def test_elite_selector_arbitrary_pytree_genotypes():
 
     # Check that each leaf was correctly indexed
     assert jnp.all(selected.genotypes["weights"] == genotypes["weights"][expected_idx])
-    assert jnp.all(selected.genotypes["biases"][0] == genotypes["biases"][0][expected_idx])
-    assert jnp.all(selected.genotypes["metadata"][0]["id"] == genotypes["metadata"][0]["id"][expected_idx])
-    assert jnp.all(selected.genotypes["metadata"][1] == genotypes["metadata"][1][expected_idx])
+    assert jnp.all(
+        selected.genotypes["biases"][0] == genotypes["biases"][0][expected_idx]
+    )
+    assert jnp.all(
+        selected.genotypes["metadata"][0]["id"]
+        == genotypes["metadata"][0]["id"][expected_idx]
+    )
+    assert jnp.all(
+        selected.genotypes["metadata"][1] == genotypes["metadata"][1][expected_idx]
+    )
 
     # Fitnesses should also be properly selected
     assert jnp.all(selected.fitnesses.squeeze() == fitnesses.squeeze()[expected_idx])

@@ -1,6 +1,6 @@
 # Inspirations
 
-- [Kheperax](https://github.com/adaptive-intelligent-robotics/Kheperax): requirements management 
+- [Kheperax](https://github.com/adaptive-intelligent-robotics/Kheperax): requirements management
 - [QDax](https://github.com/adaptive-intelligent-robotics/QDax): evolution, ANNs representations
 - [EvoSAX](https://github.com/RobertTLange/evosax): evolutionary strategies
 - [Lexicase](https://github.com/ryanboldi/lexicase): transitions between JAX and plain numpy
@@ -11,7 +11,7 @@
 
 - try WANN-like experiment do GA: eval each genome with 5 random weighting constants
 - try experiment with ant and ANNs to see how filled the archive gets
-- implement RL based constant optimization (PPO?) 
+- implement RL based constant optimization (PPO?)
 - do actor-critic for constants (eg SAC) and keep critics through optimization
 
 - add back to weight init

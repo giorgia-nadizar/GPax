@@ -5,14 +5,20 @@ import jax.numpy as jnp
 import optax
 
 from gpax.graphs.cartesian_genetic_programming import CGP
-from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, \
-    optimize_constants_with_lbfgs, optimize_constants_with_cmaes
-from gpax.supervised_learning.regularization import sticky_pm_target_regularizer, snap_to_pm_target
+from gpax.supervised_learning.constants_optimization import (
+    optimize_constants_with_cmaes,
+    optimize_constants_with_lbfgs,
+    optimize_constants_with_sgd,
+)
+from gpax.supervised_learning.regularization import (
+    snap_to_pm_target,
+    sticky_pm_target_regularizer,
+)
 from gpax.supervised_learning.scoring_functions import compute_model_predictions
 
 
 def test_cmaes_output_shape_and_type():
-    """ Ensure the constants optimization with CMAES have the correct shape. """
+    """Ensure the constants optimization with CMAES have the correct shape."""
     n_genomes, n_features, n_samples = 3, 5, 20
     X = jnp.ones((n_samples, n_features))
     y = jnp.ones((n_samples,))
@@ -33,8 +39,15 @@ def test_cmaes_output_shape_and_type():
     graph_weights = cgp.get_weights(genotypes)
     prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
     for minibatch_size in [2, 10, 20, 50]:
-        optimized_weights = optimize_constants_with_cmaes(graph_weights, genotypes, key, X, y, prediction_fn,
-                                                          mini_batch_size=minibatch_size)
+        optimized_weights = optimize_constants_with_cmaes(
+            graph_weights,
+            genotypes,
+            key,
+            X,
+            y,
+            prediction_fn,
+            mini_batch_size=minibatch_size,
+        )
         # same keys
         assert set(optimized_weights.keys()) == set(graph_weights.keys())
         # check array shapes
@@ -44,7 +57,7 @@ def test_cmaes_output_shape_and_type():
 
 
 def test_lbfgs_output_shape_and_type():
-    """ Ensure the constants optimization with LBFGS have the correct shape. """
+    """Ensure the constants optimization with LBFGS have the correct shape."""
     n_genomes, n_features, n_samples = 3, 5, 20
     X = jnp.ones((n_samples, n_features))
     y = jnp.ones((n_samples,))
@@ -64,7 +77,9 @@ def test_lbfgs_output_shape_and_type():
 
     graph_weights = cgp.get_weights(genotypes)
     prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
-    optimized_weights = optimize_constants_with_lbfgs(graph_weights, genotypes, key, X, y, prediction_fn)
+    optimized_weights = optimize_constants_with_lbfgs(
+        graph_weights, genotypes, key, X, y, prediction_fn
+    )
     # same keys
     assert set(optimized_weights.keys()) == set(graph_weights.keys())
     # check array shapes
@@ -74,7 +89,7 @@ def test_lbfgs_output_shape_and_type():
 
 
 def test_sgd_output_shape_and_type():
-    """ Ensure the constants optimization with sgd have the correct shape. """
+    """Ensure the constants optimization with sgd have the correct shape."""
     n_genomes, n_features, n_samples = 3, 5, 20
     X = jnp.ones((n_samples, n_features))
     y = jnp.ones((n_samples,))
@@ -95,8 +110,16 @@ def test_sgd_output_shape_and_type():
     graph_weights = cgp.get_weights(genotypes)
     prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
     for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3, momentum=0.9)]:
-        optimized_weights = optimize_constants_with_sgd(graph_weights, genotypes, key, X, y, prediction_fn,
-                                                        optimizer=optimizer, batch_size=n_samples)
+        optimized_weights = optimize_constants_with_sgd(
+            graph_weights,
+            genotypes,
+            key,
+            X,
+            y,
+            prediction_fn,
+            optimizer=optimizer,
+            batch_size=n_samples,
+        )
 
         # same keys
         assert set(optimized_weights.keys()) == set(graph_weights.keys())
@@ -107,7 +130,7 @@ def test_sgd_output_shape_and_type():
 
 
 def test_multiregression_constants_optimization():
-    """ Ensure the constants optimization works also for multiple outputs. """
+    """Ensure the constants optimization works also for multiple outputs."""
     n_genomes, n_features, n_samples, n_outputs = 3, 5, 20, 3
     X = jnp.ones((n_samples, n_features))
     y = jnp.ones((n_samples, n_outputs))
@@ -128,8 +151,16 @@ def test_multiregression_constants_optimization():
     graph_weights = cgp.get_weights(genotypes)
     prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
     for optimizer in [optax.adam(1e-3), optax.rmsprop(1e-3, momentum=0.9)]:
-        optimized_weights = optimize_constants_with_sgd(graph_weights, genotypes, key, X, y, prediction_fn,
-                                                        optimizer=optimizer, batch_size=n_samples)
+        optimized_weights = optimize_constants_with_sgd(
+            graph_weights,
+            genotypes,
+            key,
+            X,
+            y,
+            prediction_fn,
+            optimizer=optimizer,
+            batch_size=n_samples,
+        )
 
         # same keys
         assert set(optimized_weights.keys()) == set(graph_weights.keys())
@@ -140,7 +171,7 @@ def test_multiregression_constants_optimization():
 
 
 def test_sgd_push_to_pm_target():
-    """ Ensure the constants optimization with sgd have the correct shape. """
+    """Ensure the constants optimization with sgd have the correct shape."""
     n_genomes, n_features, n_samples = 3, 5, 20
     X = jnp.ones((n_samples, n_features))
     y = jnp.ones((n_samples,))
@@ -151,7 +182,7 @@ def test_sgd_push_to_pm_target():
             n_outputs=1,
             n_nodes=5,
             weighted_functions=wgt,
-            weighted_inputs=not wgt
+            weighted_inputs=not wgt,
         )
         key = jax.random.key(42)
 
@@ -164,9 +195,19 @@ def test_sgd_push_to_pm_target():
         prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=cgp))
         reg_loss_fn = sticky_pm_target_regularizer
         reg_update_fn = partial(snap_to_pm_target, target=1, eps=1e-1)
-        optimized_weights = optimize_constants_with_sgd(graph_weights, genotypes, key, X, y, prediction_fn,
-                                                        batch_size=n_samples, regularization_loss_fn=reg_loss_fn,
-                                                        regularization_update_fn=reg_update_fn, n_gradient_steps=100,
-                                                        optimizer=optax.adam(1e-1), regularization_strength=10)
+        optimized_weights = optimize_constants_with_sgd(
+            graph_weights,
+            genotypes,
+            key,
+            X,
+            y,
+            prediction_fn,
+            batch_size=n_samples,
+            regularization_loss_fn=reg_loss_fn,
+            regularization_update_fn=reg_update_fn,
+            n_gradient_steps=100,
+            optimizer=optax.adam(1e-1),
+            regularization_strength=10,
+        )
         for w in optimized_weights.values():
             assert jnp.allclose(jnp.abs(w), 1)

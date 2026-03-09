@@ -1,7 +1,3 @@
-from typing import Tuple
-
-import numpy as np
-
 """
 Generate a synthetic regression dataset using a predefined nonlinear function.
 
@@ -26,24 +22,29 @@ y_test : np.ndarray
     Targets corresponding to x_test.
 """
 
+from typing import Tuple
+
+import numpy as np
+
+
 def dcgp_1(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
     x = np.random.uniform(1, 3, size=(120,)).reshape(-1, 1)
-    y = x ** 5 - np.pi * x ** 3 + x
+    y = x**5 - np.pi * x**3 + x
     return x[:100], x[100:], y[:100], y[100:]
 
 
 def dcgp_2(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
-    x = np.random.uniform(.1, 5, size=(120,)).reshape(-1, 1)
-    y = x ** 5 - np.pi * x ** 3 + 2 * np.pi / x
+    x = np.random.uniform(0.1, 5, size=(120,)).reshape(-1, 1)
+    y = x**5 - np.pi * x**3 + 2 * np.pi / x
     return x[:100], x[100:], y[:100], y[100:]
 
 
 def dcgp_3(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
-    x = np.random.uniform(-.9, 1, size=(120,)).reshape(-1, 1)
-    y = (np.e * x ** 5 + x ** 3) / (x + 1)
+    x = np.random.uniform(-0.9, 1, size=(120,)).reshape(-1, 1)
+    y = (np.e * x**5 + x**3) / (x + 1)
     return x[:100], x[100:], y[:100], y[100:]
 
 
@@ -57,14 +58,14 @@ def dcgp_4(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarra
 def dcgp_5(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
     x = np.random.uniform(1, 3, size=(120,)).reshape(-1, 1)
-    y = np.e * x ** 5 - np.pi * x ** 3 + x
+    y = np.e * x**5 - np.pi * x**3 + x
     return x[:100], x[100:], y[:100], y[100:]
 
 
 def dcgp_6(seed: int = 0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(seed)
     x = np.random.uniform(-2.1, 1, size=(120,)).reshape(-1, 1)
-    y = (np.e * x ** 2 - 1) / (np.pi * (x + 2))
+    y = (np.e * x**2 - 1) / (np.pi * (x + 2))
     return x[:100], x[100:], y[:100], y[100:]
 
 
