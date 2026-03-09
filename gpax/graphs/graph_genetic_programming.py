@@ -1,7 +1,7 @@
 import jax.random
 from flax import struct
 import jax.numpy as jnp
-from typing import Callable, Dict, Union, List, Tuple, Optional
+from typing import Callable, Dict, Union, List, Tuple, Optional, Any
 
 from jax import random
 from jax.lax import fori_loop
@@ -55,11 +55,12 @@ class GGP:
         """Max number of functions that can be performed by GGP."""
         raise NotImplementedError
 
-    def init(self, rnd_key: RNGKey, *args):
+    def init(self, rnd_key: RNGKey, *args: Any) -> Any:
         """Initialize a random genotype (to be implemented by subclasses)."""
         raise NotImplementedError
 
-    def apply(self, genotype: Genotype, obs: jnp.ndarray, weights: Dict[str, jnp.ndarray] = None, ) -> jnp.ndarray:
+    def apply(self, genotype: Genotype, obs: jnp.ndarray,
+              weights: Optional[Dict[str, jnp.ndarray]] = None, ) -> jnp.ndarray:
         """Evaluate a genotype on an input observation (subclass-specific)."""
         raise NotImplementedError
 
@@ -70,6 +71,7 @@ class GGP:
     def mutate(self,
                genotype: Genotype,
                rnd_key: RNGKey,
+               *,
                p_mut_inputs: float = 0.1,
                p_mut_functions: float = 0.1,
                weights_mut_sigma: float = 0.1,
@@ -146,7 +148,7 @@ class GGP:
             "weights": self._mutate_weights(genotype["weights"], weights_key, weights_mut_sigma)
         }, donor_genotype
 
-    def _mutate_weights(self, weights: Dict, key: RNGKey, weights_mut_sigma: float):
+    def _mutate_weights(self, weights: Dict, key: RNGKey, weights_mut_sigma: float) -> Dict:
         if self.weights_mutation_type == "gaussian":
             weights_key1, weights_key2 = random.split(key)
             weights_noise = (weights_mut_sigma * self.weights_mutation
@@ -165,7 +167,7 @@ class GGP:
             }
         elif self.weights_mutation_type == "automl0":
 
-            def _automl0_mutation(weights_array: jnp.ndarray, w_key: RNGKey, mutate: bool):
+            def _automl0_mutation(weights_array: jnp.ndarray, w_key: RNGKey, mutate: bool) -> jnp.ndarray:
                 sample_key1, sample_key2, bern_key1, bern_key2 = random.split(w_key, 4)
                 double_values_array = jax.random.uniform(sample_key1, shape=weights_array.shape, minval=1, maxval=2)
                 half_values_array = jax.random.uniform(sample_key2, shape=weights_array.shape, minval=.5, maxval=2)
@@ -178,17 +180,19 @@ class GGP:
             w_key1, w_key2, w_key3, w_key4, w_key5, w_key6, w_key7 = random.split(key, 7)
             return {
                 "program_inputs": _automl0_mutation(weights["program_inputs"], w_key1,
-                                                    self.weighted_program_inputs * self.weights_mutation),
-                "inputs1": _automl0_mutation(weights["inputs1"], w_key2, self.weighted_inputs * self.weights_mutation),
-                "inputs2": _automl0_mutation(weights["inputs2"], w_key3, self.weighted_inputs * self.weights_mutation),
+                                                    self.weighted_program_inputs and self.weights_mutation),
+                "inputs1": _automl0_mutation(weights["inputs1"], w_key2,
+                                             self.weighted_inputs and self.weights_mutation),
+                "inputs2": _automl0_mutation(weights["inputs2"], w_key3,
+                                             self.weighted_inputs and self.weights_mutation),
                 "functions": _automl0_mutation(weights["functions"], w_key4,
-                                               self.weighted_functions * self.weights_mutation),
+                                               self.weighted_functions and self.weights_mutation),
                 "inputs1_biases": _automl0_mutation(weights["inputs1_biases"], w_key5,
-                                                    self.biased_inputs * self.weights_mutation),
+                                                    self.biased_inputs and self.weights_mutation),
                 "inputs2_biases": _automl0_mutation(weights["inputs2_biases"], w_key6,
-                                                    self.biased_inputs * self.weights_mutation),
+                                                    self.biased_inputs and self.weights_mutation),
                 "functions_biases": _automl0_mutation(weights["functions_biases"], w_key7,
-                                                      self.biased_functions * self.weights_mutation),
+                                                      self.biased_functions and self.weights_mutation),
             }
         else:
             raise NotImplementedError(f"Mutation not available for {self.weights_mutation_type}")
@@ -196,8 +200,8 @@ class GGP:
     def get_readable_expression(
             self,
             genotype: Genotype,
-            inputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None,
-            outputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None
+            inputs_mapping: Optional[Union[Dict[int, str], Callable[[int], str]]] = None,
+            outputs_mapping: Optional[Union[Dict[int, str], Callable[[int], str]]] = None
     ) -> str:
         """Generate a human-readable symbolic representation of a GGP genotype.
 
@@ -322,7 +326,7 @@ class GGP:
             Returns:
                 Dict[str, jnp.ndarray]: A dictionary mapping weight types to their corresponding JAX arrays.
             """
-        return_dictionary = {}
+        return_dictionary: Dict[str, jnp.ndarray] = {}
         if self.weighted_inputs:
             return_dictionary = return_dictionary | {
                 "inputs1": genotype["weights"]["inputs1"],

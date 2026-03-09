@@ -1,6 +1,6 @@
 """Core components of Cartesian Genetic Programming (CGP) for graph evolution."""
 
-from typing import Callable, Dict, Tuple, Optional, List
+from typing import Callable, Dict, Tuple, Optional, List, Any
 
 import jax
 import jax.numpy as jnp
@@ -41,7 +41,7 @@ class CGP(GGP):
     def init(
             self,
             rnd_key: RNGKey,
-            *args,
+            *args: Any,
     ) -> Genotype:
         """Initializes a random CGP genome.
 
@@ -92,7 +92,7 @@ class CGP(GGP):
     def apply(self,
               genotype: Genotype,
               obs: jnp.ndarray,
-              weights: Dict[str, jnp.ndarray] = None,
+              weights: Optional[Dict[str, jnp.ndarray]] = None
               ) -> jnp.ndarray:
         """Evaluates a CGP genome on a given input observation.
 
@@ -111,10 +111,10 @@ class CGP(GGP):
                 the output wrapper.
             """
 
-        weights = weights or {}
-        weights = {**genotype["weights"], **weights}
+        weights_dict = weights or {}
+        weights_dict = {**genotype["weights"], **weights_dict}
         genotype = {
-            "weights": weights,
+            "weights": weights_dict,
             "genes": jax.tree.map(lambda x: x.astype(int), genotype["genes"])
         }
 
@@ -127,7 +127,7 @@ class CGP(GGP):
             cgp_genes, buff = carry
             n_in = len(buff) - len(cgp_genes["genes"]["inputs1"])
             idx = buffer_idx - n_in
-            return self._update_memory(cgp_genes, weights, buff, idx, buffer_idx)
+            return self._update_memory(cgp_genes, weights_dict, buff, idx, buffer_idx)
 
         # initialize the buffer with inputs and constants and use zeros as placeholders for computation
         input_constants = genotype["weights"]["program_inputs"]
@@ -195,6 +195,7 @@ class CGP(GGP):
     def mutate(self,
                genotype: Genotype,
                rnd_key: RNGKey,
+               *,
                p_mut_inputs: float = 0.1,
                p_mut_functions: float = 0.1,
                p_mut_outputs: float = 0.3,

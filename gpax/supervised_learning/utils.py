@@ -1,5 +1,5 @@
 import functools
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Optional, Dict
 
 import optax
 
@@ -20,7 +20,7 @@ def prepare_train_test_evaluation_fns(
         X_test: jnp.ndarray,
         y_test: jnp.ndarray,
         graph_structure: GGP,
-        const_optimizer: str = None,
+        const_optimizer: Optional[str] = None,
         long_const_optimization: bool = False,
         task: str = "regression"
 ) -> Tuple[Callable, Callable]:
@@ -81,17 +81,17 @@ def prepare_train_test_evaluation_fns(
         raise NotImplementedError("Task not supported.")
 
     # Accuracy fns per task
-    train_accuracy_fns = {
+    train_accuracy_fns: Dict[str, Callable] = {
         "regression": r2_score,
         "classification": classification_accuracy,
         "multiregression": r2_score,
     }
-    test_accuracy_fns = {
+    test_accuracy_fns: Dict[str, Callable] = {
         "regression": r2_score,
         "classification": classification_accuracy,
         "multiregression": functools.partial(rrmse_per_target, y_train=y_train),
     }
-    loss_fns = {
+    loss_fns: Dict[str, Callable] = {
         "regression": rmse,
         "classification": categorical_cross_entropy,
         "multiregression": rmse,
@@ -135,7 +135,7 @@ def prepare_scoring_fn(
         X_test: jnp.ndarray,
         y_test: jnp.ndarray,
         graph_structure: GGP,
-        const_optimizer: str = None,
+        const_optimizer: Optional[str] = None,
         long_const_optimization: bool = False,
         task: str = "regression"
 ) -> Callable:

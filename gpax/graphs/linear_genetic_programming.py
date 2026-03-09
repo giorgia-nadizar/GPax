@@ -1,6 +1,6 @@
 """Core components of Linear Genetic Programming (LGP) for graph evolution."""
 
-from typing import Callable, Tuple, Optional, Dict, List
+from typing import Callable, Tuple, Optional, Dict, List, Any, cast
 
 import jax.numpy as jnp
 import jax.random
@@ -46,7 +46,7 @@ class LGP(GGP):
     def init(
             self,
             rnd_key: RNGKey,
-            *args,
+            *args: Any,
     ) -> Genotype:
         """Initializes a random LGP genome.
 
@@ -96,7 +96,7 @@ class LGP(GGP):
     def apply(self,
               genotype: Genotype,
               obs: jnp.ndarray,
-              weights: Dict[str, jnp.ndarray] = None,
+              weights: Optional[Dict[str, jnp.ndarray]] = None
               ) -> jnp.ndarray:
         """Evaluates a LGP genome on a given input observation.
 
@@ -116,10 +116,10 @@ class LGP(GGP):
             """
 
         # take provided weights and replace with genome ones if missing
-        weights = weights or {}
-        weights = {**genotype["weights"], **weights}
+        weights_dict = weights or {}
+        weights_dict = {**genotype["weights"], **weights_dict}
         genotype = {
-            "weights": weights,
+            "weights": weights_dict,
             "genes": jax.tree.map(lambda x: x.astype(int), genotype["genes"])
         }
 
@@ -134,7 +134,7 @@ class LGP(GGP):
                               ) -> Tuple[Genotype, jnp.ndarray]:
             lgp_genes, regs = carry
             target_register_idx = lgp_genes["genes"]["targets"].at[line_idx].get()
-            return self._update_memory(lgp_genes, weights, regs, line_idx, target_register_idx)
+            return self._update_memory(lgp_genes, weights_dict, regs, line_idx, target_register_idx)
 
         # initialize the registers with inputs and constants and zeros for remaining registers
         registers = jnp.concatenate(
@@ -207,6 +207,7 @@ class LGP(GGP):
             self,
             genotype: Genotype,
             rnd_key: RNGKey,
+            *,
             p_mut_targets: float = 0.3,
             p_mut_inputs: float = 0.1,
             p_mut_functions: float = 0.1,

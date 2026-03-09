@@ -22,7 +22,7 @@ def compute_model_predictions(
         X: jnp.ndarray,
         genotype: Genotype,
         graph_structure: GGP,
-        graph_weights: Dict[str, jnp.ndarray] = None,
+        graph_weights: Optional[Dict[str, jnp.ndarray]] = None,
         max_norm: float = 1e6,
 ) -> jnp.ndarray:
     """
@@ -100,7 +100,7 @@ def supervised_learning_accuracy_evaluation(
         """
     prediction_fn = jax.jit(partial(compute_model_predictions, graph_structure=graph_structure))
 
-    def _accuracy_fn(single_genotype: Genotype):
+    def _accuracy_fn(single_genotype: Genotype) -> jnp.ndarray:
         prediction = prediction_fn(X, single_genotype)
         return accuracy_fn(y, prediction)
 
