@@ -24,6 +24,15 @@ classifiers = [
 keywords = ["genetic programming", "evolutionary computation", "interpretability", "symbolic regression", "reinforcement learning"]
 requires-python = ">=3.10"
 
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "black",
+    "flake8",
+    "mypy",
+    "pytest",
+    "coverage"
+]
 
 [project.urls]
 Homepage = "https://github.com/giorgia-nadizar/GPax"
