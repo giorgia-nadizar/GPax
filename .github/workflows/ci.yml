@@ -33,7 +33,7 @@ jobs:
       - name: Run pre-commit
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
-          pre-commit run --all-files --show-diff-on-failure
+          pre-commit run --all-files 
 
   tests:
     runs-on: ubuntu-latest
