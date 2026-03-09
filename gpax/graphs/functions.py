@@ -5,7 +5,7 @@ from typing import Callable, Dict, Optional, Union
 
 import jax.numpy as jnp
 from jax import jit, Array
-from jax.lax import cond, switch
+from jax.lax import switch
 from jax.tree_util import register_pytree_node_class
 
 

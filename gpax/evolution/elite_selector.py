@@ -2,7 +2,7 @@ from flax import struct
 import jax
 import jax.numpy as jnp
 from qdax.core.emitters.repertoire_selectors.selector import Selector, GARepertoireT, unfold_repertoire
-from qdax.custom_types import RNGKey, Genotype, Fitness
+from qdax.custom_types import RNGKey
 
 
 @struct.dataclass
