@@ -1,10 +1,8 @@
 from functools import partial
-from typing import Tuple, Callable, Optional, Dict, Any, Union
+from typing import Tuple, Callable, Optional, Dict, Union
 
 import jax
 import jax.numpy as jnp
-import optax
-from optax._src.base import GradientTransformation
 
 from qdax.custom_types import (
     Params,
@@ -17,7 +15,7 @@ from qdax.custom_types import (
 
 from gpax.graphs.graph_genetic_programming import GGP
 from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd
-from gpax.supervised_learning.metrics import r2_score, rmse
+from gpax.supervised_learning.metrics import r2_score
 
 
 def compute_model_predictions(
