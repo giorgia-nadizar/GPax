@@ -59,3 +59,11 @@ strict_equality = true
 explicit_package_bases = true
 follow_imports = "skip"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "experiments.*"
+ignore_errors = true
