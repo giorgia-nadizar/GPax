@@ -1,6 +1,6 @@
 """Core components of Linear Genetic Programming (LGP) for graph evolution."""
 
-from typing import Callable, Tuple, Optional, Dict, List, Any, cast
+from typing import Callable, Tuple, Optional, Dict, List, Any
 
 import jax.numpy as jnp
 import jax.random
