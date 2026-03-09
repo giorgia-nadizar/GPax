@@ -1,4 +1,6 @@
 # GPax
+![CI](https://github.com/giorgia-nadizar/GPax/actions/workflows/ci.yml/badge.svg)
+
 Implementations of graph-based GP variants in JAX.
 
 ## Installation
