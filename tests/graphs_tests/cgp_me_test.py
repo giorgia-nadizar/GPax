@@ -141,7 +141,7 @@ def test_cgp_with_me() -> None:
 
     # Main loop
     map_elites_scan_update = map_elites.scan_update
-    for i in range(num_loops):
+    for _ in range(num_loops):
         (
             repertoire,
             emitter_state,
@@ -292,7 +292,7 @@ def test_cgp_with_me_ask_tell() -> None:
     ask_fn = jax.jit(map_elites.ask)
     tell_fn = jax.jit(map_elites.tell)
 
-    for i in range(num_iterations):
+    for _ in range(num_iterations):
         key, subkey = jax.random.split(key)
         # Generate solutions
         genotypes, extra_info = ask_fn(repertoire, emitter_state, subkey)
@@ -459,7 +459,7 @@ def test_cgp_graph_descriptors_with_me_ask_tell() -> None:
     ask_fn = jax.jit(map_elites.ask)
     tell_fn = jax.jit(map_elites.tell)
 
-    for i in range(num_iterations):
+    for _ in range(num_iterations):
         key, subkey = jax.random.split(key)
         # Generate solutions
         genotypes, extra_info = ask_fn(repertoire, emitter_state, subkey)

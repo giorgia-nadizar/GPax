@@ -320,5 +320,5 @@ def test_invalid_dataset():
     """
     Test that an invalid dataset raises an error (FileNotFoundError or similar)
     """
-    with pytest.raises(Exception):
+    with pytest.raises(FileNotFoundError):
         load_dataset("nonexistent_dataset", scale_x=False, scale_y=False)

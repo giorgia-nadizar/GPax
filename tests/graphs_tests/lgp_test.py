@@ -491,7 +491,7 @@ def test_gradient_optimization_of_function_weights() -> None:
     opt_state = optimizer.init(lgp_weights)
 
     # Training loop
-    for i in range(50_000):
+    for _ in range(50_000):
         lgp_weights, opt_state, train_loss = step(lgp_genome, lgp_weights, opt_state, observations, target_outputs)
     print(lgp_weights * active)
 
@@ -557,11 +557,9 @@ def test_gradient_optimization_of_input_weights() -> None:
 
     # Training loop
     train_loss = jnp.inf
-    for i in range(50_000):
+    for _ in range(50_000):
         optimizable_weights, opt_state, train_loss = step(lgp_genome, optimizable_weights, opt_state, observations,
                                                           target_outputs)
-        # if i % 1_000 == 0:
-        # print(f"Step {i}, Loss {train_loss}, Params {lgp_weights}")
     print(train_loss)
     print(lgp.get_readable_expression(lgp_genome))
     print(optimizable_weights["inputs1"] * active, target_weights1 * active)
