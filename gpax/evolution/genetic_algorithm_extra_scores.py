@@ -168,7 +168,7 @@ class GeneticAlgorithmWithExtraScores(GeneticAlgorithm):
 
     def replace_scoring_fns(self,
                             scoring_fn: Callable[[Genotype, RNGKey], Tuple[Fitness, ExtraScores]],
-                            rescoring_fn: Callable[[Genotype, RNGKey], Fitness] = None,
+                            rescoring_fn: Optional[Callable[[Genotype, RNGKey], Fitness]] = None,
                             ) -> GeneticAlgorithmWithExtraScores:
         """
         Return a new genetic algorithm instance that uses the given scoring function.
