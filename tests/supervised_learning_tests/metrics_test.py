@@ -1,9 +1,17 @@
 import jax
 import jax.numpy as jnp
-from sklearn.metrics import root_mean_squared_error, r2_score as sklearn_r2_score, mean_squared_error
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import r2_score as sklearn_r2_score
+from sklearn.metrics import root_mean_squared_error
 
-from gpax.supervised_learning.metrics import r2_score, rmse, mse, rrmse_per_target, categorical_cross_entropy, \
-    classification_accuracy
+from gpax.supervised_learning.metrics import (
+    categorical_cross_entropy,
+    classification_accuracy,
+    mse,
+    r2_score,
+    rmse,
+    rrmse_per_target,
+)
 
 
 def test_r2_score_perfect():
@@ -73,11 +81,8 @@ def test_rmse_known_value():
 
 def test_perfect_prediction():
     """RRMSE should be zero when predictions are perfect."""
-    y_train = jnp.array([[1., 2.],
-                         [2., 3.],
-                         [3., 4.]])
-    y_test = jnp.array([[2., 3.],
-                        [1., 2.]])
+    y_train = jnp.array([[1.0, 2.0], [2.0, 3.0], [3.0, 4.0]])
+    y_test = jnp.array([[2.0, 3.0], [1.0, 2.0]])
     y_pred = y_test.copy()
 
     rrmse = rrmse_per_target(y_test, y_pred, y_train)
@@ -89,11 +94,8 @@ def test_mean_predictor_rrmse_is_one():
     """
     Predicting the training mean for each target should yield RRMSE = 1.
     """
-    y_train = jnp.array([[1., 2.],
-                         [3., 4.],
-                         [5., 6.]])
-    y_test = jnp.array([[2., 3.],
-                        [4., 5.]])
+    y_train = jnp.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+    y_test = jnp.array([[2.0, 3.0], [4.0, 5.0]])
 
     y_train_mean = jnp.mean(y_train, axis=0)
     y_pred = jnp.tile(y_train_mean, (y_test.shape[0], 1))
@@ -119,13 +121,9 @@ def test_zero_variance_target():
     If a target has zero variance in test data,
     RRMSE should be finite (due to epsilon).
     """
-    y_train = jnp.array([[1., 5.],
-                         [1., 5.],
-                         [1., 5.]])
-    y_test = jnp.array([[1., 5.],
-                        [1., 5.]])
-    y_pred = jnp.array([[1., 4.],
-                        [1., 6.]])
+    y_train = jnp.array([[1.0, 5.0], [1.0, 5.0], [1.0, 5.0]])
+    y_test = jnp.array([[1.0, 5.0], [1.0, 5.0]])
+    y_pred = jnp.array([[1.0, 4.0], [1.0, 6.0]])
 
     rrmse = rrmse_per_target(y_test, y_pred, y_train)
 
@@ -134,12 +132,10 @@ def test_zero_variance_target():
 
 def test_categorical_cross_entropy_output_shape_and_type():
     # Random logits and one-hot labels (3 samples, 4 classes)
-    logits = jnp.array([[1.0, 2.0, 0.5, 0.1],
-                        [0.2, 0.3, 0.5, 0.0],
-                        [1.0, 2.0, 1.0, 0.0]])
-    y_true = jnp.array([[0, 1, 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 1, 0, 0]])
+    logits = jnp.array(
+        [[1.0, 2.0, 0.5, 0.1], [0.2, 0.3, 0.5, 0.0], [1.0, 2.0, 1.0, 0.0]]
+    )
+    y_true = jnp.array([[0, 1, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0]])
 
     loss = categorical_cross_entropy(y_true, logits)
 
@@ -181,11 +177,15 @@ def test_categorical_cross_entropy_binary_classification_one_hot():
 def test_categorical_cross_entropy_multiclass_classification():
     # Multi-class case: 5 classes
     y_true = jnp.eye(5)  # identity matrix, perfect one-hot
-    logits = jnp.array([[5, 1, 0, 0, 0],
-                        [0, 5, 1, 0, 0],
-                        [0, 0, 5, 1, 0],
-                        [0, 0, 0, 5, 1],
-                        [1, 0, 0, 0, 5]])
+    logits = jnp.array(
+        [
+            [5, 1, 0, 0, 0],
+            [0, 5, 1, 0, 0],
+            [0, 0, 5, 1, 0],
+            [0, 0, 0, 5, 1],
+            [1, 0, 0, 0, 5],
+        ]
+    )
 
     loss = categorical_cross_entropy(y_true, logits)
 
@@ -228,7 +228,9 @@ def test_classification_accuracy_multiclass_partial():
     acc = classification_accuracy(y_true, logits)
     # First prediction wrong, next two correct
     expected_acc = 2 / 3
-    assert jnp.isclose(acc, expected_acc), "Accuracy should match partially correct predictions"
+    assert jnp.isclose(
+        acc, expected_acc
+    ), "Accuracy should match partially correct predictions"
 
 
 def test_classification_accuracy_softmax_inputs():
@@ -240,7 +242,9 @@ def test_classification_accuracy_softmax_inputs():
     acc_logits = classification_accuracy(y_true, logits)
     acc_probs = classification_accuracy(y_true, probs)
 
-    assert acc_logits == acc_probs, "Accuracy should be same for logits or softmaxed probabilities"
+    assert (
+        acc_logits == acc_probs
+    ), "Accuracy should be same for logits or softmaxed probabilities"
 
 
 def test_classification_accuracy_zero_batch():

@@ -10,7 +10,7 @@
 @attribute become_hist_complex {1,2}
 @attribute area {1,2}
 @attribute area_largest {1,2}
-@attribute c-class numeric 
+@attribute c-class numeric
 @attribute m-class numeric
 @attribute x-class numeric
 

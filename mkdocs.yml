@@ -1,0 +1,22 @@
+site_name: GPax
+site_description: JAX Accelerated Genetic Programming
+site_author: Giorgia Nadizar
+site_url: https://giorgia-nadizar.github.io/GPax/
+
+repo_url: https://github.com/giorgia-nadizar/GPax
+repo_name: GPax
+
+theme:
+  name: readthedocs
+  language: en
+
+plugins:
+  - search
+  - mkdocstrings
+
+nav:
+  - Home: index.md
+  - API:
+      - Evolution: api/evolution.md
+      - Graphs: api/graphs.md
+      - Supervised Learning: api/supervised_learning.md

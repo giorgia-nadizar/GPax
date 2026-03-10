@@ -1,4 +1,5 @@
-from typing import Dict, Callable, Any
+from typing import Any, Callable, Dict, Tuple, Union
+
 import jax
 import jax.numpy as jnp
 import optax
@@ -13,16 +14,16 @@ from gpax.supervised_learning.regularization import no_regularizer, no_snap
 
 
 def optimize_constants_with_cmaes(
-        graph_weights: Dict,
-        genotype: Genotype,
-        key: RNGKey,
-        X: jnp.ndarray,
-        y: jnp.ndarray,
-        prediction_fn: Callable,
-        loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
-        max_iter: int = 10,
-        mini_batch_size: int = 32
-) -> Dict:
+    graph_weights: Dict,
+    genotype: Genotype,
+    key: RNGKey,
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    prediction_fn: Callable,
+    loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
+    max_iter: int = 10,
+    mini_batch_size: int = 32,
+) -> Union[Dict, Any]:
     """
     Optimize the constants (weights) of a set of genotypes using CMA-ES.
 
@@ -70,32 +71,54 @@ def optimize_constants_with_cmaes(
     - The CMA-ES mean is used as the final optimized weight vector for each genome.
     """
     n_genotypes = jax.tree.leaves(graph_weights)[0].shape[0]
-    weights_array_sample, weights_tree_def = ravel_pytree(jax.tree_map(lambda x: x[0], graph_weights))
+    weights_array_sample, weights_tree_def = ravel_pytree(
+        jax.tree_map(lambda x: x[0], graph_weights)
+    )
     search_dim = weights_array_sample.shape[0]
     pop_size = int(4 + jnp.floor(3 * jnp.log(search_dim)))
     mini_batch_size = min(mini_batch_size, X.shape[0])
     global_cmaes = CMAES(
         population_size=pop_size,
         search_dim=search_dim,
-        fitness_function=lambda x: jnp.ones((1,)),  # dummy fitness function, will not be used
-        mean_init=weights_array_sample
+        fitness_function=lambda x: jnp.ones(
+            (1,)
+        ),  # dummy fitness function, will not be used
+        mean_init=weights_array_sample,
     )
 
-    def _single_genome_cmaes(single_genotype: Genotype, cmaes_state: CMAESState, single_key: RNGKey) -> Dict:
-        def _single_weights_fitness_function(s_weights: jnp.ndarray, X_batch, y_batch) -> jnp.ndarray:
+    def _single_genome_cmaes(
+        single_genotype: Genotype, cmaes_state: CMAESState, single_key: RNGKey
+    ) -> Union[Dict, Any]:
+        def _single_weights_fitness_function(
+            s_weights: jnp.ndarray, X_batch: jnp.ndarray, y_batch: jnp.ndarray
+        ) -> jnp.ndarray:
             single_pytree_weights = weights_tree_def(s_weights)
-            y_pred = prediction_fn(X_batch, single_genotype, graph_weights=single_pytree_weights)
+            y_pred = prediction_fn(
+                X_batch, single_genotype, graph_weights=single_pytree_weights
+            )
             return loss_fn(y_batch, y_pred)
 
-        def _weights_ranking_function(candidate_array_weights: jnp.ndarray, random_key: RNGKey):
-            X_batch, y_batch = downsample_dataset(X, y, random_key=random_key, size=mini_batch_size)
-            vmap_weights_fitness_fn = jax.vmap(_single_weights_fitness_function, in_axes=(0, None, None))
-            fitness_values = vmap_weights_fitness_fn(candidate_array_weights, X_batch, y_batch)
+        def _weights_ranking_function(
+            candidate_array_weights: jnp.ndarray, random_key: RNGKey
+        ) -> jnp.ndarray:
+            X_batch, y_batch = downsample_dataset(
+                X, y, random_key=random_key, size=mini_batch_size
+            )
+            vmap_weights_fitness_fn = jax.vmap(
+                _single_weights_fitness_function, in_axes=(0, None, None)
+            )
+            fitness_values = vmap_weights_fitness_fn(
+                candidate_array_weights, X_batch, y_batch
+            )
             idx_sorted = jnp.argsort(fitness_values)
-            sorted_candidates = candidate_array_weights[idx_sorted[: global_cmaes._num_best]]
+            sorted_candidates = candidate_array_weights[
+                idx_sorted[: global_cmaes._num_best]
+            ]
             return sorted_candidates
 
-        def _cmaes_body(i, carry):
+        def _cmaes_body(
+            i: int, carry: Tuple[RNGKey, CMAESState]
+        ) -> Tuple[RNGKey, CMAESState]:
             thekey, state = carry
             key1, key2, thekey = jax.random.split(thekey, 3)
             current_genotypes = global_cmaes.sample(state, key1)
@@ -115,8 +138,10 @@ def optimize_constants_with_cmaes(
         current_state = CMAES(
             population_size=pop_size,
             search_dim=search_dim,
-            fitness_function=lambda x: jnp.ones((1,)),  # dummy fitness function, will not be used
-            mean_init=ravel_pytree(current_weights)[0]
+            fitness_function=lambda x: jnp.ones(
+                (1,)
+            ),  # dummy fitness function, will not be used
+            mean_init=ravel_pytree(current_weights)[0],
         ).init()
         cmaes_states.append(current_state)
     pytree_cmaes_states = jax.tree_map(lambda *xs: jnp.stack(xs), *cmaes_states)
@@ -129,71 +154,73 @@ def optimize_constants_with_cmaes(
 
 
 def optimize_constants_with_lbfgs(
-        graph_weights: Dict,
-        genotype: Genotype,
-        key: RNGKey,
-        X: jnp.ndarray,
-        y: jnp.ndarray,
-        prediction_fn: Callable,
-        loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
-        max_iter: int = 100,
-        tol: float = 1e-3
-) -> Dict:
+    graph_weights: Dict,
+    genotype: Genotype,
+    key: RNGKey,
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    prediction_fn: Callable,
+    loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
+    max_iter: int = 100,
+    tol: float = 1e-3,
+) -> Union[Dict, Any]:
     """
-        Optimize the constant parameters (weights) of a batch of computational gp
-        using the L-BFGS quasi-Newton optimizer from Optax.
+    Optimize the constant parameters (weights) of a batch of computational graphs
+    using the L-BFGS quasi-Newton optimizer from Optax.
 
-        Parameters
-        ----------
-        graph_weights : Dict
-            A PyTree dictionary containing constant/weight parameters for each genome
-            in the batch. The leading dimension corresponds to the batch size.
-        genotype : Genotype
-            The batch of genotypes whose constants are being optimized.
-        key : RNGKey
-            Unused RNG key included for API consistency with other optimizers.
-        X : jnp.ndarray
-            Input feature matrix of shape (n_samples, n_features).
-        y : jnp.ndarray
-            Target regression outputs of shape (n_samples,) or (n_samples, n_outputs).
-        prediction_fn : Callable
-            A function with signature `(X, genotype, graph_weights) -> predictions`
-            that computes model outputs given a genome and weight PyTree.
-        loss_fn : Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray], optional
-            Differentiable loss function to minimize. Defaults to `rmse`.
-        max_iter : int, optional
-            Maximum number of L-BFGS optimization iterations. Defaults to 100.
-        tol : float, optional
-            Gradient-norm tolerance for convergence. Optimization stops early when
-            ‖grad‖ < tol. Defaults to `1e-3`.
+    Parameters
+    ----------
+    graph_weights : Dict
+        A PyTree dictionary containing constant/weight parameters for each genome
+        in the batch. The leading dimension corresponds to the batch size.
+    genotype : Genotype
+        The batch of genotypes whose constants are being optimized.
+    key : RNGKey
+        Unused RNG key included for API consistency with other optimizers.
+    X : jnp.ndarray
+        Input feature matrix of shape (n_samples, n_features).
+    y : jnp.ndarray
+        Target regression outputs of shape (n_samples,) or (n_samples, n_outputs).
+    prediction_fn : Callable
+        A function with signature `(X, genotype, graph_weights) -> predictions`
+        that computes model outputs given a genome and weight PyTree.
+    loss_fn : Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray], optional
+        Differentiable loss function to minimize. Defaults to `rmse`.
+    max_iter : int, optional
+        Maximum number of L-BFGS optimization iterations. Defaults to 100.
+    tol : float, optional
+        Gradient-norm tolerance for convergence. Optimization stops early when
+        ‖grad‖ < tol. Defaults to `1e-3`.
 
-        Returns
-        -------
-        Dict
-            A dictionary of optimized weight PyTrees, one for each genome, matching
-            the structure of the input `graph_weights`.
+    Returns
+    -------
+    Dict
+        A dictionary of optimized weight PyTrees, one for each genome, matching
+        the structure of the input `graph_weights`.
 
-        Notes
-        -----
-        - L-BFGS runs on flattened parameter vectors; trees are automatically
-          flattened and reconstructed via `ravel_pytree`.
-        - Convergence is determined by both iteration count and gradient norm.
-        - Optimization is fully vectorized across genomes via `jax.vmap`.
-        - The `key` argument is unused but maintained for functional symmetry with
-          SGD/Adam-based optimization functions.
-        """
+    Notes
+    -----
+    - L-BFGS runs on flattened parameter vectors; trees are automatically
+      flattened and reconstructed via `ravel_pytree`.
+    - Convergence is determined by both iteration count and gradient norm.
+    - Optimization is fully vectorized across genomes via `jax.vmap`.
+    - The `key` argument is unused but maintained for functional symmetry with
+      SGD/Adam-based optimization functions.
+    """
 
-    def _single_genome_lbfgs(single_weights: Dict, single_genotype: Genotype):
+    def _single_genome_lbfgs(
+        single_weights: Dict, single_genotype: Genotype
+    ) -> Union[Dict, Any]:
         init_flat_weights, weights_tree_def = ravel_pytree(single_weights)
 
-        def _loss_fn(array_weights: jnp.ndarray):
+        def _loss_fn(array_weights: jnp.ndarray) -> jnp.ndarray:
             pytree_weights = weights_tree_def(array_weights)
             y_pred = prediction_fn(X, single_genotype, graph_weights=pytree_weights)
             return loss_fn(y, y_pred)
 
         value_and_grad_fun = optax.value_and_grad_from_state(_loss_fn)
 
-        def _step(carry):
+        def _step(carry: Tuple[Any, Any]) -> Tuple[Any, Any]:
             params, state = carry
             value, grad = value_and_grad_fun(params, state=state)
             updates, state = opt.update(
@@ -202,10 +229,10 @@ def optimize_constants_with_lbfgs(
             params = optax.apply_updates(params, updates)
             return params, state
 
-        def _continuing_criterion(carry):
+        def _continuing_criterion(carry: Tuple[Any, Any]) -> Any:
             _, state = carry
-            iter_num = optax.tree.get(state, 'count')
-            grad = optax.tree.get(state, 'grad')
+            iter_num = optax.tree.get(state, "count")
+            grad = optax.tree.get(state, "grad")
             err = optax.tree.norm(grad)
             return (iter_num == 0) | ((iter_num < max_iter) & (err >= tol))
 
@@ -223,19 +250,19 @@ def optimize_constants_with_lbfgs(
 
 
 def optimize_constants_with_sgd(
-        graph_weights: Dict,
-        genotype: Genotype,
-        key: RNGKey,
-        X: jnp.ndarray,
-        y: jnp.ndarray,
-        prediction_fn: Callable,
-        optimizer: GradientTransformation = optax.adam(1e-3),  # noqa: B008
-        loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
-        regularization_loss_fn: Callable[[Dict], jnp.ndarray] = no_regularizer,
-        regularization_update_fn: Callable[[Dict], Dict] = no_snap,
-        n_gradient_steps: int = 100,
-        batch_size: int = 32,
-        regularization_strength: float = 1e-2,
+    graph_weights: Dict,
+    genotype: Genotype,
+    key: RNGKey,
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    prediction_fn: Callable,
+    optimizer: GradientTransformation = optax.adam(1e-3),  # noqa: B008
+    loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = rmse,
+    regularization_loss_fn: Callable[[Dict], jnp.ndarray] = no_regularizer,
+    regularization_update_fn: Callable[[Dict], Dict] = no_snap,
+    n_gradient_steps: int = 100,
+    batch_size: int = 32,
+    regularization_strength: float = 1e-2,
 ) -> Dict:
     """
     Optimize the constant parameters (weights) of a batch of computational gp
@@ -303,7 +330,7 @@ def optimize_constants_with_sgd(
     """
     # add gradient clipping to the pipeline to prevent nan values
     optimizer = optax.chain(
-        optax.clip_by_global_norm(1.),
+        optax.clip_by_global_norm(1.0),
         optimizer,
     )
 
@@ -312,17 +339,31 @@ def optimize_constants_with_sgd(
     batch_size = batch_size if batch_size is not None else X.shape[0]
 
     @jax.jit
-    def _single_genome_loss(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, X_batch: jnp.ndarray,
-                            y_batch: jnp.ndarray) -> jnp.ndarray:
-        data_loss = loss_fn(y_batch, prediction_fn(X_batch, single_genotype, graph_weights=single_weights))
+    def _single_genome_loss(
+        single_weights: Dict[str, jnp.ndarray],
+        single_genotype: Genotype,
+        X_batch: jnp.ndarray,
+        y_batch: jnp.ndarray,
+    ) -> jnp.ndarray:
+        data_loss = loss_fn(
+            y_batch,
+            prediction_fn(X_batch, single_genotype, graph_weights=single_weights),
+        )
         regularization_loss = regularization_loss_fn(single_weights)
         total_loss = data_loss + regularization_loss * regularization_strength
         return total_loss
 
     @jax.jit
-    def _single_genome_gradient_step(single_weights: Dict[str, jnp.ndarray], single_genotype: Genotype, opt_st: Any,
-                                     X_batch: jnp.ndarray, y_batch: jnp.ndarray):
-        loss, grads = jax.value_and_grad(_single_genome_loss)(single_weights, single_genotype, X_batch, y_batch)
+    def _single_genome_gradient_step(
+        single_weights: Dict[str, jnp.ndarray],
+        single_genotype: Genotype,
+        opt_st: Any,
+        X_batch: jnp.ndarray,
+        y_batch: jnp.ndarray,
+    ) -> Tuple[Any, Any, jnp.ndarray]:
+        loss, grads = jax.value_and_grad(_single_genome_loss)(
+            single_weights, single_genotype, X_batch, y_batch
+        )
         # clamp loss
         loss = jnp.where(jnp.isfinite(loss), loss, jnp.inf)
         # zero-out non-finite gradients to prevent nan constants
@@ -339,12 +380,16 @@ def optimize_constants_with_sgd(
         )
         return updated_weights, new_opt_st, loss
 
-    step_fn = jax.vmap(jax.jit(_single_genome_gradient_step), in_axes=(0, 0, 0, None, None))
+    step_fn = jax.vmap(
+        jax.jit(_single_genome_gradient_step), in_axes=(0, 0, 0, None, None)
+    )
 
     for _ in range(n_gradient_steps):
         key, subkey = jax.random.split(key)
         # sample a mini-batch
         X_batch, y_batch = downsample_dataset(X, y, random_key=subkey, size=batch_size)
-        graph_weights, opt_states, train_losses = step_fn(graph_weights, genotype, opt_states, X_batch, y_batch)
+        graph_weights, opt_states, train_losses = step_fn(
+            graph_weights, genotype, opt_states, X_batch, y_batch
+        )
 
     return graph_weights

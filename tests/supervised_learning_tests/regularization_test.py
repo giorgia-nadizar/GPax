@@ -1,8 +1,12 @@
-import jax.numpy as jnp
 import jax
+import jax.numpy as jnp
 
-from gpax.supervised_learning.regularization import sticky_pm_target_regularizer, snap_to_pm_target, no_regularizer, \
-    no_snap
+from gpax.supervised_learning.regularization import (
+    no_regularizer,
+    no_snap,
+    snap_to_pm_target,
+    sticky_pm_target_regularizer,
+)
 
 
 def test_sticky_pm_target_regularizer_zero_penalty_at_target():
@@ -59,7 +63,9 @@ def test_snap_to_pm_target_basic():
     weights = {"w": jnp.array([0.98, -1.01, 0.5])}
     snapped = snap_to_pm_target(weights, target=1, eps=0.05)
     expected = jnp.array([1.0, -1.0, 0.5])
-    assert jnp.allclose(snapped["w"], expected), "Weights within eps should snap to ±target"
+    assert jnp.allclose(
+        snapped["w"], expected
+    ), "Weights within eps should snap to ±target"
 
 
 def test_snap_outside_eps_remains():
@@ -73,7 +79,9 @@ def test_snap_custom_target():
     weights = {"w": jnp.array([2.04, -2.01, 0.5])}
     snapped = snap_to_pm_target(weights, target=2, eps=0.05)
     expected = jnp.array([2, -2, 0.5])
-    assert jnp.allclose(snapped["w"], expected), "Snapping should work for arbitrary ±target"
+    assert jnp.allclose(
+        snapped["w"], expected
+    ), "Snapping should work for arbitrary ±target"
 
 
 def test_snap_multiple_leaves():
@@ -111,7 +119,9 @@ def test_no_snap_returns_same_weights():
     weights = {"a": jnp.array([1.0, -1.0]), "b": jnp.array([0.5])}
     result = no_snap(weights)
     for k in weights:
-        assert jnp.allclose(result[k], weights[k]), f"No-op snap should not change weights for key {k}"
+        assert jnp.allclose(
+            result[k], weights[k]
+        ), f"No-op snap should not change weights for key {k}"
 
 
 def test_no_snap_jit():
@@ -119,4 +129,6 @@ def test_no_snap_jit():
     weights = {"x": jnp.array([0.1, 0.9])}
     result = jit_fn(weights)
     for k in weights:
-        assert jnp.allclose(result[k], weights[k]), f"No-op snap JIT should not change weights for key {k}"
+        assert jnp.allclose(
+            result[k], weights[k]
+        ), f"No-op snap JIT should not change weights for key {k}"
