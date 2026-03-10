@@ -131,8 +131,8 @@ def test_weights_changes_after_mutation() -> None:
         )
 
         assert not mut * all(
-            jax.tree_leaves(
-                jax.tree_map(
+            jax.tree.leaves(
+                jax.tree.map(
                     lambda x, y: jnp.allclose(x, y),
                     initial_lgp_genome["weights"],
                     mutated_lgp_genome["weights"],
@@ -167,8 +167,8 @@ def test_weights_changes_after_mutation() -> None:
             )
 
             assert not mut * all(
-                jax.tree_leaves(
-                    jax.tree_map(
+                jax.tree.leaves(
+                    jax.tree.map(
                         lambda x, y: jnp.allclose(x, y),
                         initial_lgp_genome["weights"],
                         mutated_lgp_genome["weights"],
@@ -388,8 +388,8 @@ def test_weights_update() -> None:
         init_lgp_genomes, init_weights
     )
     assert all(
-        jax.tree_leaves(
-            jax.tree_map(
+        jax.tree.leaves(
+            jax.tree.map(
                 lambda x, y: jnp.allclose(x, y),
                 init_weights,
                 updated_genomes["weights"],
@@ -397,8 +397,8 @@ def test_weights_update() -> None:
         )
     )
     assert not all(
-        jax.tree_leaves(
-            jax.tree_map(
+        jax.tree.leaves(
+            jax.tree.map(
                 lambda x, y: jnp.allclose(x, y), init_weights, original_weights
             )
         )

@@ -129,7 +129,7 @@ class EnsembleGP:
             o1 = sin(i2)
         """
         expressions = [
-            self.base_gp_model.get_readable_expression(jax.tree_map(lambda x: x[i], genotype), inputs_mapping)
+            self.base_gp_model.get_readable_expression(jax.tree.map(lambda x: x[i], genotype), inputs_mapping)
             for i in range(self.n_outputs)
         ]
 

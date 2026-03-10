@@ -556,7 +556,7 @@ class TreeGP:
 
         idx1 = jnp.where(mask1, size=mask1.shape[0], fill_value=self.n_nodes)[0]
         idx2 = jnp.where(mask2, size=mask2.shape[0], fill_value=self.n_nodes)[0]
-        offspring = jax.tree_map(
+        offspring = jax.tree.map(
             lambda x1, x2: x1.at[idx1].set(x2[idx2]),
             genotype1,
             genotype2,

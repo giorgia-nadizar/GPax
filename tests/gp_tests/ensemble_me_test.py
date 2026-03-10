@@ -103,7 +103,7 @@ def test_ensemble_with_me() -> None:
 
     # Define emitter
     def vmap_mutate(population_of_genotypes, mutation_key):
-        n_pop = jax.tree_util.tree_leaves(population_of_genotypes)[0].shape[0]
+        n_pop = jax.tree.leaves(population_of_genotypes)[0].shape[0]
         multi_mutate_keys = jax.random.split(mutation_key, n_pop)
         return jax.jit(jax.vmap(policy_graph.mutate))(population_of_genotypes, multi_mutate_keys)
 

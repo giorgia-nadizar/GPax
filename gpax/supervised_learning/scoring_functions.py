@@ -151,11 +151,11 @@ def supervised_learning_accuracy_evaluation_with_constants_optimization(
             Accuracy values computed using `accuracy_fn` for each genotype after
             constant optimization.
         updated_genotype : Genotype
-            The genotype(s) with updated/optimized weight parameters.
+            The genotype(s) with updated/optimized weight parameters.p
     """
     graph_weights = graph_structure.get_weights(genotype)
     if reset_weights:
-        n_genomes = jax.tree_util.tree_leaves(genotype)[0].shape[0]
+        n_genomes = jax.tree.leaves(genotype)[0].shape[0]
         key, subkey = jax.random.split(key)
         weights_keys = jax.random.split(subkey, n_genomes)
         new_weights = jax.vmap(jax.jit(graph_structure.init_weights))(weights_keys)

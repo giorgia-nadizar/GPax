@@ -55,7 +55,7 @@ def sticky_pm_target_regularizer(
 
     return jax.tree_util.tree_reduce(
         lambda x, y: x + y,
-        jax.tree_map(_penalty, weights),
+        jax.tree.map(_penalty, weights),
     )
 
 
@@ -90,4 +90,4 @@ def snap_to_pm_target(
             w,
         )
 
-    return jax.tree_map(_snap, weights)
+    return jax.tree.map(_snap, weights)

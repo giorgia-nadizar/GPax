@@ -137,8 +137,8 @@ def test_regression_accuracy_evaluation_with_sgd_shape():
 
         assert accuracies.shape[0] == n_genotypes
         assert all(
-            jax.tree_leaves(
-                jax.tree_map(
+            jax.tree.leaves(
+                jax.tree.map(
                     lambda x, y: jnp.allclose(x, y),
                     returned_genotypes["genes"],
                     genotypes["genes"],
@@ -213,8 +213,8 @@ def test_regression_accuracy_evaluation_with_constants_optimization():
 
         assert accuracies.shape[0] == n_genotypes
         assert all(
-            jax.tree_leaves(
-                jax.tree_map(
+            jax.tree.leaves(
+                jax.tree.map(
                     lambda x, y: jnp.allclose(x, y),
                     returned_genotypes["genes"],
                     genotypes["genes"],
@@ -311,8 +311,8 @@ def test_regression_scoring_fn_with_sgd():
             assert len(fitness) == n_genotypes
             assert jnp.array_equal(fitness, extra_scores["test_accuracy"])
             assert not all(
-                jax.tree_leaves(
-                    jax.tree_map(
+                jax.tree.leaves(
+                    jax.tree.map(
                         lambda x, y: jnp.allclose(x, y),
                         genotypes,
                         extra_scores["updated_params"],

@@ -72,7 +72,7 @@ def optimize_constants_with_cmaes(
     """
     n_genotypes = jax.tree.leaves(graph_weights)[0].shape[0]
     weights_array_sample, weights_tree_def = ravel_pytree(
-        jax.tree_map(lambda x: x[0], graph_weights)
+        jax.tree.map(lambda x: x[0], graph_weights)
     )
     search_dim = weights_array_sample.shape[0]
     pop_size = int(4 + jnp.floor(3 * jnp.log(search_dim)))
@@ -134,7 +134,7 @@ def optimize_constants_with_cmaes(
 
     cmaes_states = []
     for i in range(n_genotypes):
-        current_weights = jax.tree_map(lambda x: x[i], graph_weights)  # noqa: B023
+        current_weights = jax.tree.map(lambda x: x[i], graph_weights)  # noqa: B023
         current_state = CMAES(
             population_size=pop_size,
             search_dim=search_dim,
@@ -144,7 +144,7 @@ def optimize_constants_with_cmaes(
             mean_init=ravel_pytree(current_weights)[0],
         ).init()
         cmaes_states.append(current_state)
-    pytree_cmaes_states = jax.tree_map(lambda *xs: jnp.stack(xs), *cmaes_states)
+    pytree_cmaes_states = jax.tree.map(lambda *xs: jnp.stack(xs), *cmaes_states)
 
     keys = jax.random.split(key, n_genotypes)
     vmapped_cmaes = jax.vmap(_single_genome_cmaes, in_axes=(0, 0, 0))
@@ -367,14 +367,14 @@ def optimize_constants_with_sgd(
         # clamp loss
         loss = jnp.where(jnp.isfinite(loss), loss, jnp.inf)
         # zero-out non-finite gradients to prevent nan constants
-        grads = jax.tree_map(
+        grads = jax.tree.map(
             lambda g: jnp.where(jnp.isfinite(g), g, 0.0),
             grads,
         )
         weights_updates, new_opt_st = optimizer.update(grads, opt_st)
         updated_weights = optax.apply_updates(single_weights, weights_updates)
         updated_weights = regularization_update_fn(updated_weights)
-        updated_weights = jax.tree_map(
+        updated_weights = jax.tree.map(
             lambda w: jnp.clip(w, -1e4, 1e4),
             updated_weights,
         )
