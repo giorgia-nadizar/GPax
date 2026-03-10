@@ -1,10 +1,9 @@
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 from qdax.core.containers.ga_repertoire import GARepertoire
-from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.core.emitters.repertoire_selectors.selector import Selector
+from qdax.core.emitters.emitter import EmitterState
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.custom_types import ExtraScores, Genotype, RNGKey
 

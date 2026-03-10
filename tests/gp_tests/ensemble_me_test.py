@@ -4,7 +4,6 @@ import jax
 import jax.numpy as jnp
 import pytest
 import qdax.tasks.brax.v1 as environments
-from jax import vmap
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
@@ -150,7 +149,7 @@ def test_ensemble_with_me() -> None:
 
     # Main loop
     map_elites_scan_update = map_elites.scan_update
-    for i in range(num_loops):
+    for _ in range(num_loops):
         (
             repertoire,
             emitter_state,

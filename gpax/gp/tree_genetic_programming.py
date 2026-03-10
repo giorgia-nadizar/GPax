@@ -59,7 +59,8 @@ class TreeGP:
             max_arity (int, optional): Maximum function arity. Defaults to 2.
             function_set (FunctionSet, optional): Set of functions to use. Defaults to None.
             outputs_wrapper (Callable, optional): Function to wrap outputs. Defaults to None.
-            semantic_equality_points (Optional[jnp.ndarray], optional): Points for semantic equality checks. Defaults to None.
+            semantic_equality_points (Optional[jnp.ndarray], optional): Points for semantic equality checks.
+            Defaults to None.
         """
         object.__setattr__(self, "n_inputs", n_inputs)
         object.__setattr__(self, "min_depth", min_depth)

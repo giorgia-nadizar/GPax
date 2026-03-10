@@ -136,7 +136,7 @@ class EnsembleGP:
         """
         expressions = [
             self.base_gp_model.get_readable_expression(
-                jax.tree.map(lambda x: x[i], genotype), inputs_mapping
+                jax.tree.map(lambda x: x[i], genotype), inputs_mapping  # noqa: B023
             )
             for i in range(self.n_outputs)
         ]

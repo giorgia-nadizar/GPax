@@ -180,7 +180,7 @@ def test_compute_subtree_heights(simple_tree_gp):
 
 def test_subtree_mask_includes_root(simple_tree_gp):
     mask = simple_tree_gp.subtree_mask(root_idx=0)
-    assert mask[0] == True
+    assert mask[0]
     assert mask.shape[0] == simple_tree_gp.n_nodes
 
 
