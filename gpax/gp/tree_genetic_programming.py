@@ -1,12 +1,11 @@
+from typing import Callable, Dict, Optional, Tuple, Union
+
+import jax.numpy as jnp
 import jax.random
 from flax import struct
-import jax.numpy as jnp
-from typing import Callable, Tuple, Optional, Dict, Union
-
 from jax import random
 from jax.lax import fori_loop
-
-from qdax.custom_types import RNGKey, Genotype
+from qdax.custom_types import Genotype, RNGKey
 
 from gpax.gp.functions import FunctionSet
 
@@ -35,16 +34,20 @@ class TreeGP:
     max_arity: int = 2
     function_set: FunctionSet = FunctionSet()
     outputs_wrapper: Callable = lambda x: x
-    semantic_equality_points: Optional[jnp.ndarray] = struct.field(pytree_node=False, default=None)
+    semantic_equality_points: Optional[jnp.ndarray] = struct.field(
+        pytree_node=False, default=None
+    )
 
-    def __init__(self,
-                 n_inputs: int,
-                 min_depth: int = 1,
-                 max_depth: int = 15,
-                 max_arity: int = 2,
-                 function_set: FunctionSet = None,
-                 outputs_wrapper: Callable = None,
-                 semantic_equality_points: Optional[jnp.ndarray] = None):
+    def __init__(
+        self,
+        n_inputs: int,
+        min_depth: int = 1,
+        max_depth: int = 15,
+        max_arity: int = 2,
+        function_set: FunctionSet = None,
+        outputs_wrapper: Callable = None,
+        semantic_equality_points: Optional[jnp.ndarray] = None,
+    ):
         """Initializes the TreeGP object.
 
         Generates a default semantic equality dataset if not provided.
@@ -66,7 +69,9 @@ class TreeGP:
         object.__setattr__(self, "outputs_wrapper", outputs_wrapper or (lambda x: x))
         if semantic_equality_points is None:
             key = jax.random.PRNGKey(42)
-            semantic_equality_points = 2.0 * jax.random.uniform(key, (100, n_inputs)) - 1.0
+            semantic_equality_points = (
+                2.0 * jax.random.uniform(key, (100, n_inputs)) - 1.0
+            )
         object.__setattr__(self, "semantic_equality_points", semantic_equality_points)
 
     @property
@@ -80,10 +85,10 @@ class TreeGP:
 
     # init methods
     def init(
-            self,
-            rnd_key: RNGKey,
-            target_depth: int,
-            full: bool = True,
+        self,
+        rnd_key: RNGKey,
+        target_depth: int,
+        full: bool = True,
     ) -> Genotype:
         """Initialize a single tree genotype randomly.
 
@@ -105,28 +110,38 @@ class TreeGP:
         is_leaf = depths == target_depth
 
         sampled = jax.random.randint(ops_key, shape=(self.n_nodes,), minval=1, maxval=4)
-        internal_nodes = jnp.where(full, jnp.ones(self.n_nodes, dtype=jnp.int32), sampled)
-        terminal_nodes = jax.random.randint(ops_key, shape=(self.n_nodes,), minval=2, maxval=4)
+        internal_nodes = jnp.where(
+            full, jnp.ones(self.n_nodes, dtype=jnp.int32), sampled
+        )
+        terminal_nodes = jax.random.randint(
+            ops_key, shape=(self.n_nodes,), minval=2, maxval=4
+        )
 
         tree = jnp.where(is_leaf, terminal_nodes, internal_nodes)
         tree = jnp.where(active, tree, 0)
 
-        functions_tree = jax.random.randint(f_key, shape=(self.n_nodes,), minval=0, maxval=len(self.function_set))
+        functions_tree = jax.random.randint(
+            f_key, shape=(self.n_nodes,), minval=0, maxval=len(self.function_set)
+        )
 
         # tree semantics: 0 emtpy, 1 functions, 2 terminals, 3 constants
         genotype = {
             "genes": {
                 "functions": functions_tree,
-                "terminals": jax.random.randint(t_key, shape=(self.n_nodes,), minval=0, maxval=self.n_inputs),
-                "constants": random.uniform(key=c_key, shape=(self.n_nodes,), minval=-1, maxval=1),
-                "tree": tree
+                "terminals": jax.random.randint(
+                    t_key, shape=(self.n_nodes,), minval=0, maxval=self.n_inputs
+                ),
+                "constants": random.uniform(
+                    key=c_key, shape=(self.n_nodes,), minval=-1, maxval=1
+                ),
+                "tree": tree,
             },
         }
         return self._clean_genotype(genotype)
 
     # noinspection PyMethodMayBeStatic
     def size(self, genotype: Genotype) -> jnp.ndarray:
-        """ Compute the actual size of a tree.
+        """Compute the actual size of a tree.
 
         Args:
             genotype: the tree
@@ -137,9 +152,9 @@ class TreeGP:
         return jnp.sum(genotype["genes"]["tree"] > 0)
 
     def init_ramped_half_and_half(
-            self,
-            rnd_key: RNGKey,
-            pop_size: int,
+        self,
+        rnd_key: RNGKey,
+        pop_size: int,
     ) -> Genotype:
         """Initialize a population using the Ramped Half-and-Half method.
 
@@ -158,14 +173,18 @@ class TreeGP:
         half_pop = jnp.floor(pop_size / 2).astype(jnp.int32)
         full_mask = jnp.arange(pop_size) < half_pop
         depths_range_length = self.max_depth - self.min_depth + 1
-        first_half_depths = self.min_depth + (jnp.arange(half_pop) % depths_range_length)
-        second_half_depths = self.min_depth + (jnp.arange(pop_size - half_pop) % depths_range_length)
+        first_half_depths = self.min_depth + (
+            jnp.arange(half_pop) % depths_range_length
+        )
+        second_half_depths = self.min_depth + (
+            jnp.arange(pop_size - half_pop) % depths_range_length
+        )
         depths = jnp.concatenate([first_half_depths, second_half_depths])
         return jax.jit(jax.vmap(self.init, in_axes=(0, 0, 0)))(keys, depths, full_mask)
 
     @staticmethod
     def _safe_int_cast(genotype) -> Genotype:
-        """ Casts the int part of the genome for safety."""
+        """Casts the int part of the genome for safety."""
         return {
             "genes": {
                 "constants": genotype["genes"]["constants"],
@@ -188,14 +207,21 @@ class TreeGP:
             Genotype: Cleaned genotype with valid tree structure.
         """
         genotype = self._safe_int_cast(genotype)
-        init_arities = jnp.where(genotype["genes"]["tree"] == 1,
-                                 self.function_set.arities[genotype["genes"]["functions"]], 0)
+        init_arities = jnp.where(
+            genotype["genes"]["tree"] == 1,
+            self.function_set.arities[genotype["genes"]["functions"]],
+            0,
+        )
 
-        def _clean_tree(idx: int, carry: Tuple[jnp.ndarray, jnp.ndarray]) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        def _clean_tree(
+            idx: int, carry: Tuple[jnp.ndarray, jnp.ndarray]
+        ) -> Tuple[jnp.ndarray, jnp.ndarray]:
             arities, g_tree = carry
             children = self.children_ids(idx)
             arities_range = jnp.arange(1, self.max_arity + 1)
-            children_to_zero_out = jnp.where(arities_range > arities[idx], children, self.n_nodes)
+            children_to_zero_out = jnp.where(
+                arities_range > arities[idx], children, self.n_nodes
+            )
             arities = arities.at[children_to_zero_out].set(0)
             g_tree = g_tree.at[children_to_zero_out].set(0)
             return arities, g_tree
@@ -204,7 +230,8 @@ class TreeGP:
             lower=0,
             upper=self.n_nodes,
             body_fun=_clean_tree,
-            init_val=(init_arities, genotype["genes"]["tree"]))
+            init_val=(init_arities, genotype["genes"]["tree"]),
+        )
 
         return {
             **genotype,
@@ -237,7 +264,9 @@ class TreeGP:
         Returns:
             jnp.ndarray: Depth of the node as integer.
         """
-        return jnp.floor(jnp.log((node_idx * (self.max_arity - 1) + 1)) / jnp.log(self.max_arity)).astype(jnp.int32)
+        return jnp.floor(
+            jnp.log((node_idx * (self.max_arity - 1) + 1)) / jnp.log(self.max_arity)
+        ).astype(jnp.int32)
 
     def compute_parent_id(self, node_idx: int) -> jnp.ndarray:
         """Compute the parent index of a given node. Root has parent -1.
@@ -348,7 +377,9 @@ class TreeGP:
 
     # checking methods
     # noinspection PyMethodMayBeStatic
-    def check_syntactic_equality(self, genotype1: Genotype, genotype2: Genotype) -> jnp.ndarray:
+    def check_syntactic_equality(
+        self, genotype1: Genotype, genotype2: Genotype
+    ) -> jnp.ndarray:
         """Check if two genotypes are syntactically identical.
 
         Compares tree structure, function IDs, terminal assignments, and constants.
@@ -364,14 +395,23 @@ class TreeGP:
         genotype2 = self._safe_int_cast(genotype2)
 
         def _equality(idx: int, param: str) -> jnp.ndarray:
-            f1 = jnp.where(genotype1["genes"]["tree"] == idx, genotype1["genes"][param], 0)
-            f2 = jnp.where(genotype2["genes"]["tree"] == idx, genotype2["genes"][param], 0)
+            f1 = jnp.where(
+                genotype1["genes"]["tree"] == idx, genotype1["genes"][param], 0
+            )
+            f2 = jnp.where(
+                genotype2["genes"]["tree"] == idx, genotype2["genes"][param], 0
+            )
             return jnp.allclose(f1, f2)
 
-        return _equality(0, "functions") & _equality(1, "terminals") & _equality(2, "constants")
+        return (
+            _equality(0, "functions")
+            & _equality(1, "terminals")
+            & _equality(2, "constants")
+        )
 
-    def check_semantic_equality(self, genotype1: Genotype, genotype2: Genotype,
-                                data_points: jnp.ndarray = None) -> jnp.ndarray:
+    def check_semantic_equality(
+        self, genotype1: Genotype, genotype2: Genotype, data_points: jnp.ndarray = None
+    ) -> jnp.ndarray:
         """Check if two genotypes are semantically equivalent on given input points.
 
         Args:
@@ -384,7 +424,9 @@ class TreeGP:
         """
         genotype1 = self._safe_int_cast(genotype1)
         genotype2 = self._safe_int_cast(genotype2)
-        data_points = self.semantic_equality_points if data_points is None else data_points
+        data_points = (
+            self.semantic_equality_points if data_points is None else data_points
+        )
         mapped_apply = jax.jit(jax.vmap(self.apply, in_axes=(None, 0)))
         output1 = mapped_apply(genotype1, data_points)
         output2 = mapped_apply(genotype2, data_points)
@@ -392,11 +434,9 @@ class TreeGP:
         # If shapes match, check elementwise closeness
         return jnp.all(jnp.isclose(output1, output2)) & (output1.shape == output2.shape)
 
-    def apply(self,
-              genotype: Genotype,
-              inputs: jnp.ndarray,
-              weights: jnp.ndarray = None
-              ) -> jnp.ndarray:
+    def apply(
+        self, genotype: Genotype, inputs: jnp.ndarray, weights: jnp.ndarray = None
+    ) -> jnp.ndarray:
         """Evaluate a tree genotype on input data in a JAX-friendly way.
 
         Uses a bottom-up evaluation with a buffer and supports function,
@@ -436,21 +476,25 @@ class TreeGP:
             node_value = jax.lax.switch(
                 genotype["genes"]["tree"][idx],
                 (_eval_empty, _eval_function, _eval_terminal, _eval_constant),
-                idx, values
+                idx,
+                values,
             )
             return values.at[idx].set(node_value)
 
         buffer = jax.lax.fori_loop(
-            0, self.n_nodes,
+            0,
+            self.n_nodes,
             lambda i, v: _eval_body(self.n_nodes - 1 - i, v),
             buffer,
         )
 
         return jnp.asarray([buffer[0]])
 
-    def get_readable_expression(self, genotype: Genotype,
-                                inputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None,
-                                ) -> str:
+    def get_readable_expression(
+        self,
+        genotype: Genotype,
+        inputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None,
+    ) -> str:
         """Return a human-readable symbolic expression of the tree.
 
         Args:
@@ -473,9 +517,12 @@ class TreeGP:
             inputs_mapping_fn = inputs_mapping
         return "y = " + self._get_readable_expression(genotype, inputs_mapping_fn)
 
-    def _get_readable_expression(self, genotype: Genotype,
-                                 inputs_mapping_fn: Callable[[int], str],
-                                 node_idx: int = 0, ) -> str:
+    def _get_readable_expression(
+        self,
+        genotype: Genotype,
+        inputs_mapping_fn: Callable[[int], str],
+        node_idx: int = 0,
+    ) -> str:
         """Recursive worker for get_readable_expression.
 
         Args:
@@ -502,7 +549,9 @@ class TreeGP:
             args = []
             for k in range(arity):
                 child_idx = int(children[k])
-                arg = self._get_readable_expression(genotype, inputs_mapping_fn, child_idx)
+                arg = self._get_readable_expression(
+                    genotype, inputs_mapping_fn, child_idx
+                )
                 args.append(arg)
 
             return f"{fn_name}(" + ", ".join(args) + ")"
@@ -510,10 +559,10 @@ class TreeGP:
         raise ValueError(f"Unknown node type {node_type}")
 
     def crossover(
-            self,
-            genotype1: Genotype,
-            genotype2: Genotype,
-            rnd_key: RNGKey,
+        self,
+        genotype1: Genotype,
+        genotype2: Genotype,
+        rnd_key: RNGKey,
     ) -> Genotype:
         """Perform subtree crossover between two tree genotypes.
 
@@ -537,10 +586,11 @@ class TreeGP:
         max_height_xover_point2 = self.max_depth - self.node_depth(xover_point1)
         tree2_heights = self.compute_subtree_heights(genotype2)
         admissible_xover_point2 = jnp.logical_and(
-            tree2_heights >= 0,
-            tree2_heights <= max_height_xover_point2
+            tree2_heights >= 0, tree2_heights <= max_height_xover_point2
         )
-        sampling_probs2 = (admissible_xover_point2 > 0) / jnp.sum(admissible_xover_point2 > 0)
+        sampling_probs2 = (admissible_xover_point2 > 0) / jnp.sum(
+            admissible_xover_point2 > 0
+        )
         xover_point2 = jax.random.choice(point_key_2, self.n_nodes, p=sampling_probs2)
         subtree_height = tree2_heights[xover_point2]
 
@@ -564,14 +614,15 @@ class TreeGP:
 
         return self._clean_genotype(offspring)
 
-    def mutate(self,
-               genotype: Genotype,
-               rnd_key: RNGKey,
-               p_subtree: float = 0.6,
-               p_point: float = 0.2,
-               p_constants: float = 0.2,
-               mutation_probabilities: Optional[Dict[str, float]] = None
-               ) -> Genotype:
+    def mutate(
+        self,
+        genotype: Genotype,
+        rnd_key: RNGKey,
+        p_subtree: float = 0.6,
+        p_point: float = 0.2,
+        p_constants: float = 0.2,
+        mutation_probabilities: Optional[Dict[str, float]] = None,
+    ) -> Genotype:
         """
         Apply exactly one mutation operator to a genotype, chosen stochastically
         among subtree mutation, point mutation, and constants mutation.
@@ -602,7 +653,8 @@ class TreeGP:
         return jax.lax.switch(
             mutation_id,
             (self.subtree_mutation, self.point_mutation, self.constants_mutation),
-            genotype, mut_key,
+            genotype,
+            mut_key,
         )
 
     def subtree_mutation(self, genotype: Genotype, rnd_key: RNGKey) -> Genotype:
@@ -619,18 +671,21 @@ class TreeGP:
         """
         genotype = self._safe_int_cast(genotype)
         xover_key, depth_key, donor_key = jax.random.split(rnd_key, 3)
-        depth = jax.random.randint(depth_key, shape=(), minval=1, maxval=self.max_depth + 1)
+        depth = jax.random.randint(
+            depth_key, shape=(), minval=1, maxval=self.max_depth + 1
+        )
         donor = self.init(donor_key, depth, full=False)
         return self.crossover(genotype, donor, xover_key)
 
     # noinspection PyMethodMayBeStatic
-    def constants_mutation(self,
-                           genotype: Genotype,
-                           rnd_key: RNGKey,
-                           mutation_rate: float = 0.05,
-                           reinit_rate: float = 0.005,
-                           gaussian_sigma: float = 0.1
-                           ) -> Genotype:
+    def constants_mutation(
+        self,
+        genotype: Genotype,
+        rnd_key: RNGKey,
+        mutation_rate: float = 0.05,
+        reinit_rate: float = 0.005,
+        gaussian_sigma: float = 0.1,
+    ) -> Genotype:
         """Mutate constants in a tree genotype.
 
         Adds Gaussian noise to some constants and randomly reinitializes a few constants.
@@ -646,16 +701,31 @@ class TreeGP:
             Genotype: Genotype with mutated constants.
         """
         genotype = self._safe_int_cast(genotype)
-        points_noise_key, noise_key, points_reinit_key, reinit_key = jax.random.split(rnd_key, 4)
-        constants_noise = gaussian_sigma * jax.random.normal(noise_key, shape=genotype["genes"]["constants"].shape)
+        points_noise_key, noise_key, points_reinit_key, reinit_key = jax.random.split(
+            rnd_key, 4
+        )
+        constants_noise = gaussian_sigma * jax.random.normal(
+            noise_key, shape=genotype["genes"]["constants"].shape
+        )
         noisy_constant = genotype["genes"]["constants"] + constants_noise
-        noising_constants_mask = random.uniform(points_noise_key, shape=noisy_constant.shape) < mutation_rate
-        mutated_constants = jnp.where(noising_constants_mask, noisy_constant, genotype["genes"]["constants"])
+        noising_constants_mask = (
+            random.uniform(points_noise_key, shape=noisy_constant.shape) < mutation_rate
+        )
+        mutated_constants = jnp.where(
+            noising_constants_mask, noisy_constant, genotype["genes"]["constants"]
+        )
 
         # re-init some constants
-        reinit_constants = jax.random.uniform(reinit_key, shape=mutated_constants.shape, minval=-1.0, maxval=1.0)
-        reinit_constants_mask = random.uniform(points_reinit_key, shape=reinit_constants.shape) < reinit_rate
-        mutated_constants = jnp.where(reinit_constants_mask, reinit_constants, mutated_constants)
+        reinit_constants = jax.random.uniform(
+            reinit_key, shape=mutated_constants.shape, minval=-1.0, maxval=1.0
+        )
+        reinit_constants_mask = (
+            random.uniform(points_reinit_key, shape=reinit_constants.shape)
+            < reinit_rate
+        )
+        mutated_constants = jnp.where(
+            reinit_constants_mask, reinit_constants, mutated_constants
+        )
 
         return {
             **genotype,
@@ -665,12 +735,13 @@ class TreeGP:
             },
         }
 
-    def point_mutation(self,
-                       genotype: Genotype,
-                       rnd_key: RNGKey,
-                       mutation_rate: float = 0.5,
-                       gaussian_sigma: float = 0.1
-                       ) -> Genotype:
+    def point_mutation(
+        self,
+        genotype: Genotype,
+        rnd_key: RNGKey,
+        mutation_rate: float = 0.5,
+        gaussian_sigma: float = 0.1,
+    ) -> Genotype:
         """Perform point mutation on active nodes of a tree genotype.
 
         - Functions are replaced with other functions of same arity.
@@ -688,8 +759,10 @@ class TreeGP:
         """
         genotype = self._safe_int_cast(genotype)
         points_key, loop_key = jax.random.split(rnd_key, 2)
-        mutation_mask = jnp.logical_and(random.uniform(points_key, shape=(self.n_nodes,)) < mutation_rate,
-                                        genotype["genes"]["tree"] > 0)
+        mutation_mask = jnp.logical_and(
+            random.uniform(points_key, shape=(self.n_nodes,)) < mutation_rate,
+            genotype["genes"]["tree"] > 0,
+        )
         mutations_target = genotype["genes"]["tree"] * mutation_mask
 
         # noinspection PyUnusedLocal
@@ -701,10 +774,18 @@ class TreeGP:
             previous_function = genome["genes"]["functions"][idx]
             previous_arity = self.function_set.arities[previous_function]
             candidate_functions_mask = self.function_set.arities == previous_arity
-            candidate_functions_mask = candidate_functions_mask.at[previous_function].set(False)
-            candidate_functions_probs = candidate_functions_mask / jnp.sum(candidate_functions_mask)
-            new_function_id = jax.random.choice(key, candidate_functions_probs.shape[0], p=candidate_functions_probs)
-            updated_functions = genome["genes"]["functions"].at[idx].set(new_function_id)
+            candidate_functions_mask = candidate_functions_mask.at[
+                previous_function
+            ].set(False)
+            candidate_functions_probs = candidate_functions_mask / jnp.sum(
+                candidate_functions_mask
+            )
+            new_function_id = jax.random.choice(
+                key, candidate_functions_probs.shape[0], p=candidate_functions_probs
+            )
+            updated_functions = (
+                genome["genes"]["functions"].at[idx].set(new_function_id)
+            )
             return {
                 **genome,
                 "genes": {
@@ -718,14 +799,22 @@ class TreeGP:
             flip_key, t_key, noise_key = jax.random.split(key, 3)
             node_type = genome["genes"]["tree"][idx]
             # swap leaf type with probability 1/2
-            updated_node_type = jnp.where(jax.random.bernoulli(flip_key, 0.5), 5 - node_type, node_type)
+            updated_node_type = jnp.where(
+                jax.random.bernoulli(flip_key, 0.5), 5 - node_type, node_type
+            )
             updated_tree = genome["genes"]["tree"].at[idx].set(updated_node_type)
             # change terminal in either case
-            new_terminal = jax.random.randint(t_key, shape=(), minval=0, maxval=self.n_inputs)
+            new_terminal = jax.random.randint(
+                t_key, shape=(), minval=0, maxval=self.n_inputs
+            )
             updated_terminals = genome["genes"]["terminals"].at[idx].set(new_terminal)
             # add gaussian noise to constant in any case
-            mutated_constant = genome["genes"]["constants"][idx] + gaussian_sigma * jax.random.normal(noise_key)
-            updated_constants = genome["genes"]["constants"].at[idx].set(mutated_constant)
+            mutated_constant = genome["genes"]["constants"][
+                idx
+            ] + gaussian_sigma * jax.random.normal(noise_key)
+            updated_constants = (
+                genome["genes"]["constants"].at[idx].set(mutated_constant)
+            )
             return {
                 **genome,
                 "genes": {
@@ -736,19 +825,23 @@ class TreeGP:
                 },
             }
 
-        def _mutation_body(idx: int, carry: Tuple[jnp.ndarray, Genotype, RNGKey]) -> Tuple[
-            jnp.ndarray, Genotype, RNGKey]:
+        def _mutation_body(
+            idx: int, carry: Tuple[jnp.ndarray, Genotype, RNGKey]
+        ) -> Tuple[jnp.ndarray, Genotype, RNGKey]:
             mutation_tree, mutated_genotype, inner_key = carry
             mut_key, inner_key = jax.random.split(inner_key)
             mutated_genotype = jax.lax.switch(
                 mutation_tree[idx],
                 (_ignore, _mutate_function, _mutate_leaf),
-                idx, mutated_genotype, mut_key,
+                idx,
+                mutated_genotype,
+                mut_key,
             )
             return mutation_tree, mutated_genotype, inner_key
 
         return jax.lax.fori_loop(
-            0, self.n_nodes,
+            0,
+            self.n_nodes,
             lambda i, v: _mutation_body(i, v),
             (mutations_target, genotype, loop_key),
         )[1]

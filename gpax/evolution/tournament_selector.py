@@ -37,7 +37,9 @@ class TournamentSelector(Selector):
             )
             mask = -jnp.inf * jnp.ones_like(fitness_values)
             mask = mask.at[indexes].set(1)
-            positive_fitnesses = fitness_values + jnp.abs(jnp.minimum(jnp.min(fitness_values), 0))
+            positive_fitnesses = fitness_values + jnp.abs(
+                jnp.minimum(jnp.min(fitness_values), 0)
+            )
             fitness_values_for_selection = positive_fitnesses * mask
             return jnp.argmax(fitness_values_for_selection)
 

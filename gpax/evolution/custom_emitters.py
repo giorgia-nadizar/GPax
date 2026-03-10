@@ -2,7 +2,6 @@ from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from qdax.core.containers.ga_repertoire import GARepertoire
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.emitters.repertoire_selectors.selector import Selector

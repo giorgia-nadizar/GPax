@@ -9,8 +9,7 @@ from gpax.gp.tree_genetic_programming import TreeGP
 
 
 def test_tournament_with_tree_gp() -> None:
-    """Test that tournament selection works with TGP.
-        """
+    """Test that tournament selection works with TGP."""
 
     # Init a random key
     key = jax.random.key(seed=0)
@@ -26,7 +25,13 @@ def test_tournament_with_tree_gp() -> None:
     pop_size = 20
     key, subkey = jax.random.split(key)
     init_trees = tree_structure.init_ramped_half_and_half(subkey, pop_size)
-    ga_repertoire = GARepertoire.init(init_trees, jnp.ones((pop_size, 1), ), population_size=pop_size)
+    ga_repertoire = GARepertoire.init(
+        init_trees,
+        jnp.ones(
+            (pop_size, 1),
+        ),
+        population_size=pop_size,
+    )
 
     # Create selector
     selector = TournamentSelector(tournament_size=3)

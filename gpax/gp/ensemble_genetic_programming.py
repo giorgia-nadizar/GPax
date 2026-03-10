@@ -1,14 +1,13 @@
 import functools
+from typing import Callable, Dict, Optional, Union
 
+import jax.numpy as jnp
 import jax.random
 from flax import struct
-import jax.numpy as jnp
-from typing import Dict, Optional, Union, Callable
+from qdax.custom_types import Genotype, RNGKey
 
-from qdax.custom_types import RNGKey, Genotype
-
-from gpax.gp.tree_genetic_programming import TreeGP
 from gpax.gp.graph_genetic_programming import GGP
+from gpax.gp.tree_genetic_programming import TreeGP
 
 
 @struct.dataclass
@@ -25,6 +24,7 @@ class EnsembleGP:
         base_gp_model: Base GGP model used to instantiate and evaluate each
             program in the ensemble.
     """
+
     n_outputs: int
     base_gp_model: Union[TreeGP, GGP]
 
@@ -46,11 +46,12 @@ class EnsembleGP:
         partial_init = functools.partial(self.base_gp_model.init, **kwargs)
         return jax.jit(jax.vmap(partial_init, in_axes=(0,)))(init_keys)
 
-    def apply(self,
-              genotype: Genotype,
-              obs: jnp.ndarray,
-              weights: Dict[str, jnp.ndarray] = None,
-              ) -> jnp.ndarray:
+    def apply(
+        self,
+        genotype: Genotype,
+        obs: jnp.ndarray,
+        weights: Dict[str, jnp.ndarray] = None,
+    ) -> jnp.ndarray:
         """Evaluate the ensemble of GP programs on an observation.
 
         Each GP program in the ensemble is evaluated independently and their
@@ -64,15 +65,18 @@ class EnsembleGP:
         Returns:
             jnp.ndarray: Flattened vector of ensemble program outputs.
         """
-        mapped_apply_fn = jax.jit(jax.vmap(self.base_gp_model.apply, in_axes=(0, None, 0)))
+        mapped_apply_fn = jax.jit(
+            jax.vmap(self.base_gp_model.apply, in_axes=(0, None, 0))
+        )
         nested_outputs = mapped_apply_fn(genotype, obs, weights)
         return jnp.ravel(nested_outputs)
 
-    def mutate(self,
-               genotype: Genotype,
-               rnd_key: RNGKey,
-               mutation_probabilities: Optional[Dict[str, float]] = None
-               ) -> Genotype:
+    def mutate(
+        self,
+        genotype: Genotype,
+        rnd_key: RNGKey,
+        mutation_probabilities: Optional[Dict[str, float]] = None,
+    ) -> Genotype:
         """Mutate an ensemble genotype.
 
         Each GP program in the ensemble is mutated independently using the
@@ -88,14 +92,16 @@ class EnsembleGP:
             Genotype: Mutated ensemble genotype.
         """
         mutate_keys = jax.random.split(rnd_key, self.n_outputs)
-        partial_mutate = functools.partial(self.base_gp_model.mutate, mutation_probabilities=mutation_probabilities)
+        partial_mutate = functools.partial(
+            self.base_gp_model.mutate, mutation_probabilities=mutation_probabilities
+        )
         return jax.jit(jax.vmap(partial_mutate, in_axes=(0, 0)))(genotype, mutate_keys)
 
     def get_readable_expression(
-            self,
-            genotype: Genotype,
-            inputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None,
-            outputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None
+        self,
+        genotype: Genotype,
+        inputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None,
+        outputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None,
     ) -> str:
         """Generate a human-readable symbolic representation of a GGP ensemble genotype.
 
@@ -129,7 +135,9 @@ class EnsembleGP:
             o1 = sin(i2)
         """
         expressions = [
-            self.base_gp_model.get_readable_expression(jax.tree.map(lambda x: x[i], genotype), inputs_mapping)
+            self.base_gp_model.get_readable_expression(
+                jax.tree.map(lambda x: x[i], genotype), inputs_mapping
+            )
             for i in range(self.n_outputs)
         ]
 

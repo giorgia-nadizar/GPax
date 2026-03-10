@@ -3,15 +3,15 @@ import functools
 import jax
 import jax.numpy as jnp
 import pytest
-from jax import vmap
-
 import qdax.tasks.brax.v1 as environments
+from jax import vmap
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.standard_emitters import MixingEmitter
-
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-from qdax.tasks.brax.v1.env_creators import scoring_function_brax_envs as scoring_function
+from qdax.tasks.brax.v1.env_creators import (
+    scoring_function_brax_envs as scoring_function,
+)
 from qdax.utils.metrics import default_qd_metrics
 
 from gpax.gp.cartesian_genetic_programming import CGP
@@ -19,17 +19,16 @@ from gpax.gp.ensemble_genetic_programming import EnsembleGP
 
 
 def test_ensemble_with_me() -> None:
-    """Test that ensemble GP can be used with ME and is jit safe.
-        """
+    """Test that ensemble GP can be used with ME and is jit safe."""
 
     batch_size = 10
-    env_name = 'walker2d_uni'
+    env_name = "walker2d_uni"
     episode_length = 100
     num_iterations = 20
     seed = 42
     num_init_cvt_samples = 5_000
     num_centroids = 1024
-    min_descriptor = 0.
+    min_descriptor = 0.0
     max_descriptor = 1.0
 
     # Init environment
@@ -44,10 +43,7 @@ def test_ensemble_with_me() -> None:
         n_inputs=env.observation_size,
         n_outputs=1,
     )
-    policy_graph = EnsembleGP(
-        n_outputs=env.action_size,
-        base_gp_model=inner_cgp
-    )
+    policy_graph = EnsembleGP(n_outputs=env.action_size, base_gp_model=inner_cgp)
 
     # Init the population of CGP genomes
     key, subkey = jax.random.split(key)
@@ -56,9 +52,9 @@ def test_ensemble_with_me() -> None:
 
     # Define the play step fn for CGP to interact with the env
     def gp_play_step_fn(
-            env_state,
-            policy_params,
-            key,
+        env_state,
+        policy_params,
+        key,
     ):
         """
         Play an environment step and return the updated state and the transition.
@@ -105,7 +101,9 @@ def test_ensemble_with_me() -> None:
     def vmap_mutate(population_of_genotypes, mutation_key):
         n_pop = jax.tree.leaves(population_of_genotypes)[0].shape[0]
         multi_mutate_keys = jax.random.split(mutation_key, n_pop)
-        return jax.jit(jax.vmap(policy_graph.mutate))(population_of_genotypes, multi_mutate_keys)
+        return jax.jit(jax.vmap(policy_graph.mutate))(
+            population_of_genotypes, multi_mutate_keys
+        )
 
     gp_mutation_fn = functools.partial(
         vmap_mutate  # , mutation_probabilities={"inputs" : .2}
@@ -114,7 +112,7 @@ def test_ensemble_with_me() -> None:
         mutation_fn=gp_mutation_fn,
         variation_fn=None,
         variation_percentage=0.0,  # we define the ensemble with mutation only
-        batch_size=batch_size
+        batch_size=batch_size,
     )
 
     # Instantiate MAP-Elites
@@ -137,7 +135,9 @@ def test_ensemble_with_me() -> None:
 
     # Compute initial repertoire and emitter state
     key, subkey = jax.random.split(key)
-    repertoire, emitter_state, init_metrics = map_elites.init(init_cgp_genomes, centroids, subkey)
+    repertoire, emitter_state, init_metrics = map_elites.init(
+        init_cgp_genomes, centroids, subkey
+    )
 
     # Check repertoire is not empty
     pytest.assume(jnp.any(repertoire.fitnesses > -jnp.inf))

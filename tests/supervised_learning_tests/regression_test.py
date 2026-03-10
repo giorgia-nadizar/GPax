@@ -6,11 +6,17 @@ import optax
 from sklearn.model_selection import train_test_split
 
 from gpax.gp.cartesian_genetic_programming import CGP
-from gpax.supervised_learning.constants_optimization import optimize_constants_with_sgd, \
-    optimize_constants_with_lbfgs, optimize_constants_with_cmaes
-from gpax.supervised_learning.scoring_functions import compute_model_predictions, \
-    supervised_learning_accuracy_evaluation, \
-    supervised_learning_scoring_fn, supervised_learning_accuracy_evaluation_with_constants_optimization
+from gpax.supervised_learning.constants_optimization import (
+    optimize_constants_with_cmaes,
+    optimize_constants_with_lbfgs,
+    optimize_constants_with_sgd,
+)
+from gpax.supervised_learning.scoring_functions import (
+    compute_model_predictions,
+    supervised_learning_accuracy_evaluation,
+    supervised_learning_accuracy_evaluation_with_constants_optimization,
+    supervised_learning_scoring_fn,
+)
 
 
 def test_prediction_shape():

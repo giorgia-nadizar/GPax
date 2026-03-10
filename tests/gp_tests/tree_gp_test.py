@@ -37,11 +37,7 @@ def test_ramped_half_and_half(simple_tree_gp):
 
 
 def test_tree_size(simple_tree_gp):
-    genotype = {
-        "genes": {
-            "tree": jnp.array([1, 2, 0, -1, 3, 0])
-        }
-    }
+    genotype = {"genes": {"tree": jnp.array([1, 2, 0, -1, 3, 0])}}
 
     size = simple_tree_gp.size(genotype)
 
@@ -88,7 +84,7 @@ def test_known_genome_execution(simple_tree_gp):
             "tree": tree,
             "functions": functions,
             "terminals": terminals,
-            "constants": constants
+            "constants": constants,
         }
     }
     # print(simple_tree_gp.get_readable_expression(genome))
@@ -143,7 +139,9 @@ def test_point_mutation(simple_tree_gp):
 def test_constants_mutation(simple_tree_gp):
     key = jax.random.PRNGKey(7)
     g = simple_tree_gp.init(key, target_depth=2, full=True)
-    mutated = simple_tree_gp.constants_mutation(g, key, mutation_rate=0.5, reinit_rate=0.1)
+    mutated = simple_tree_gp.constants_mutation(
+        g, key, mutation_rate=0.5, reinit_rate=0.1
+    )
 
     # Check shape is preserved
     assert mutated["genes"]["constants"].shape == g["genes"]["constants"].shape

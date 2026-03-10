@@ -3,8 +3,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import jax.numpy as jnp
 import jax.random
 from flax import struct
-from typing import Callable, Dict, Union, List, Tuple, Optional
-
 from jax import random
 from jax.lax import fori_loop
 from qdax.custom_types import Genotype, Mask, RNGKey
@@ -80,14 +78,15 @@ class GGP:
         """Compute the number of active (expressed) elements in a genotype."""
         return jnp.sum(self.compute_active_mask(genotype))
 
-    def mutate(self,
-               genotype: Genotype,
-               rnd_key: RNGKey,
-               p_mut_inputs: float = 0.1,
-               p_mut_functions: float = 0.1,
-               weights_mut_sigma: float = 0.1,
-               mutation_probabilities: Optional[Dict[str, float]] = None
-               ) -> Genotype:
+    def mutate(
+        self,
+        genotype: Genotype,
+        rnd_key: RNGKey,
+        p_mut_inputs: float = 0.1,
+        p_mut_functions: float = 0.1,
+        weights_mut_sigma: float = 0.1,
+        mutation_probabilities: Optional[Dict[str, float]] = None,
+    ) -> Genotype:
         """Mutates a GGP genotype using int-flip mutation. If the genotype is weighted, the weights
         are mutated with Gaussian mutation.
 
