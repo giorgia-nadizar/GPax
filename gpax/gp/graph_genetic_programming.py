@@ -82,6 +82,7 @@ class GGP:
         self,
         genotype: Genotype,
         rnd_key: RNGKey,
+        *,
         p_mut_inputs: float = 0.1,
         p_mut_functions: float = 0.1,
         weights_mut_sigma: float = 0.1,
