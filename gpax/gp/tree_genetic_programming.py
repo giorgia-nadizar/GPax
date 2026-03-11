@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import jax.random
@@ -44,8 +44,8 @@ class TreeGP:
         min_depth: int = 1,
         max_depth: int = 15,
         max_arity: int = 2,
-        function_set: FunctionSet = None,
-        outputs_wrapper: Callable = None,
+        function_set: Optional[FunctionSet] = None,
+        outputs_wrapper: Optional[Callable] = None,
         semantic_equality_points: Optional[jnp.ndarray] = None,
     ):
         """Initializes the TreeGP object.
@@ -62,12 +62,13 @@ class TreeGP:
             semantic_equality_points (Optional[jnp.ndarray], optional): Points for semantic equality checks.
             Defaults to None.
         """
+        _outputs_wrapper: Callable = outputs_wrapper or (lambda x: x)
         object.__setattr__(self, "n_inputs", n_inputs)
         object.__setattr__(self, "min_depth", min_depth)
         object.__setattr__(self, "max_depth", max_depth)
         object.__setattr__(self, "max_arity", max_arity)
         object.__setattr__(self, "function_set", function_set or FunctionSet())
-        object.__setattr__(self, "outputs_wrapper", outputs_wrapper or (lambda x: x))
+        object.__setattr__(self, "outputs_wrapper", _outputs_wrapper)
         if semantic_equality_points is None:
             key = jax.random.PRNGKey(42)
             semantic_equality_points = (
@@ -82,7 +83,7 @@ class TreeGP:
         Returns:
             int: Total number of nodes in the fixed-size tree.
         """
-        return (self.max_arity ** (self.max_depth + 1) - 1) // (self.max_arity - 1)
+        return int((self.max_arity ** (self.max_depth + 1) - 1) // (self.max_arity - 1))
 
     # init methods
     def init(
@@ -184,7 +185,7 @@ class TreeGP:
         return jax.jit(jax.vmap(self.init, in_axes=(0, 0, 0)))(keys, depths, full_mask)
 
     @staticmethod
-    def _safe_int_cast(genotype) -> Genotype:
+    def _safe_int_cast(genotype: Genotype) -> Genotype:
         """Casts the int part of the genome for safety."""
         return {
             "genes": {
@@ -343,13 +344,13 @@ class TreeGP:
         def _update_heights(idx: int, heights: jnp.ndarray) -> jnp.ndarray:
             node = genotype["genes"]["tree"][idx]
 
-            def active_node(_):
+            def active_node(_: Any) -> jnp.ndarray:
                 # leaf node
-                def leaf():
+                def leaf() -> int:
                     return 0
 
                 # function node
-                def function():
+                def function() -> jnp.ndarray:
                     child_heights = heights[self.children_ids(idx)]
                     return 1 + jnp.max(child_heights)
 
@@ -494,7 +495,7 @@ class TreeGP:
     def get_readable_expression(
         self,
         genotype: Genotype,
-        inputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None,
+        inputs_mapping: Union[Dict[int, str], Callable[[int], str], None] = None,
     ) -> str:
         """Return a human-readable symbolic expression of the tree.
 
