@@ -1,5 +1,5 @@
 import functools
-from typing import Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import jax.numpy as jnp
 import jax.random
@@ -28,7 +28,7 @@ class EnsembleGP:
     n_outputs: int
     base_gp_model: Union[TreeGP, GGP]
 
-    def init(self, rnd_key: RNGKey, **kwargs):
+    def init(self, rnd_key: RNGKey, **kwargs: Any) -> Genotype:
         """Initialize an ensemble of random genotypes.
 
         Each output dimension corresponds to an independent GP program, thus
@@ -43,14 +43,15 @@ class EnsembleGP:
             to a GP program for one output dimension.
         """
         init_keys = jax.random.split(rnd_key, self.n_outputs)
-        partial_init = functools.partial(self.base_gp_model.init, **kwargs)
+        init_fn: Callable[..., Any] = self.base_gp_model.init
+        partial_init = functools.partial(init_fn, **kwargs)
         return jax.jit(jax.vmap(partial_init, in_axes=(0,)))(init_keys)
 
     def apply(
         self,
         genotype: Genotype,
         obs: jnp.ndarray,
-        weights: Dict[str, jnp.ndarray] = None,
+        weights: Optional[Dict[str, jnp.ndarray]] = None,
     ) -> jnp.ndarray:
         """Evaluate the ensemble of GP programs on an observation.
 
@@ -100,8 +101,8 @@ class EnsembleGP:
     def get_readable_expression(
         self,
         genotype: Genotype,
-        inputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None,
-        outputs_mapping: Union[Dict[int, str], Callable[[int], str]] = None,
+        inputs_mapping: Union[Dict[int, str], Callable[[int], str], None] = None,
+        outputs_mapping: Union[Dict[int, str], Callable[[int], str], None] = None,
     ) -> str:
         """Generate a human-readable symbolic representation of a GGP ensemble genotype.
 
@@ -143,7 +144,9 @@ class EnsembleGP:
 
         outputs_mapping = outputs_mapping or {}
         if isinstance(outputs_mapping, dict):
-            outputs_mapping_fn = lambda idx: outputs_mapping.get(idx, f"o{idx}")
+            outputs_mapping_fn: Callable[[int], str] = lambda idx: outputs_mapping.get(
+                idx, f"o{idx}"
+            )
         else:
             outputs_mapping_fn = outputs_mapping
         processed_expressions = []

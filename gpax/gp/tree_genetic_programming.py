@@ -126,7 +126,7 @@ class TreeGP:
             f_key, shape=(self.n_nodes,), minval=0, maxval=len(self.function_set)
         )
 
-        # tree semantics: 0 emtpy, 1 functions, 2 terminals, 3 constants
+        # tree semantics: 0 empty, 1 functions, 2 terminals, 3 constants
         genotype = {
             "genes": {
                 "functions": functions_tree,
