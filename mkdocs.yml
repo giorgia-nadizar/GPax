@@ -18,5 +18,5 @@ nav:
   - Home: index.md
   - API:
       - Evolution: api/evolution.md
-      - Graphs: api/graphs.md
+      - Genetic Programming: api/gp.md
       - Supervised Learning: api/supervised_learning.md

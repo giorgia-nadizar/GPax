@@ -8,6 +8,12 @@
 ### `TournamentSelector`
 ::: gpax.evolution.tournament_selector.TournamentSelector
 
+## Emitters
+
+### `CustomMixingEmitter`
+::: gpax.evolution.custom_emitters.CustomMixingEmitter
+
+
 ## Algorithms and related containers
 
 ### `GeneticAlgorithmWithExtraScores`
