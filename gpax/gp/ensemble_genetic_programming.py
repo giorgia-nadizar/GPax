@@ -6,13 +6,14 @@ import jax.random
 from flax import struct
 from qdax.custom_types import Genotype, RNGKey
 
+from gpax.gp.genetic_programming import GP
 from gpax.gp.graph_genetic_programming import GGP
 from gpax.gp.tree_genetic_programming import TreeGP
 
 
 @struct.dataclass
-class EnsembleGP:
-    """Ensemble wrapper for multiple GGP programs.
+class EnsembleGP(GP):
+    """Ensemble wrapper for multiple GP programs.
 
     This class implements an ensemble of independent GP programs that share
     the same base representation but evolve separately per output dimension.
@@ -21,7 +22,7 @@ class EnsembleGP:
 
     Args:
         n_outputs: Number of independent GP programs in the ensemble.
-        base_gp_model: Base GGP model used to instantiate and evaluate each
+        base_gp_model: Base GP model used to instantiate and evaluate each
             program in the ensemble.
     """
 
@@ -104,7 +105,7 @@ class EnsembleGP:
         inputs_mapping: Union[Dict[int, str], Callable[[int], str], None] = None,
         outputs_mapping: Union[Dict[int, str], Callable[[int], str], None] = None,
     ) -> str:
-        """Generate a human-readable symbolic representation of a GGP ensemble genotype.
+        """Generate a human-readable symbolic representation of a GP ensemble genotype.
 
         Unary functions are printed in the form:
             f(x)

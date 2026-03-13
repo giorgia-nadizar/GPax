@@ -8,10 +8,11 @@ from jax.lax import fori_loop
 from qdax.custom_types import Genotype, Mask, RNGKey
 
 from gpax.gp.functions import FunctionSet
+from gpax.gp.genetic_programming import GP
 
 
 @struct.dataclass
-class GGP:
+class GGP(GP):
     """Base class for Graph-based Genetic Programming (GGP) representations.
 
     Common parameters for GP encodings:

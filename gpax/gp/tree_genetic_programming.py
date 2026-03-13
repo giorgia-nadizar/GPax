@@ -8,10 +8,15 @@ from jax.lax import fori_loop
 from qdax.custom_types import Genotype, RNGKey
 
 from gpax.gp.functions import FunctionSet
+from gpax.gp.genetic_programming import GP
+
+
+def identity(x: Any) -> Any:
+    return x
 
 
 @struct.dataclass
-class TreeGP:
+class TreeGP(GP):
     """Tree-based Genetic Programming (TreeGP) representation.
 
     This class implements a fixed-size tree-based genetic programming genome.
@@ -33,7 +38,7 @@ class TreeGP:
     max_depth: int = 15  # 0 is the root
     max_arity: int = 2
     function_set: FunctionSet = FunctionSet()
-    outputs_wrapper: Callable = lambda x: x
+    outputs_wrapper: Callable = identity
     semantic_equality_points: Optional[jnp.ndarray] = struct.field(
         pytree_node=False, default=None
     )
@@ -45,7 +50,7 @@ class TreeGP:
         max_depth: int = 15,
         max_arity: int = 2,
         function_set: Optional[FunctionSet] = None,
-        outputs_wrapper: Optional[Callable] = None,
+        outputs_wrapper: Callable[[jnp.ndarray], jnp.ndarray] = identity,
         semantic_equality_points: Optional[jnp.ndarray] = None,
     ):
         """Initializes the TreeGP object.
@@ -62,7 +67,7 @@ class TreeGP:
             semantic_equality_points (Optional[jnp.ndarray], optional): Points for semantic equality checks.
             Defaults to None.
         """
-        _outputs_wrapper: Callable = outputs_wrapper or (lambda x: x)
+        _outputs_wrapper = outputs_wrapper
         object.__setattr__(self, "n_inputs", n_inputs)
         object.__setattr__(self, "min_depth", min_depth)
         object.__setattr__(self, "max_depth", max_depth)
@@ -437,7 +442,10 @@ class TreeGP:
         return jnp.all(jnp.isclose(output1, output2)) & (output1.shape == output2.shape)
 
     def apply(
-        self, genotype: Genotype, inputs: jnp.ndarray, weights: jnp.ndarray = None
+        self,
+        genotype: Genotype,
+        inputs: jnp.ndarray,
+        weights: Optional[jnp.ndarray] = None,
     ) -> jnp.ndarray:
         """Evaluate a tree genotype on input data in a JAX-friendly way.
 
@@ -447,6 +455,7 @@ class TreeGP:
         Args:
             genotype (Genotype): Tree genotype to evaluate.
             inputs (jnp.ndarray): Input features array of shape (n_inputs,).
+            weights (Optional[jnp.ndarray]): Tree weights, currently not used.
 
         Returns:
             jnp.ndarray: Output value computed by the tree.
@@ -490,7 +499,7 @@ class TreeGP:
             buffer,
         )
 
-        return jnp.asarray([buffer[0]])
+        return self.outputs_wrapper(jnp.asarray([buffer[0]]))
 
     def get_readable_expression(
         self,
