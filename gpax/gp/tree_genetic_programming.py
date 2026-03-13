@@ -445,7 +445,7 @@ class TreeGP(GP):
         self,
         genotype: Genotype,
         inputs: jnp.ndarray,
-        weights: Optional[jnp.ndarray] = None,
+        weights: Optional[Dict[str, jnp.ndarray]] = None,
     ) -> jnp.ndarray:
         """Evaluate a tree genotype on input data in a JAX-friendly way.
 
@@ -455,7 +455,7 @@ class TreeGP(GP):
         Args:
             genotype (Genotype): Tree genotype to evaluate.
             inputs (jnp.ndarray): Input features array of shape (n_inputs,).
-            weights (Optional[jnp.ndarray]): Tree weights, currently not used.
+            weights (Optional[Dict[str, jnp.ndarray]]): Tree weights, currently not used.
 
         Returns:
             jnp.ndarray: Output value computed by the tree.

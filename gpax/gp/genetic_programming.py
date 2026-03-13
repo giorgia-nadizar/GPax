@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import jax.numpy as jnp
 from flax import struct
@@ -19,7 +21,7 @@ class GP(ABC):
         self,
         genotype: Genotype,
         inputs: jnp.ndarray,
-        weights: Optional[jnp.ndarray] = None,
+        weights: Optional[Dict[str, jnp.ndarray]] = None,
     ) -> jnp.ndarray:
         """Evaluate the GP program on an observation.
 
@@ -98,3 +100,120 @@ class GP(ABC):
             y = ((i0+i1) * sin(i2))
         """
         raise NotImplementedError
+
+    def bind(self, genotype: Genotype) -> GPInstance:
+        return GPInstance(gp_model=self, genotype=genotype)  # type: ignore
+
+
+@struct.dataclass
+class GPInstance:
+    """
+    A bound instance of a `GP` model with a fixed `Genotype`.
+
+    `GPInstance` acts as a convenient wrapper around a `GP` model,
+    automatically binding a specific `Genotype`. Once bound, all
+    methods operate on this fixed genotype, eliminating the need
+    to pass it explicitly every time.
+
+    Attributes
+    ----------
+    gp_model : GP
+        The genetic programming model that defines the operations.
+    genotype : Genotype
+        The genotype bound to this instance, used by all method calls.
+    """
+
+    gp_model: GP
+    genotype: Genotype
+
+    def apply(
+        self, obs: jnp.ndarray, weights: Optional[Dict[str, jnp.ndarray]] = None
+    ) -> jnp.ndarray:
+        """
+        Evaluate the GP model on a given observation using the bound genotype.
+
+        Parameters
+        ----------
+        obs : jnp.ndarray
+            Input observation for which to evaluate the GP model.
+        weights : Optional[Dict[str, jnp.ndarray]]
+            Optional weights to override any default or learned parameters
+            in the GP model during evaluation.
+
+        Returns
+        -------
+        jnp.ndarray
+            The output of the GP model for the given observation.
+        """
+        return self.gp_model.apply(self.genotype, obs, weights)
+
+    def size(self) -> jnp.ndarray:
+        """
+        Compute the size or complexity of the bound genotype.
+
+        Returns
+        -------
+        jnp.ndarray
+            The size (e.g., number of nodes or operations) of the genotype.
+        """
+        return self.gp_model.size(self.genotype)
+
+    def mutate(
+        self,
+        rnd_key: RNGKey,
+        *,
+        mutation_probabilities: Optional[Dict[str, float]] = None,
+    ) -> Genotype:
+        """
+        Apply mutation to the bound genotype to produce a new genotype.
+
+        Parameters
+        ----------
+        rnd_key : RNGKey
+            A random key for reproducible mutation.
+        mutation_probabilities : Optional[Dict[str, float]]
+            Optional dictionary specifying per-operation mutation probabilities.
+            If not provided, default probabilities are used.
+
+        Returns
+        -------
+        Genotype
+            A new genotype resulting from mutation of the bound genotype.
+        """
+        return self.gp_model.mutate(
+            self.genotype, rnd_key, mutation_probabilities=mutation_probabilities
+        )
+
+    def get_readable_expression(
+        self,
+        **kwargs: Any,
+    ) -> str:
+        """
+        Generate a human-readable representation of the bound genotype.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Additional keyword arguments to customize formatting.
+
+        Returns
+        -------
+        str
+            A string representation of the genotype in a readable form.
+        """
+        return self.gp_model.get_readable_expression(self.genotype, **kwargs)
+
+    def unbind(self) -> Tuple[GP, Genotype]:
+        """
+        Return the original GP model and the bound genotype.
+
+        Returns
+        -------
+        tuple
+            A tuple containing:
+            - gp_model : GP
+                The original GP model.
+            - genotype : Genotype
+                The genotype bound to this instance.
+        """
+        return self.gp_model, self.genotype
