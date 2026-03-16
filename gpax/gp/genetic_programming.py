@@ -79,6 +79,17 @@ class GP(ABC):
         mutation_probabilities: Optional[Dict[str, float]] = None,
         **kwargs: Any,
     ) -> Genotype:
+        """Mutate a batch of genotypes.
+
+        Args:
+            genotype: a batch of GP genotypes to mutate.
+            rnd_key: JAX PRNG key used for stochastic mutation.
+            mutation_probabilities: Optional dictionary overriding mutation
+                probabilities for genotype components.
+
+        Returns:
+            Genotype: Mutated GP genotypes batch.
+        """
         batch_size = jax.tree.leaves(genotype)[0].shape[0]
         mutation_keys = jax.random.split(rnd_key, batch_size)
 
@@ -129,6 +140,25 @@ class GP(ABC):
         raise NotImplementedError
 
     def bind(self, genotype: Genotype) -> GPInstance:
+        """Create an interactive GP instance by binding a genotype to this model.
+
+        This method returns a `GPInstance` in which the provided
+        ``genotype`` is bound to the current GP model. The resulting object
+        represents a concrete, executable instance of the model and can be
+        used to perform operations that require both the model definition
+        and a specific genotype.
+
+        This method provides a convenient way to work with a stateful
+        instance directly.
+
+        Args:
+            genotype: The genotype to bind to this GP model.
+
+        Returns:
+            GPInstance: An instance combining this GP model with the
+            provided genotype.
+        """
+
         return GPInstance(gp_model=self, genotype=genotype)  # type: ignore
 
 
