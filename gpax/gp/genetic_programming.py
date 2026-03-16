@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
+import jax
 import jax.numpy as jnp
 from flax import struct
 from qdax.custom_types import Genotype, RNGKey
@@ -55,6 +56,7 @@ class GP(ABC):
         rnd_key: RNGKey,
         *,
         mutation_probabilities: Optional[Dict[str, float]] = None,
+        **kwargs: Any,
     ) -> Genotype:
         """Mutate a genotype.
 
@@ -68,6 +70,31 @@ class GP(ABC):
             Genotype: Mutated GP genotype.
         """
         raise NotImplementedError
+
+    def vmap_mutate(
+        self,
+        genotype: Genotype,
+        rnd_key: RNGKey,
+        *,
+        mutation_probabilities: Optional[Dict[str, float]] = None,
+        **kwargs: Any,
+    ) -> Genotype:
+        batch_size = jax.tree.leaves(genotype)[0].shape[0]
+        mutation_keys = jax.random.split(rnd_key, batch_size)
+
+        def _mutation_fn(genotype_i: Genotype, key_i: RNGKey) -> Genotype:
+            return self.mutate(
+                genotype_i,
+                key_i,
+                mutation_probabilities=mutation_probabilities,
+                **kwargs,
+            )
+
+        vmap_mutation_fn = jax.jit(jax.vmap(_mutation_fn, in_axes=(0, 0)))
+        return vmap_mutation_fn(
+            genotype,
+            mutation_keys,
+        )
 
     @abstractmethod
     def get_readable_expression(

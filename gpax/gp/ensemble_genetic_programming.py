@@ -78,6 +78,7 @@ class EnsembleGP(GP):
         genotype: Genotype,
         rnd_key: RNGKey,
         mutation_probabilities: Optional[Dict[str, float]] = None,
+        **kwargs: Any,
     ) -> Genotype:
         """Mutate an ensemble genotype.
 

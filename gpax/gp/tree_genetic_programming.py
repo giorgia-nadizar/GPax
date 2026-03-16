@@ -633,6 +633,7 @@ class TreeGP(GP):
         p_point: float = 0.2,
         p_constants: float = 0.2,
         mutation_probabilities: Optional[Dict[str, float]] = None,
+        **kwargs: Any,
     ) -> Genotype:
         """
         Apply exactly one mutation operator to a genotype, chosen stochastically

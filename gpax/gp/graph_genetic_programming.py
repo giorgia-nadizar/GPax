@@ -88,6 +88,7 @@ class GGP(GP):
         p_mut_functions: float = 0.1,
         weights_mut_sigma: float = 0.1,
         mutation_probabilities: Optional[Dict[str, float]] = None,
+        **kwargs: Any,
     ) -> Genotype:
         """Mutates a GGP genotype using int-flip mutation. If the genotype is weighted, the weights
         are mutated with Gaussian mutation.
