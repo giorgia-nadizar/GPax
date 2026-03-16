@@ -218,6 +218,7 @@ class CGP(GGP):
         p_mut_outputs: float = 0.3,
         weights_mut_sigma: float = 0.1,
         mutation_probabilities: Optional[Dict[str, float]] = None,
+        **kwargs: Any,
     ) -> Genotype:
         """Mutates a CGP genome using int-flip mutation. If the genome is weighted, the weights
         are mutated with Gaussian mutation.

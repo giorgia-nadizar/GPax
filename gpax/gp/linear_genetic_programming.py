@@ -231,6 +231,7 @@ class LGP(GGP):
         p_mut_functions: float = 0.1,
         weights_mut_sigma: float = 0.1,
         mutation_probabilities: Optional[Dict[str, float]] = None,
+        **kwargs: Any,
     ) -> Genotype:
         """Mutates a LGP genome using int-flip mutation.
 

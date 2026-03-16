@@ -563,3 +563,18 @@ def test_gradient_optimization_of_input_weights() -> None:
     print(cgp.get_readable_expression(cgp_genome))
     print(optimizable_weights["inputs1"] * active, target_weights1 * active)
     print(optimizable_weights["inputs2"] * active, target_weights2 * active)
+
+
+def test_vmap_mutation() -> None:
+    cgp = CGP(n_inputs=3, n_input_constants=0, n_outputs=2, n_nodes=4)
+    n_pop = 5
+    key = jax.random.PRNGKey(0)
+    init_key, mut_key = jax.random.split(key)
+    init_keys = jax.random.split(init_key, n_pop)
+    init_pop = jax.jit(jax.vmap(cgp.init))(init_keys)
+    mutated_pop = cgp.vmap_mutate(
+        init_pop, mut_key, p_mut_functions=0, p_mut_inputs=0.9
+    )
+    pytest.assume(
+        jnp.allclose(init_pop["genes"]["functions"], mutated_pop["genes"]["functions"])
+    )
