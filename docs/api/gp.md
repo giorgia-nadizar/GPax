@@ -2,6 +2,9 @@
 
 ## Representations
 
+### `GP`
+::: gpax.gp.genetic_programming.GGP
+
 ### `GGP`
 ::: gpax.gp.graph_genetic_programming.GGP
 
