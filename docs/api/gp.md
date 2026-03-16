@@ -3,10 +3,10 @@
 ## Representations
 
 ### `GP`
-::: gpax.gp.genetic_programming.GGP
+::: gpax.gp.genetic_programming.GP
 
 ### `GGP`
-::: gpax.gp.graph_genetic_programming.GP
+::: gpax.gp.graph_genetic_programming.GGP
 
 ### `CGP`
 ::: gpax.gp.cartesian_genetic_programming.CGP
