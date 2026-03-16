@@ -20,14 +20,14 @@ class GP(ABC):
     def apply(
         self,
         genotype: Genotype,
-        inputs: jnp.ndarray,
+        obs: jnp.ndarray,
         weights: Optional[Dict[str, jnp.ndarray]] = None,
     ) -> jnp.ndarray:
         """Evaluate the GP program on an observation.
 
         Args:
             genotype: GP genotype.
-            inputs: Observation input array.
+            obs: Observation input array.
             weights: Optional dictionary of trainable weights to use during evaluation.
 
         Returns:
