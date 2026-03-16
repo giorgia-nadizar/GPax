@@ -6,7 +6,7 @@
 ::: gpax.gp.genetic_programming.GGP
 
 ### `GGP`
-::: gpax.gp.graph_genetic_programming.GGP
+::: gpax.gp.graph_genetic_programming.GP
 
 ### `CGP`
 ::: gpax.gp.cartesian_genetic_programming.CGP
