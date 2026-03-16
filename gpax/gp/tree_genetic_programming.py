@@ -476,7 +476,7 @@ class TreeGP(GP):
         # terminal node
         # noinspection PyUnusedLocal
         def _eval_terminal(idx: int, buff: jnp.ndarray) -> jnp.ndarray:
-            return inputs[genotype["genes"]["terminals"][idx]].astype(float)
+            return obs[genotype["genes"]["terminals"][idx]].astype(float)
 
         # constant node
         # noinspection PyUnusedLocal
