@@ -3,14 +3,12 @@ import functools
 import jax
 import jax.numpy as jnp
 import pytest
-import qdax.tasks.brax.v1 as environments
+import qdax.tasks.brax as environments
 from qdax.core.containers.mapelites_repertoire import compute_cvt_centroids
 from qdax.core.emitters.standard_emitters import MixingEmitter
 from qdax.core.map_elites import MAPElites
 from qdax.core.neuroevolution.buffers.buffer import QDTransition
-from qdax.tasks.brax.v1.env_creators import (
-    scoring_function_brax_envs as scoring_function,
-)
+from qdax.tasks.brax.env_creators import scoring_function_brax_envs as scoring_function
 from qdax.utils.metrics import default_qd_metrics
 
 from gpax.gp.linear_genetic_programming import LGP

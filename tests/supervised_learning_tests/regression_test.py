@@ -101,7 +101,7 @@ def test_regression_accuracy_evaluation_with_sgd_shape():
     cgp = CGP(
         n_inputs=n_inputs,
         n_outputs=1,
-        n_nodes=5,
+        n_nodes=10,
         weighted_functions=True,
         weighted_inputs=False,
     )
@@ -163,7 +163,7 @@ def test_regression_accuracy_evaluation_with_constants_optimization():
     cgp = CGP(
         n_inputs=n_inputs,
         n_outputs=1,
-        n_nodes=5,
+        n_nodes=10,
         weighted_functions=True,
         weighted_inputs=False,
     )
@@ -207,14 +207,12 @@ def test_regression_accuracy_evaluation_with_constants_optimization():
             )
         )
 
-        non_sgd_accuracies, non_sgd_returned_genotypes = (
-            supervised_learning_accuracy_evaluation(
-                genotype=genotypes,
-                key=key,
-                graph_structure=cgp,
-                X=X,
-                y=y,
-            )
+        non_opt_accuracies, _ = supervised_learning_accuracy_evaluation(
+            genotype=genotypes,
+            key=key,
+            graph_structure=cgp,
+            X=X,
+            y=y,
         )
 
         assert accuracies.shape[0] == n_genotypes
@@ -227,7 +225,7 @@ def test_regression_accuracy_evaluation_with_constants_optimization():
                 )
             )
         )
-        assert all(accuracies > non_sgd_accuracies)
+        assert all(accuracies > non_opt_accuracies)
 
 
 def test_regression_scoring_fn():
@@ -277,7 +275,7 @@ def test_regression_scoring_fn_with_sgd():
     cgp = CGP(
         n_inputs=n_inputs,
         n_outputs=1,
-        n_nodes=5,
+        n_nodes=10,
         weighted_functions=True,
     )
     key = jax.random.key(42)

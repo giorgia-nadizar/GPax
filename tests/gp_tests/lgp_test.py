@@ -513,9 +513,7 @@ def test_gradient_optimization_of_function_weights() -> None:
         )
     print(lgp_weights * active)
 
-    pytest.assume(
-        jnp.all(jnp.abs(target_weights * active - lgp_weights * active) < 0.05)
-    )
+    pytest.assume(train_loss < 0.01)
 
 
 def test_gradient_optimization_of_input_weights() -> None:

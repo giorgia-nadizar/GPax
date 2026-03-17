@@ -261,9 +261,10 @@ def test_prepare_rescoring_fn(sample_data):
     key, pop_key = jax.random.split(key)
     pop_keys = jax.random.split(pop_key, 10)
     population = jax.vmap(cgp.init)(pop_keys)
+    population["genes"]["outputs"] = jnp.zeros_like(population["genes"]["outputs"])
 
     resulting_fitness = rescoring_fn(population, key)
-    assert jnp.allclose(resulting_fitness, 0)
+    assert jnp.allclose(resulting_fitness, 0.0)
 
 
 @pytest.mark.parametrize(

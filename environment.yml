@@ -1,12 +1,13 @@
-name: gpax310
+name: gpax311
 channels:
 - defaults
 - conda-forge
 dependencies:
-- python=3.10
+- python=3.11
 - pip>=20.3.3
 - conda>=4.9.2
 - pip:
-    - --find-links https://storage.googleapis.com/jax-releases/jax_releases.html
+    - "jax[cuda13]"
+    - git+https://github.com/adaptive-intelligent-robotics/QDax.git@main#egg=qdax
     - -r requirements.txt
     - -r requirements-dev.txt
