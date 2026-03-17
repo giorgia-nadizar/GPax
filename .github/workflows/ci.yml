@@ -54,7 +54,7 @@ jobs:
           uv pip install --system .[dev,examples]
 
       - name: Install jax
-        run: pip install "jax[cuda13]"
+        run: pip install jax
 
       - name: Install qdax from source
         run: pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main#egg=qdax
