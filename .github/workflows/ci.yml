@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install uv
         run: |
@@ -42,7 +42,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install uv
         run: |
@@ -52,6 +52,12 @@ jobs:
       - name: Install project (dev + examples)
         run: |
           uv pip install --system .[dev,examples]
+
+      - name: Install jax
+        run: pip install "jax[cuda13]"
+
+      - name: Install qdax from source
+        run: pip install git+https://github.com/adaptive-intelligent-robotics/QDax.git@main#egg=qdax
 
       - name: Install requirements
         run: pip install -r requirements.txt
