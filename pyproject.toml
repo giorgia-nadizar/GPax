@@ -23,6 +23,10 @@ classifiers = [
 keywords = ["genetic programming", "evolutionary computation", "interpretability", "symbolic regression", "reinforcement learning"]
 requires-python = ">=3.11"
 
+dependencies = [
+    "qdax @ git+https://github.com/adaptive-intelligent-robotics/QDax.git@46b8feecae26d79414ce7a1ce731e5cfbeb9837d"
+]
+
 [project.optional-dependencies]
 dev = [
     "pre-commit",
@@ -52,6 +56,9 @@ Homepage = "https://github.com/giorgia-nadizar/GPax"
 
 [tool.hatch.version]
 path = "gpax/__init__.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.mypy]
 python_version = "3.11"

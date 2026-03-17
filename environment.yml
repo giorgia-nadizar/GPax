@@ -8,6 +8,6 @@ dependencies:
 - conda>=4.9.2
 - pip:
     - "jax[cuda13]"
-    - git+https://github.com/adaptive-intelligent-robotics/QDax.git@main#egg=qdax
+    - qdax @ git+https://github.com/adaptive-intelligent-robotics/QDax.git@46b8feecae26d79414ce7a1ce731e5cfbeb9837d
     - -r requirements.txt
     - -r requirements-dev.txt
